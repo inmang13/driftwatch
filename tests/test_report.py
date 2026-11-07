@@ -80,3 +80,17 @@ def test_report_counts_invalid_domain_and_stays_finite():
     assert rep.drift.n_invalid_domain == 1
     assert "1 at or below rating zero" in report.summary_line(rep)
     assert all(d.points == d.points for d in rep.trust.deductions)  # no NaN points
+
+
+@pytest.mark.parametrize(
+    "note, points",
+    [
+        ("Debris - Moderate", 8.0),
+        ("Debris – Moderate", 8.0),  # en dash
+        ("Debris — Heavy", 12.0),  # em dash
+        ("Vegetation–Light", 3.0),
+        ("Debris", 3.0),  # no severity -> light
+    ],
+)
+def test_note_severity_reads_any_dash(note, points):
+    assert report.note_severity_points(note) == points

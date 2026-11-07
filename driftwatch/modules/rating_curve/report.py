@@ -27,6 +27,16 @@ def recent_measurements(ds: Dataset, rel: Relationship, drift: DriftResult):
     return ms[-RECENT_N:]
 
 
+DASHES = str.maketrans({"–": "-", "—": "-", "−": "-"})  # en, em, minus sign
+
+
+def note_severity_points(note: str) -> float:
+    """Points for a transient note like 'Debris - Moderate'. En/em dashes count as hyphens;
+    an unreadable severity falls back to light."""
+    sev = note.translate(DASHES).split("-")[-1].strip().lower()
+    return NOTE_SEVERITY_POINTS.get(sev, NOTE_SEVERITY_POINTS["light"])
+
+
 def field_flags(ds: Dataset) -> list[tuple[str, float]]:
     """Open field-note flags: control changes since the reference window, transients only if on
     the latest visit (a later visit without them means they cleared)."""
@@ -40,8 +50,7 @@ def field_flags(ds: Dataset) -> list[tuple[str, float]]:
         note = tested[-1].control_condition or ""
         cause = causes.cause_for_note(note)
         if cause and cause.transient:
-            sev = note.split("-")[-1].strip().lower()
-            flags[note] = NOTE_SEVERITY_POINTS.get(sev, NOTE_SEVERITY_POINTS["light"])
+            flags[note] = note_severity_points(note)
     return list(flags.items())
 
 
