@@ -77,6 +77,7 @@ def triage_facts(site: str) -> dict[str, Any]:
         "site_name": rep.site_name,
         "band": rep.trust.band,
         "score": round(rep.trust.score, 1),
+        "score_display": f"Trust score {rep.trust.score:.0f}/100 ({rep.trust.band}).",
         "deductions": [d.model_dump() for d in rep.trust.deductions],
         "recent_median_residual_pct": round(med, 1),
         "normal_scatter_pct": round(inputs.normal_scatter_pct, 1),
@@ -128,7 +129,8 @@ def narration_ok(text: str, facts: dict[str, Any]) -> str | None:
     n = len(text.split())
     if n > MAX_WORDS:
         return f"{n} words > {MAX_WORDS}"
-    if not re.search(rf"\b{round(facts['triage']['score'])}\b", text):
+    s = facts["triage"]["score"]
+    if not re.search(rf"\b({round(s)}|{s:.1f})\b", text):
         return "the trust score is missing"
     return None
 

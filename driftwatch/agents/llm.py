@@ -25,6 +25,7 @@ from pydantic import BaseModel
 PROMPTS = Path(__file__).resolve().parent / "prompts"
 OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 MODES = ("fallback", "gemini", "openrouter")
+MAX_TOKENS = 2000
 T = TypeVar("T", bound=BaseModel)
 
 
@@ -66,11 +67,15 @@ def _gemini():
 def _openrouter(model: str | None):
     from langchain_openai import ChatOpenAI
 
+    if model and "/" not in model and model.startswith("gpt"):
+        model = f"openai/{model}"  # OpenRouter slugs carry the vendor: openai/gpt-5.4-mini
+
     chat = ChatOpenAI(
         model=model,
         base_url=OPENROUTER_BASE,
         api_key=_env("OPENROUTER_API_KEY"),
         temperature=0,
+        max_tokens=MAX_TOKENS,  # OpenRouter reserves credit for max_tokens; its default is 65k
         max_retries=1,
         timeout=60,
     )
