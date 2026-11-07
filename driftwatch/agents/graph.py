@@ -128,7 +128,7 @@ def narration_ok(text: str, facts: dict[str, Any]) -> str | None:
     n = len(text.split())
     if n > MAX_WORDS:
         return f"{n} words > {MAX_WORDS}"
-    if not re.search(rf"b{round(facts['triage']['score'])}b", text):
+    if not re.search(rf"\b{round(facts['triage']['score'])}\b", text):
         return "the trust score is missing"
     return None
 
