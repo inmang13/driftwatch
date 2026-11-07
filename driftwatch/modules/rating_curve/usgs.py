@@ -17,7 +17,7 @@ import json
 import os
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -51,7 +51,9 @@ class SnapshotError(RuntimeError):
     pass
 
 
-def make_client(api_key: str | None = None, transport: httpx.BaseTransport | None = None) -> httpx.Client:
+def make_client(
+    api_key: str | None = None, transport: httpx.BaseTransport | None = None
+) -> httpx.Client:
     headers = {"User-Agent": "driftwatch/0.1 (hackathon research)"}
     key = api_key if api_key is not None else os.environ.get("USGS_API_KEY", "")
     if key:
@@ -83,7 +85,9 @@ def _next_href(page: dict) -> str | None:
     return None
 
 
-def fetch_collection(client: httpx.Client, collection: str, site: str, base: str = API_BASE) -> list[dict]:
+def fetch_collection(
+    client: httpx.Client, collection: str, site: str, base: str = API_BASE
+) -> list[dict]:
     """All features for one site in one collection, following `next` links verbatim."""
     url: str | None = f"{base}/collections/{collection}/items"
     params: dict[str, Any] | None = {
@@ -119,7 +123,7 @@ def fetch_site(site: str, client: httpx.Client | None = None, base: str = API_BA
             raise SnapshotError(f"{site}: {c} returned 0 features; refusing to write snapshot")
     return {
         "site": site,
-        "fetched_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "fetched_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         "api_base": base,
         "collections": collections,
     }

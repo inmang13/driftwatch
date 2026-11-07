@@ -9,7 +9,11 @@ from driftwatch.modules.rating_curve import usgs
 
 
 def _feature(i, site="03459500"):
-    return {"type": "Feature", "id": str(i), "properties": {"monitoring_location_id": f"USGS-{site}", "value": str(i)}}
+    return {
+        "type": "Feature",
+        "id": str(i),
+        "properties": {"monitoring_location_id": f"USGS-{site}", "value": str(i)},
+    }
 
 
 def _paged_transport(calls):
@@ -25,7 +29,9 @@ def _paged_transport(calls):
             return httpx.Response(200, json={"features": [], "links": []})
         if "cursor" in q:
             assert path.startswith("/ogcapi/v1/")
-            return httpx.Response(200, json={"features": [_feature(3)], "links": [{"rel": "self", "href": "x"}]})
+            return httpx.Response(
+                200, json={"features": [_feature(3)], "links": [{"rel": "self", "href": "x"}]}
+            )
         assert q["monitoring_location_id"] == "USGS-03459500"
         nxt = "https://api.waterdata.usgs.gov/ogcapi/v1/collections/field-measurements/items?cursor=abc&f=json"
         return httpx.Response(
@@ -80,7 +86,9 @@ def test_snapshot_round_trip_utf8(tmp_path):
         "collections": {
             "field-measurements": [_feature(1)],
             "channel-measurements": [],
-            "monitoring-locations": [{"properties": {"monitoring_location_name": "Eno R — Hillsborough"}}],
+            "monitoring-locations": [
+                {"properties": {"monitoring_location_name": "Eno R — Hillsborough"}}
+            ],
         },
     }
     path = usgs.write_snapshot(data, tmp_path)

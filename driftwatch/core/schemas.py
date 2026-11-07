@@ -16,7 +16,9 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 Rated = Literal["Excellent", "Good", "Fair", "Poor", "Unspecified"]
 Band = Literal["Trusted", "Watch", "Stale"]
 Direction = Literal["positive", "negative"]
-NodeName = Literal["run", "triage", "evidence_collector", "hypothesis_ranker", "skeptic", "narrator"]
+NodeName = Literal[
+    "run", "triage", "evidence_collector", "hypothesis_ranker", "skeptic", "narrator"
+]
 EventStatus = Literal["started", "progress", "completed", "error"]
 
 TRUSTED_MIN = 80
@@ -56,6 +58,8 @@ class Dataset(BaseModel):
     measurements: list[Measurement] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
+    _tz = field_validator("fetched_at")(_require_tz)
+
 
 class Relationship(BaseModel):
     """Base rating fitted on the reference window."""
@@ -79,6 +83,8 @@ class StablePeriod(BaseModel):
     n: int = Field(ge=0)
     median_residual_pct: float | None = None
 
+    _tz = field_validator("start", "end")(_require_tz)
+
 
 class Shift(BaseModel):
     time: datetime
@@ -87,6 +93,14 @@ class Shift(BaseModel):
     direction: Direction
     n_after: int = Field(ge=0)
     confidence: float = Field(ge=0.0, le=1.0)
+
+    _tz = field_validator("time")(_require_tz)
+
+    @model_validator(mode="after")
+    def _direction_matches_sign(self) -> Shift:
+        if (self.size_pct > 0) != (self.direction == "positive") and self.size_pct != 0:
+            raise ValueError(f"direction {self.direction} contradicts size_pct {self.size_pct}")
+        return self
 
 
 class DriftResult(BaseModel):

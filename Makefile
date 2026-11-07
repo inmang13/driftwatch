@@ -11,7 +11,6 @@ endif
 
 SOURCE ?= snapshot
 SITE ?= 03459500
-SITES := 03459500 03455000 03446000 03451500 03451000 03463300 03479000 02085000
 
 .PHONY: install snapshot report run serve test evals demo
 
@@ -20,11 +19,11 @@ $(PY):
 
 install: $(PY)
 	$(PY) -m pip install --upgrade pip
-	$(PY) -m pip install -e .[dev,agents,api]
+	$(PY) -m pip install -e ".[dev,agents,api]"
 
-# Refuses unless SOURCE=live (the fetcher enforces it): make snapshot SOURCE=live
+# Site list lives in driftwatch/modules/rating_curve/usgs.py (SITES). Refuses unless SOURCE=live (the fetcher enforces it): make snapshot SOURCE=live
 snapshot:
-	$(PY) -m driftwatch.modules.rating_curve.usgs --source $(SOURCE) --sites $(SITES)
+	$(PY) -m driftwatch.modules.rating_curve.usgs --source $(SOURCE)
 
 report:
 	@echo not yet: make report SITE=$(SITE)
