@@ -399,7 +399,7 @@ def narrate(facts: dict[str, Any], final: dict[str, Any] | None) -> Narration:
         objected += " A reviewer still disputes it, so treat the cause as unconfirmed."
     return done(
         word,
-        f"Most likely cause: {LABEL[cause].lower()} — {word} ({conf * 100:.0f} %).{objected}",
+        f"Most likely cause: {LABEL[cause].lower()}, {word} ({conf * 100:.0f} %).{objected}",
         f"Next: {NEXT_STEP[cause]}",
         what,
     )

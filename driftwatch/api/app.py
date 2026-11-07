@@ -23,6 +23,7 @@ from functools import cache
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -167,6 +168,35 @@ def _report(site: str):
     return rc_report.build_report(site, "snapshot")
 
 
+MISFIT_PCT = 15.0  # a reference point "misses" the curve when it sits this far off
+MISFIT_SHARE = 0.20  # ... and this share of top-third reference points miss
+NEWEST_N = 8  # newest readings checked for "at low and middle flows"
+
+
+def high_flow_misfit(points: list[dict[str, Any]]) -> dict[str, Any]:
+    """C11.4: does the single-line curve miss the top third of flows in the reference window,
+    while the newest readings all sit at low and middle flows? Only then is the caption true."""
+    ref = [
+        p
+        for p in points
+        if p["period"] == "reference" and p["residual_pct"] is not None and not p["excluded"]
+    ]
+    out: dict[str, Any] = {"show": False, "share_off": None, "cutoff_cfs": None}
+    if len(ref) < 12:
+        return out
+    cutoff = float(np.quantile([p["discharge_cfs"] for p in ref], 2 / 3))
+    top = [p for p in ref if p["discharge_cfs"] >= cutoff]
+    share = sum(abs(p["residual_pct"]) > MISFIT_PCT for p in top) / len(top)
+    newest = [
+        p
+        for p in points
+        if p["period"] != "reference" and p["residual_pct"] is not None and not p["excluded"]
+    ][-NEWEST_N:]
+    newest_low = bool(newest) and all(p["discharge_cfs"] < cutoff for p in newest)
+    out.update(share_off=share, cutoff_cfs=cutoff, show=share >= MISFIT_SHARE and newest_low)
+    return out
+
+
 @cache
 def _report_payload(site: str) -> dict[str, Any]:
     """Report + everything the two plots need. Built from the snapshot, cached (it is static)."""
@@ -194,9 +224,17 @@ def _report_payload(site: str) -> dict[str, Any]:
         for i in range(n + 1):
             h = lo + (hi - lo) * i / n
             curve.append({"stage_ft": h, "discharge_cfs": float(rating.predict_q(rel, h))})
+    inputs = rc_report.trust_inputs(ds, rel, rep.drift, ds.fetched_at)
+    recent = list(inputs.recent_residual_pct)
     return _clean(
         {
             "report": json.loads(rep.model_dump_json()),
+            # "where the newest readings sit now": the same median the trust score uses
+            "recent": {
+                "median_pct": float(np.median(recent)) if recent else None,
+                "n": len(recent),
+            },
+            "high_flow_misfit": high_flow_misfit(points),
             "points": points,
             "curve": curve,
             "top_shift": json.loads(top.model_dump_json()) if top else None,
