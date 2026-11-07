@@ -1,119 +1,122 @@
-# DriftWatch — agent playbook
+# DriftWatch — agent playbook (v3)
 
-> How and where each agent is used, with paste-ready prompts, and what the human does meanwhile. Pair with `docs/plan.md` (v2). Written Fri 2026-11-06 10 pm.
+> How and where each agent is used, with paste-ready prompts, and what the human does at the same time. Pair with `docs/plan.md`.
+> v1 Fri 10 pm · v2 Fri 11 pm (thoth edits) · v3 Sat 10:30 am · **v3.1 Sat 12:45: Informer GO, C4 done, C5 pulled forward.** Grace works 8 am – 11 pm.
 
-## A. Rules that apply to every agent session
+## A. Rules for every agent session
 
-1. **Every session starts with:** "Read `CLAUDE.md`, `docs/plan.md` §4 and §7, and `docs/agent_playbook.md` section for this stage. Summarize in 5 lines what you will build and what 'done' means, then wait for my OK." (Skip the wait only in unattended Pi jobs.)
-2. **Plans before code** for anything over ~100 lines. Ask for the file list and function signatures first.
-3. **One stage per session.** Finish, run `make test` and `make demo`, commit, `/compact` or start a new session. Context rot is the main failure mode on a long day.
-4. **Tests are the gate.** A session that cannot make `make test` and `make demo` pass rolls back to the last green commit rather than patching forward.
-5. **Snapshot is the default.** No session may call the live USGS API except `usgs.py` when `SOURCE=live` is set explicitly.
-6. **No LLM calls in tests.** Agent tests run with `LLM=fallback`.
-7. **Commit messages:** `stage: what` (`m1: segmentation + trust score`). Commit at every green checkpoint, not at the end.
-8. **Agents never edit `docs/plan.md`.** They append to `docs/decision_log.md` (dated) when they make a choice the plan left open.
+1. **Start every session with:** "Read `CLAUDE.md`, `docs/plan.md` §4, `docs/decision_log.md`, and the section of `docs/agent_playbook.md` for this stage. Summarize in 5 lines what you will build and what 'done' means, then wait for my OK." (Unattended thoth jobs skip the wait.)
+2. **Plan before code** for anything over ~100 lines: file list and function signatures first.
+3. **One stage per session, one branch per stage.** Finish → `make test` + `make demo` → commit → push → PR. Start a fresh session for the next stage.
+4. **Tests are the gate.** If a session can't get `make test` and `make demo` green, roll back to the last green commit instead of patching forward.
+5. **Snapshot is the default source.** Only `usgs.py` calls the live API, and only with `SOURCE=live`.
+6. **Tests never call an LLM** (`LLM=fallback`).
+7. **Commit messages:** `<stage>: what`, at every green step.
+8. **Agents edit `docs/plan.md` only when the prompt says so.** Otherwise they append a dated line to `docs/decision_log.md`.
+9. **Hard stop times are real.** At the stop time an agent pushes what's green and writes `docs/<stage>_status.md`.
+10. **Two machines never edit the same files at once.** Laptop sessions own `driftwatch/core`, `driftwatch/agents`, `driftwatch/api`, `driftwatch/modules/rating_curve`. Thoth's daytime job owns `driftwatch/modules/specs/` and `driftwatch/modules/registry.py` only.
 
-## B. Repo `CLAUDE.md` (paste this at the repo root tonight)
+## B. Status board (Sat 10:30 am)
 
-```markdown
-# DriftWatch — Triangle AI Hackathon build (Nov 6–8 2026)
+| Stage | State | Where |
+|---|---|---|
+| M0 scaffold + 8-site snapshot | ✅ merged | main |
+| M1 engine: pairing, rating fit, shift detection, causes, trust score, CLI, 8 reports | ✅ merged (overnight on thoth) | main |
+| M1 fixes: cap 50, exact pairing, UTC, below-zero-flow guard, dashes, n_after, Helene visits counted for staleness, null test, docs | ✅ reviewed, **merge now** | PR `m1-fixes` |
+| M2 agents | ✅ built 11:56; skeptic rule + Disagreement schema + narrator direction fix in progress | PR `m2-agents` |
+| Registry specs (thoth) | ✅ merged (11:50) | main |
+| Informer spike | ✅ GO at 12:13 | `C:\Users\Grace\informer-spike\` |
+| M3 console · M4 Informer · M5 deploy + evals · DevPost | later today | — |
 
-Drift monitoring for calibrated engineering relationships. Module #1: USGS rating curves after Hurricane Helene.
-Build contract: docs/plan.md (§4 architecture, §7 schedule). How to work: docs/agent_playbook.md. Decisions: docs/decision_log.md (append, dated).
+**Current results (after fixes):** Pigeon R near Hepco Stale 24 (−28 % since Dec 2024) · French Broad at Newport Stale 30 (−43 % since Oct 2024, "Fill control changed") · French Broad at Asheville Stale 46 (+36 % since Jul 2025, delayed) · Mills Watch 73 · Swannanoa 94, South Toe 95, Watauga 95, Eno 91 Trusted.
 
-## Stack
-Python 3.11+ (3.13 on both laptop and thoth) · pydantic v2 · numpy/pandas/scipy · ruptures · LangGraph · langchain-google-vertexai (Gemini) · langchain-openai pointed at OpenRouter (skeptic) · FastAPI + sse-starlette · Plotly.js in one static page · pytest · black + ruff.
-Package: `driftwatch/` (core, modules/rating_curve, modules/specs, agents, api). Data: `data/snapshot/<site>.json`. Traces: `traces/`.
+**Demo roles (recommended; Grace confirms):** Newport = main demo (clean fill story). Hepco = the skeptic demo (note says scour, numbers don't). Asheville = "the storm passed, the gauge looked fine for 10 months, then it wasn't." Swannanoa = record flood, rating held, engine stays quiet.
 
-## Commands
-make install · make snapshot (SOURCE=live, only on request) · make report SITE=03459500 · make run SITE=03459500 (agents, writes trace) · make serve (FastAPI :8000, console at /) · make test · make evals · make demo (report + run on 03459500 and 03451000 with LLM=fallback; must pass offline)
+**Not in the pitch yet:** any channel area/speed percentages. They come from the M2 evidence tool or not at all.
 
-## Non-negotiables
-- Snapshot is the default source. Live USGS only with SOURCE=live.
-- Pair each discharge with the reading_type='MeanGageHeight' stage row on (field_visit_id, time). A visit can hold several discharges.
-- Never use channel area/velocity/width as predictors (Q = A·V leakage). Evidence only.
-- Keep rating exponent b and offset e fixed from the base fit; drift = sliding a. Report shift in ft and %.
-- Exclude measurements rated Poor taken 2024-09-26..28 from the drift test; keep them for plots.
-- Residual sign convention: scour → positive; fill → negative; debris/vegetation → negative transient; datum change/rebuild → step of either sign with no channel evidence.
-- Every LLM node has a deterministic fallback selected by LLM=fallback. Tests never call an LLM.
-- Every agent run writes traces/<site>-<timestamp>.json; the API can replay a trace.
-- Trust score is glass-box: the report includes each deduction and its reason.
-- Sites: 03459500 03455000 03446000 03451500 03451000 03463300 03479000 02085000. Reference window for the base rating: 2012-01-01 .. 2024-09-25 (Eno: 2015-01-01 .. 2025-07-06).
+## C. Saturday from here
 
-## Done means
-make test green · make demo green offline · Hepco (03459500) and Newport (03455000) come out Stale with a documented cause · Swannanoa (03451000), South Toe (03463300), Eno (02085000) come out Trusted · README run instructions work from a clean clone.
-```
+| When | Machine | Human |
+|---|---|---|
+| **10:30 – 10:45** | — | Merge `m1-fixes`. Put Gemini credentials path + OpenRouter key in the **laptop** `.env` (never on thoth). Start thoth's registry job (C2). |
+| **10:45 – 2:00** | **Claude Code (laptop): M2 agents** (C1). **Thoth: registry specs** (C2). | Draft `docs/pitch.md`. From ~12:00 read the first Gemini narrations; edit tone in `driftwatch/agents/prompts/`. Eat lunch while tests run. |
+| **~1:15** | **Codex review #2** (C1, end). | Paste Codex's list into the M2 session; it fixes before the 2:00 stop. |
+| **2:00 – 4:30** | **Claude Code (laptop): M3 console** (C3). Merge `pi/registry` first. | Watch the first live run on the page; write down every moment a judge would be confused → prompt edits. |
+| **after M3 merge – 6:30** | **Claude Code + Informer plugin: M4 product UI** (C5). Informer spike passed 12:13 (C4). | Test on your phone as it deploys; confirm viewers need no sign-in. |
+| **6:30 – 8:00** | **Claude Code: M5 Cloud Run deploy + evals** (C6). **Codex review #3** at ~7:30. | Open the live URL on your phone; fix order = what Codex and you both hit. |
+| **8:00** | **Freeze `core/`, `agents/`, `modules/rating_curve/`.** | — |
+| **8:00 – 9:15** | Claude chat: README, DevPost text, 6 slides from `docs/pitch.md`. | Approve every claim in the text against `docs/m2_results.md` and `docs/eval_report.md`. |
+| **9:15 – 10:30** | — | Record the 2-minute video (C7). Screenshots. **Submit DevPost by 10:30.** |
+| **10:30 – 11:00** | Launch thoth job #2 (D). | Stop at 11. |
 
-## C. Tonight (Fri 10–11 pm) — human + Claude Code, laptop
+**Cut order if behind (cut from the top):** web-search tool (already out) → Informer push/MCP extras → Informer run-history page (keep gauges + detail + registry) → Cloud Run (demo from the laptop) → Asheville in the video → skeptic loop (keep one skeptic pass). **Never cut:** M2 with fallback, replayable traces, the console, the video, DevPost submitted Saturday night.
 
-**Human (10 min):** create the public GitHub repo `driftwatch`; copy `CLAUDE.md` (above), `docs/plan.md`, `docs/agent_playbook.md`, an empty `docs/decision_log.md`; `.gitignore` for `.env`, `traces/`, `.venv`; `.env.example` with `GOOGLE_CLOUD_PROJECT`, `GOOGLE_APPLICATION_CREDENTIALS`, `OPENROUTER_API_KEY`, `USGS_API_KEY`, `LLM=gemini|openrouter|fallback`, `SOURCE=snapshot|live`.
-
-**Claude Code session 1 — M0 (30 min). Paste:**
-> Read CLAUDE.md and docs/plan.md §3–§4. Build only this: (1) `pyproject.toml` + `Makefile` with the targets in CLAUDE.md (stub targets may print "not yet"); (2) `driftwatch/core/schemas.py` with pydantic models `Measurement`, `Dataset`, `Relationship`, `Shift`, `DriftResult`, `TrustScore` (with a `deductions: list[Deduction{name, points, reason}]` field), `Report`, `TraceEvent`; (3) `driftwatch/modules/rating_curve/usgs.py` that fetches `field-measurements`, `channel-measurements`, and `monitoring-locations` for one site from the OGC API, follows `next` links, and writes `data/snapshot/<site>.json` with the raw features; `load_snapshot(site)` reads it back; (4) `make snapshot SOURCE=live` runs it for the 8 sites in CLAUDE.md. Run it once now with SOURCE=live, commit the snapshot files, and print the row counts per site and collection. Do not build pairing, fitting, or anything else.
-
-**Human (~10 min, in parallel):** prep the Orange Pi (thoth). It is aarch64 Armbian (Debian trixie) with **Python 3.13** (no 3.11; `pyproject` allows >=3.11), 4 GB RAM shared with its other services, and Claude Code and git already installed.
-- Clone with the push alias, not the https URL: `git clone github-grace:inmang13/driftwatch.git`. That SSH key pushes as Grace's GitHub account and can push to any repo she owns, so **protect `main` on GitHub** (Settings > Branches) before the job runs. The key cannot open PRs.
-- `python3 -m venv .venv && make install`, then `.env` with `LLM=fallback` and `SOURCE=snapshot` only (no cloud keys go on this box). Check that `ruptures` and `scipy` install on aarch64 now, not at 11 pm.
-- Test: `claude -p "run make test and report"` returns. Run it as the user that will run the job; if `grace` is not logged in, use `CLAUDE_CONFIG_DIR=/home/grace/.claude`.
-
-**Launch Pi job #1 at ~11 pm** (section D). Go to sleep.
-
-## D. Orange Pi job #1 — Fri night, unattended (M1) — on thoth
-
-Prompt lives in `docs/prompts/pi_job1.md`; launcher in `docs/prompts/launch_job1.sh` (both committed to the repo). On thoth, from the repo root:
-```
-git pull                       # picks up docs/prompts
-bash docs/prompts/launch_job1.sh
-tail -f logs/pi_job1.log       # Ctrl-C leaves it running; nohup survives SSH disconnect
-```
-Before launching: `main` protected on GitHub; `.env` on thoth has `LLM=fallback`, `SOURCE=snapshot`; `.venv/bin/python -c "import ruptures, scipy"` works.
-What it does: creates `pi/m1` from `origin/main`, builds pairing → rating fit → recursive segmentation → cause catalog → trust score → CLI → tests → `docs/m1_results.md`, commits after each green step, pushes the branch, writes `docs/m1_status.md`. It cannot open a PR; Grace opens it from GitHub in the morning.
-If it stops early: `tail -50 logs/pi_job1.log` and `cat docs/m1_status.md` tell you where; Claude Code on the laptop resumes from the branch.
-
-## E. Saturday — session by session
-
-### 8:00–9:30 · M1 review (human + Claude Code laptop + Codex)
-- Human: read `docs/m1_results.md` and `docs/m1_status.md` first (5 min). Open the PR for `pi/m1` from the link on GitHub, pull the branch, `make test`, `make demo`.
-- Codex review #1, paste: *"Review branch pi/m1 of this repo against CLAUDE.md non-negotiables. List, ranked, anything that will produce a wrong trust score or a wrong shift: pairing errors, leakage, sign errors, unit mix-ups, timezone, penalty overfitting. Do not rewrite code; produce a checklist."*
-- Claude Code session 2: fix the checklist, confirm Hepco/Newport fire and controls stay quiet, merge to main.
-
-### 9:30–1:00 · M2 agents (Claude Code laptop, worktree `backend`)
+### C1 · M2 agents — Claude Code, laptop, branch `m2-agents`, stop 2:00 pm
 Paste:
-> Read CLAUDE.md, plan §4 "Agents", playbook A. Build `driftwatch/agents/`: LangGraph `StateGraph` with nodes triage → evidence_collector → hypothesis_ranker → skeptic → narrator, conditional edges exactly as plan §4 (skeptic objection loops to ranker at most twice; triage on a healthy gauge goes straight to narrator). Tools in `tools.py` are pure Python over the Report + snapshot: `channel_geometry_trend(site, before, after)` (width, area, mean depth = area/width, velocity; before vs after the first shift), `field_notes(site, since)`, `flood_context(site)` (max discharge measured between the last in-period and first post-shift measurement; also the dataset's peak-of-record if it falls there), `site_metadata(site)`. LLM clients in `llm.py`: `gemini` (langchain-google-vertexai), `openrouter` (langchain-openai with base_url), `fallback` (rule-based: ranker picks the catalog cause whose sign matches and has the most evidence; skeptic accepts unless the sign mismatches; narrator fills a template). Structured outputs via pydantic. Every node emits TraceEvent to an asyncio queue and to `traces/`. `make run SITE=…` prints the narration and writes the trace. Tests with LLM=fallback on Hepco, Newport, Swannanoa. Then run all 8 with LLM=gemini and summarize in `docs/m2_results.md`.
-- **Human meanwhile:** write `docs/pitch.md` (3-minute script from plan §2) and start `docs/devpost.md`. Read the first Gemini narrations and fix tone in `prompts/` (utility-manager voice, no jargon, name the evidence).
-- Codex review #2 at the end: *"Find places where an LLM output can crash the graph or where the fallback diverges from the LLM path."*
+> Read CLAUDE.md, docs/plan.md §4 "Agents", docs/agent_playbook.md A, docs/m1_results.md, docs/decision_log.md. Branch `m2-agents`. Build `driftwatch/agents/`: LangGraph StateGraph triage → evidence_collector → hypothesis_ranker → skeptic → narrator, edges as plan §4 (a skeptic objection loops back to the ranker at most twice; a Trusted gauge goes triage → narrator). Triage reads the M1 Report; no LLM.
+> Tools (`tools.py`, pure Python, no LLM): `channel_geometry_trend(site, shift_time)` loads `channel-measurements` straight from the snapshot (the Dataset doesn't carry them), joins to paired stage on field_visit_id, fits ln(area) and ln(velocity) against ln(H − e) separately before and after the shift, and reports the % difference at the median post-shift stage, plus median width before/after and n of each. `field_notes(site, since)`; `flood_context(site)` (largest measured discharge between the last pre-shift and first post-shift visit, including Helene-excluded ones); `site_metadata(site)`. No web search.
+> LLM (`llm.py`): `gemini` (langchain-google-vertexai), `openrouter` (langchain-openai, base_url https://openrouter.ai/api/v1; skeptic only), `fallback` (rules: the ranker picks the catalog cause whose sign matches and has the most evidence; the skeptic objects when the top cause's expected sign contradicts the residual or the channel evidence, else accepts; the narrator fills a template). Structured outputs via pydantic. The ranker always lists datum_change and inconclusive with a confidence. The skeptic must use channel_geometry_trend: if speed fell much more than area changed, argue for fill/backwater on the downstream control over datum change. The narrator writes ≤ 120 words for a utility manager: what's wrong, how sure we are, what to do next, the score. Prompts live in `driftwatch/agents/prompts/*.md` so Grace can edit tone without touching code.
+> Every node emits a TraceEvent {node, status, payload, t} to an asyncio queue and to traces/<site>-<ts>.json; `replay(trace_path)` yields the same events. `make run SITE=…` prints the narration and writes the trace; `make demo` adds `make run` for 03459500 and 03451000 with LLM=fallback.
+> Tests (LLM=fallback, offline): graph compiles; Hepco ends with ≥ 1 skeptic objection and a final cause other than plain scour; Newport → fill; Asheville → a positive-sign cause; Swannanoa → no cause; replay determinism.
+> Then run all 8 with LLM=gemini and write docs/m2_results.md: per gauge the final cause and confidence, whether the skeptic objected and why, the channel_geometry_trend numbers for Hepco, Newport and Asheville, tokens and wall time per run. Commit at each green step; push; open a PR. Hard stop 2:00 pm: push what's green and write docs/m2_status.md.
 
-### 1:00–3:30 · M3 console (Claude Code, worktree `ui`)
-Paste:
-> Read plan §4 "UI". Build `driftwatch/api/app.py` (FastAPI): GET /gauges (band, score, name), GET /report/{site}, POST /run/{site} streaming TraceEvents as SSE, GET /trace/{id}, GET /replay/{id} (SSE at human pace), GET /registry (from modules/specs/*.yaml), static `console.html` at /. The page: left gauge list with band colors; center Plotly stage–discharge scatter (reference vs post-shift colored, base curve drawn) above a residual timeline with Helene (2024-09-27) and detected shift times as vertical lines; right a 5-box agent graph that highlights the running node plus a streaming log; bottom the finding card with the score arithmetic. Registry tab renders the YAML specs as cards (1 live, 7 specified). Vanilla JS, one file, phone-usable. `make serve`. Then run Hepco end to end and screenshot.
-- **Human meanwhile:** watch the first run on the page and note every moment that would confuse a judge; those become the prompt edits.
+**Codex review #2 (~1:15), paste into Codex:**
+> Review branch m2-agents. Rank: (1) any LLM output that can crash the graph or loop forever; (2) places where the fallback path and the LLM path disagree on structure; (3) evidence numbers in docs/m2_results.md that the code does not reproduce; (4) anything in a narration that claims more certainty than the evidence. Checklist only, no rewrites.
 
-### 3:30–4:00 · Informer spike (human + Claude Code with the Informer plugin)
-`npm install -g @entrinsik/informer-cli` → `inf login <team>.go.informer.cloud` → in Claude Code `/plugin marketplace add entrinsik-org/claude-plugins` → `/plugin install informer@entrinsik-plugins` → new folder `informer-app/` → prompt: *"Build a minimal Informer App with one page and one server route that GETs `<cloud-run-or-ngrok-url>/gauges` and shows the JSON. Deploy it."* Go if the deploy works and the route can reach your API. If Cloud Run isn't up yet, expose the laptop with ngrok for the spike.
+### C2 · Thoth daytime job — registry specs, branch `pi/registry`, unattended
+Save as `docs/prompts/pi_registry.md` on main, then on thoth: `git pull && git checkout -B pi/registry origin/main && nohup claude -p --permission-mode acceptEdits --max-turns 120 "$(cat docs/prompts/pi_registry.md)" > logs/pi_registry.log 2>&1 &`
+> You are working unattended on thoth. Read CLAUDE.md and docs/plan.md §4 "The generic engine". You may only create or edit files under `driftwatch/modules/specs/`, `driftwatch/modules/registry.py`, `tests/test_registry.py`, and append to `docs/decision_log.md`. Do not touch anything else; another agent is editing the rest of the repo right now.
+> 1. Write 8 YAML specs in `driftwatch/modules/specs/`, one per module: `rating_curve` (status: live), and status: specified for `sewer_meter_mass_balance`, `meter_under_registration`, `pump_curve`, `reservoir_stage_storage`, `well_specific_capacity`, `model_calibration`, `rain_gauge_vs_radar`. Each has: `name`, `title` (plain English), `status`, `who_cares` (one line, a utility role), `why_it_drifts` (one line), and the four slots `get_data`, `expected_relationship`, `drift_test`, `likely_causes` (2 sentences each, concrete: name the real data source, e.g. SCADA pump run-times, AMI meter reads, NEXRAD/MRMS radar, USGS field measurements). For `rating_curve`, describe what is actually built (USGS OGC field measurements; weighted power-law rating; recursive change-point segmentation of residuals; scour/fill/debris/vegetation/datum change). No marketing language.
+> 2. `registry.py`: `load_registry() -> list[ModuleSpec]` (pydantic model), validates every file, sorted live first. `tests/test_registry.py`: all 8 load, exactly one is live, every slot is non-empty.
+> 3. `make test` green. Commit `registry: <what>` after each step; `git push -u origin pi/registry`; write `docs/registry_status.md`. Stop.
 
-### 4:00–6:30 · M4 product UI
-- Go: Claude Code (Informer plugin) builds the app: gauge list with trust bands → gauge page with the finding card, score arithmetic, evidence, and an embedded/linked live console for the run → run history stored in Postgres via a server route that fetches `/trace/{id}` after a run → registry page. `inf deploy`. Optional if ahead: scheduled agent that re-runs nightly and a push notification on band change.
-- No-go: polish `console.html`, add run history in memory, and make the registry tab shine.
+### C3 · M3 console — Claude Code, laptop, branch `m3-console`, stop 4:30 pm
+Merge `m2-agents` and `pi/registry` into main first. Paste:
+> Read CLAUDE.md, plan §4 "UI", docs/m2_results.md. Branch `m3-console`. Build `driftwatch/api/app.py` (FastAPI): GET /gauges (site, name, band, score), GET /report/{site}, POST /run/{site} streaming TraceEvents as SSE (LLM from env), GET /trace/{id}, GET /replay/{id} (SSE at human pace, ~0.6 s between events), GET /registry (from `driftwatch.modules.registry.load_registry()`), static `console.html` at `/`. CORS configurable via `CORS_ORIGINS`.
+> The page (one file, vanilla JS + Plotly from a CDN, works on a phone): left, gauge list with band colours, Newport first; center, stage–discharge scatter (reference-window points vs post-shift points in two colours, base curve drawn, Helene-excluded points hollow) above a residual timeline with Helene (2024-09-27) and detected shift dates as vertical lines; right, a 5-box agent graph that highlights the running node, plus a streaming log showing each node's key output in one line; bottom, the finding card: narration, cause + confidence, and the score arithmetic (every deduction with its reason). A "Replay" button uses /replay on the latest saved trace so the demo works with no LLM. Registry tab: 8 cards from /registry, live first, each showing the four slots.
+> `make serve`. Then run Newport, Hepco, Swannanoa end to end with LLM=gemini, save the traces, and take screenshots into docs/images/. Commit, push, PR. Stop 4:30 pm.
+Replay reads traces/replay_defaults.json first; the finding card renders a Disagreement as four labelled rows: best guess, field note, why they disagree, double-check.
 
-### 6:30–8:00 · M5 deploy + evals
-- Claude Code: Dockerfile for the Python service, `gcloud run deploy` (snapshot baked in, secrets via Secret Manager, CORS allowing the Informer origin), `make evals` producing `docs/eval_report.md`.
-- Codex review #3: *"Pretend you are a judge opening the live URL on a phone for 90 seconds. What breaks or confuses?"* Fix the top three.
+### C4 · Informer spike — DONE 12:13, result GO
+A minimal app is live on `inman.go.informer.cloud`; its server route reaches the USGS API and renders a station name. Deploy works; routes can reach an outside API. Spike code moved to `C:\Users\Grace\informer-spike\` (never commit it onto a code branch).
 
-### 8:00–10:30 · freeze, write, record, submit
-- 8:00 **freeze core/ and agents/**. Claude chat (this one): tighten README, DevPost text, slide text from `docs/pitch.md`.
-- 9:00 record the video in one take: 20 s problem, 70 s Hepco run, 20 s Swannanoa quiet, 10 s registry and evals. Screenshots. Submit DevPost by 10:30.
-- Launch Pi job #2 (section F). Stop at 11.
+Findings that shape C5:
+1. **Outside APIs must be declared.** Server-route `fetch` reaches only Informer paths. Declare each outside API as an app-owned integration in `informer.yaml` (`authType: none`, `apiBaseUri: <url>`) and call it with `context.<slot>.request({ method, url })`. Pattern: the App Builder Boot Camp app already on the tenant.
+2. **Cloud Run goes through the same integration**, server-side. `CORS_ORIGINS` on the Python service only matters if the page itself fetches from the browser.
+3. **Embedding the console or its SSE stream in an Informer page needs admin approval** (Informer Admin → Approved Resources, Asset type `data`). The "Run investigation" button opens the console in a new tab and avoids this.
+4. Login is a browser sign-in (`inf login <url>`, `--no-browser` prints the link). CLI needs Node 22+.
+5. **Windows:** `inf deploy` crashes in its own build step. Rename the app's build script to `build:web`, run `npm run build:web` before every `inf deploy`, or `npm run deploy` which does both.
 
-## F. Orange Pi job #2 — Sat night, unattended (docs only)
-Branch `pi/docs`. Prompt:
-> Read CLAUDE.md and docs/plan.md. Do not modify anything under driftwatch/core or driftwatch/agents. Tasks: (1) complete `modules/specs/*.yaml` so all 7 specified modules have the four slots filled in two sentences each plus a `why_it_drifts` line and a `who_cares` line; (2) run `make evals` and write `docs/eval_report.md` with the pass/fail table, tokens and wall time per case; (3) README: clean-clone instructions verified by actually running them in a fresh venv, architecture diagram as Mermaid, the differentiation table from plan §2, the IDS 706 relationship note; (4) `docs/pitch_script.md`: a 3-minute script with timings from docs/pitch.md. Commit after each task; push `pi/docs` (no PR, you cannot open one); stop. Grace opens the PR from GitHub.
+Not yet verified: phone layout; whether viewers need a sign-in; whether the integration reaches your own API (only USGS was tested). C5 checks all three in its first 20 minutes.
 
-## G. Sunday 8:00–8:30
-Merge `pi/docs` if `make test` and `make evals` are green; otherwise merge only the README. Final DevPost edits. Done by 8:30. Judging runs from snapshot mode with Cloud Run as the URL; keep `make serve` running locally as the backup.
+### C5 · M4 Informer product UI — can start as soon as M3 is merged (was 5:00)
+Folder `informer-app/` at the repo root on branch `m4-informer`, Informer plugin loaded. Paste:
+> Read docs/agent_playbook.md C4 findings first. Build an Informer App called DriftWatch for a utility manager. Declare an app-owned integration in `informer.yaml` for `<cloud-run-url>` (`authType: none`) and make every server-side call to it through that slot's `request()`; never use bare fetch for outside URLs. First 20 minutes: a page that lists `/gauges` through the integration, deployed, opened on a phone, and confirmed whether a viewer needs to sign in; report before building more. Then pages: (1) Gauges: cards with name, trust band colour, score, one-line finding; (2) Gauge detail: finding card with the score arithmetic, the evidence, and for a Disagreement the four fields (best guess, field note, why they disagree, double-check); a "Run investigation" button that opens `<console-url>/?site=<site>` in a new tab; a server route that fetches `/trace/<id>` through the integration after a run and stores it; (3) Run history from Postgres (migration: runs(site, started_at, band, score, cause, trace_json)); (4) Registry from `/registry`. Phone-first, fast. Windows: build script named `build:web`; deploy with `npm run deploy`. Print the URL.
+> Optional only if done 90 minutes early: a scheduled agent that re-runs all gauges nightly and a push notification when a band changes.
 
-## H. Human-only jobs (things agents should not do)
-- Decide the hero gauge after seeing M1 numbers (Hepco vs Newport).
-- Approve every narration's tone before it goes in the video.
-- Judge the Informer go/no-go at 4:00 pm sharp.
-- Keep `docs/decision_log.md` honest: every cut from the cut order gets a dated line.
-- Eat, and stop at 11.
+### C6 · M5 deploy + evals — Claude Code, laptop, branch `m5-deploy`, stop 8:00 pm
+> Read CLAUDE.md and plan §6. (1) Dockerfile (python:3.13-slim, snapshot and saved traces baked in, `uvicorn driftwatch.api.app:app --port 8080`). `gcloud run deploy driftwatch --source . --region us-east1 --allow-unauthenticated`, Gemini via the service account, OPENROUTER_API_KEY from Secret Manager, CORS_ORIGINS set to the Informer app origin. Print the URL and smoke-test /gauges and /replay. (2) `evals/cases.yaml` + `evals/run_evals.py` + `make evals` → `docs/eval_report.md`: Newport → Stale, fill, cites "Fill control changed"; Hepco → Stale, skeptic objects, final cause not plain scour; Asheville → Stale, positive-sign cause; Mills → Watch; Swannanoa, South Toe, Watauga, Eno → Trusted with no cause named; synthetic +25 % step injected into Eno at 2025-07-01 → fires; synthetic no-step Eno series → 0 shifts; replay determinism. Report pass/fail, tokens, wall time per case, with LLM=fallback and LLM=gemini columns. Commit, push, PR.
+
+**Codex review #3 (~7:30):** *"You are a judge opening `<live-url>` on a phone for 90 seconds. What breaks, what's slow, what's confusing? Top 5, ranked."*
+
+### C7 · Video (9:15 – 10:30), 2 minutes, one take
+20 s problem (every flow number is computed; Helene) → 50 s Newport live run (agents light up, finding card) → 25 s Hepco: the skeptic objects to "scour" → 15 s Swannanoa: record flood, rating held, quiet → 10 s registry + eval table. Use Replay if the live call is slow.
+
+## D. Thoth job #2 — Sat night, unattended (docs only), branch `pi/docs`
+> Read CLAUDE.md and docs/plan.md. Do not modify anything under driftwatch/. Tasks: (1) README: clean-clone instructions verified by actually running them in a fresh venv on this machine; architecture diagram as Mermaid; the differentiation table from plan §2; links to the live URL and the DevPost page from docs/devpost.md; the IDS 706 relationship note. (2) Run `make evals` with LLM=fallback and refresh docs/eval_report.md's fallback column only. (3) `docs/pitch_script.md`: a 3-minute script with timings from docs/pitch.md for the 11:30 finalist round. Commit after each task; push `pi/docs`; write docs/pi_docs_status.md; stop.
+
+## E. Sunday 8:00 – 8:30
+Merge `pi/docs` if `make test` is green; otherwise merge only README and pitch_script. Final DevPost edits (live URL, video, screenshots). Done by 8:30. Judging runs on the live URL with Replay as the fallback; keep `make serve` running on the laptop as a backup.
+
+## F. Human-only jobs
+- Confirm the demo roles in B (Newport main, Hepco skeptic, Asheville delayed, Swannanoa quiet).
+- Approve every narration's tone and every number in the pitch before it goes in the video.
+- Confirm the Hepco replay trace to use for the demo (run 2 or the Disagreement run).
+- Keep `docs/decision_log.md` honest: every cut gets a dated line.
+- Eat lunch and dinner; stop at 11.
+
+---
+
+## Archive — Friday (done)
+- M0 prompt and thoth setup: see git history of this file (v2) and `docs/prompts/pi_job1.md` + `scripts/pi_job.sh`.
+- The repo `CLAUDE.md` is now the canonical copy (Hepco / South Toe names, Python 3.11+); the block that used to live in section B of this playbook is retired.

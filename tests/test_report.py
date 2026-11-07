@@ -1,0 +1,175 @@
+"""End-to-end on the snapshot: the 'Done means' bands from CLAUDE.md, and the CLI output."""
+
+import json
+
+import pytest
+
+from driftwatch import cli
+from driftwatch.core.schemas import Report
+from driftwatch.modules.rating_curve import report
+
+
+@pytest.fixture(scope="module")
+def reports():
+    sites = ["03459500", "03455000", "03451000", "03463300", "02085000"]
+    return {s: report.build_report(s) for s in sites}
+
+
+@pytest.mark.parametrize("site", ["03459500", "03455000"])
+def test_hero_gauges_are_stale_with_a_cause(reports, site):
+    rep = reports[site]
+    assert rep.trust.band == "Stale"
+    assert rep.likely_cause and rep.narrative
+    assert report.top_shift(rep.relationship.reference_end, rep.drift).direction == "negative"
+
+
+def test_newport_cause_is_fill_and_hepco_flags_the_sign_mismatch(reports):
+    assert reports["03455000"].likely_cause == "fill"
+    hepco = reports["03459500"]
+    assert hepco.likely_cause == "datum_change"
+    assert "scour" in hepco.narrative and "opposite" in hepco.narrative
+
+
+@pytest.mark.parametrize("site", ["03451000", "03463300", "02085000"])
+def test_controls_are_trusted_with_no_invented_cause(reports, site):
+    rep = reports[site]
+    assert rep.trust.band == "Trusted"
+    assert rep.likely_cause is None
+
+
+def test_every_deduction_has_a_reason_with_a_number(reports):
+    for rep in reports.values():
+        assert len(rep.trust.deductions) == 5
+        for d in rep.trust.deductions:
+            assert any(ch.isdigit() for ch in d.reason), d
+
+
+def test_cli_writes_report_json_and_prints_station_name(tmp_path, capsys):
+    assert cli.main(["report", "--site", "03451000", "--out", str(tmp_path)]) == 0
+    line = capsys.readouterr().out.strip()
+    assert line.startswith("SWANNANOA RIVER AT BILTMORE, NC (03451000): Trusted")
+    data = json.loads((tmp_path / "03451000.json").read_text(encoding="utf-8"))
+    assert Report.model_validate(data).site_name == "SWANNANOA RIVER AT BILTMORE, NC"
+
+
+def test_cli_refuses_live_source(capsys):
+    assert cli.main(["report", "--site", "03451000", "--source", "live"]) == 2
+
+
+def test_report_counts_invalid_domain_and_stays_finite():
+    from datetime import timedelta
+
+    from driftwatch.core.schemas import Measurement
+    from driftwatch.modules.rating_curve import rating
+    from tests.test_segmentation import _synthetic_ds
+
+    ds = _synthetic_ds()
+    e = rating.fit_rating(ds).e
+    last = ds.measurements[-1].time
+    low = Measurement(
+        site="x",
+        field_visit_id="low",
+        time=last + timedelta(days=5),
+        stage_ft=e - 0.05,
+        discharge_cfs=3.0,
+        rated="Good",
+        weight=3.0,
+    )
+    ds = ds.model_copy(update={"measurements": [*ds.measurements, low]})
+    rep = report.build_report("x", ds=ds)
+    assert rep.drift.n_invalid_domain == 1
+    assert "1 at or below rating zero" in report.summary_line(rep)
+    assert all(d.points == d.points for d in rep.trust.deductions)  # no NaN points
+
+
+@pytest.mark.parametrize(
+    "note, points",
+    [
+        ("Debris - Moderate", 8.0),
+        ("Debris – Moderate", 8.0),  # en dash
+        ("Debris — Heavy", 12.0),  # em dash
+        ("Vegetation–Light", 3.0),
+        ("Debris", 3.0),  # no severity -> light
+    ],
+)
+def test_note_severity_reads_any_dash(note, points):
+    assert report.note_severity_points(note) == points
+
+
+def _helene_ds(with_flood_visit=True):
+    """Clean gauge, reference window ends 2024-09-25; optionally one Helene-excluded Poor gauging
+    on 2024-09-27 carrying a control-changed note, and nothing after it."""
+    from datetime import UTC, date, datetime, timedelta
+
+    import numpy as np
+
+    from driftwatch.core.schemas import Dataset, Measurement
+    from driftwatch.modules.rating_curve import pairing
+
+    rng = np.random.default_rng(5)
+    t0 = datetime(2012, 1, 1, tzinfo=UTC)
+    ms = []
+    t = t0
+    while t.date() <= date(2024, 9, 1):
+        h = float(rng.uniform(1.5, 8.0))
+        q = 40.0 * (h - 0.5) ** 1.7 * float(np.exp(rng.normal(0, 0.03)))
+        ms.append(
+            Measurement(
+                site="x",
+                field_visit_id=t.isoformat(),
+                time=t,
+                stage_ft=h,
+                discharge_cfs=q,
+                rated="Good",
+                weight=3.0,
+                control_condition="Clear",
+            )
+        )
+        t += timedelta(days=60)
+    if with_flood_visit:
+        ms.append(
+            Measurement(
+                site="x",
+                field_visit_id="helene",
+                time=datetime(2024, 9, 27, 18, tzinfo=UTC),
+                stage_ft=20.0,
+                discharge_cfs=50000.0,
+                rated="Poor",
+                weight=1.0,
+                control_condition="Fill control changed",
+                excluded=True,
+                exclude_reason=pairing.HELENE_REASON,
+            )
+        )
+    return Dataset(
+        site="x",
+        source="snapshot",
+        fetched_at=datetime(2024, 10, 27, 18, tzinfo=UTC),
+        reference_start=t0.date(),
+        reference_end=date(2024, 9, 25),
+        measurements=ms,
+    )
+
+
+def test_helene_excluded_visit_counts_for_staleness_data_and_notes_only():
+    from driftwatch.modules.rating_curve import rating, segmentation
+
+    with_flood, without = _helene_ds(True), _helene_ds(False)
+    rel_w, rel_wo = rating.fit_rating(with_flood), rating.fit_rating(without)
+    # Out of the fit and the drift test.
+    assert (rel_w.a, rel_w.b, rel_w.e) == (rel_wo.a, rel_wo.b, rel_wo.e)
+    drift_w, drift_wo = (
+        segmentation.drift_test(d, r) for d, r in [(with_flood, rel_w), (without, rel_wo)]
+    )
+    assert drift_w.n_tested == drift_wo.n_tested and drift_w.n_excluded == 1
+    # In for staleness, the 12-month data count, and field notes.
+    inp_w = report.trust_inputs(with_flood, rel_w, drift_w, with_flood.fetched_at)
+    inp_wo = report.trust_inputs(without, rel_wo, drift_wo, without.fetched_at)
+    assert inp_w.days_since_last == pytest.approx(30.0)
+    assert inp_wo.days_since_last > 50
+    assert inp_w.n_last_year == inp_wo.n_last_year + 1
+    assert ("Fill control changed", report.CONTROL_CHANGED_POINTS) in inp_w.field_flags
+    assert inp_wo.field_flags == []
+    # Recent residual and quality still come from tested measurements only.
+    assert "Poor" not in inp_w.recent_rated
+    assert inp_w.recent_residual_pct == inp_wo.recent_residual_pct
