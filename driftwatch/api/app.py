@@ -170,10 +170,10 @@ def _report(site: str):
 
 MISFIT_PCT = 15.0  # a reference point "misses" the curve when it sits this far off
 MISFIT_SHARE = 0.20  # ... and this share of top-third reference points miss
-NEWEST_N = 8  # newest readings checked for "at low and middle flows"
+NEWEST_N = 8  # default only; the payload passes the trust score's own recent count
 
 
-def high_flow_misfit(points: list[dict[str, Any]]) -> dict[str, Any]:
+def high_flow_misfit(points: list[dict[str, Any]], newest_n: int = NEWEST_N) -> dict[str, Any]:
     """C11.4: does the single-line curve miss the top third of flows in the reference window,
     while the newest readings all sit at low and middle flows? Only then is the caption true."""
     ref = [
@@ -191,7 +191,7 @@ def high_flow_misfit(points: list[dict[str, Any]]) -> dict[str, Any]:
         p
         for p in points
         if p["period"] != "reference" and p["residual_pct"] is not None and not p["excluded"]
-    ][-NEWEST_N:]
+    ][-newest_n:]
     newest_low = bool(newest) and all(p["discharge_cfs"] < cutoff for p in newest)
     out.update(share_off=share, cutoff_cfs=cutoff, show=share >= MISFIT_SHARE and newest_low)
     return out
@@ -234,7 +234,7 @@ def _report_payload(site: str) -> dict[str, Any]:
                 "median_pct": float(np.median(recent)) if recent else None,
                 "n": len(recent),
             },
-            "high_flow_misfit": high_flow_misfit(points),
+            "high_flow_misfit": high_flow_misfit(points, len(recent) or NEWEST_N),
             "points": points,
             "curve": curve,
             "top_shift": json.loads(top.model_dump_json()) if top else None,

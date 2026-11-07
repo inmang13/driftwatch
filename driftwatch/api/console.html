@@ -66,7 +66,8 @@ main { display: grid; gap: 12px; padding: 12px 16px;
   font: inherit; color: inherit; cursor: pointer; }
 .gauge:first-child { border-top: 0; }
 .gauge:hover { background: var(--paper-sunk); }
-.gauge.sel { background: var(--paper-sunk); box-shadow: inset 4px 0 0 var(--measured); }
+.gauge { border-left: 4px solid transparent; }
+.gauge.sel { background: var(--paper-sunk); border-left-color: var(--measured); }
 .gauge .nm { flex: 1; min-width: 0; font-size: 13px; line-height: 20px; }
 .gauge .nm small { display: block; font: 12px/18px var(--mono); }
 .gauge .sc { font: 500 20px/24px var(--mono); }
@@ -286,6 +287,10 @@ const PLAIN_SWAPS = [
   [/\bthe rating\b(?! curve)/gi, "the curve"],
   [/\b(below|above) rating\b/gi, "$1 the curve"],
   [/\bvelocity\b/gi, "water speed"],
+  [/\bpost-shift\b/gi, "after the change"],
+  [/\breference window\b/gi, "baseline period"],
+  [/\bshift\b/gi, "change"],
+  // keep last: drops the sign the words already carry
   [/[+−-](\d+ %) (below|above)\b/g, "$1 $2"],  // "-33 % below" says the sign twice
 ];
 const plain = (s) => PLAIN_SWAPS.reduce((t, [re, to]) => t.replace(re, to),
