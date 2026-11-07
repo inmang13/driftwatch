@@ -1,6 +1,6 @@
 # Deploy status — M5 Cloud Run (C6 part 1)
 
-Status: **green** · 2026-11-07 14:37 EST · branch `m5-deploy`
+Status: **green** · 2026-11-07 14:37 EST · branch `m5-deploy` · PR https://github.com/inmang13/driftwatch/pull/15 (base `m3-console`)
 
 ## Live
 - URL: **https://driftwatch-144765976306.us-east1.run.app**
@@ -13,6 +13,10 @@ Status: **green** · 2026-11-07 14:37 EST · branch `m5-deploy`
 ## Newport replay trace
 - Trace id: **`03455000-20261107T183044853720Z`** (pinned in `traces/replay_defaults.json`)
 - Replay: https://driftwatch-144765976306.us-east1.run.app/replay/03455000-20261107T183044853720Z
+
+## Saved traces (already committed, none generated)
+- Newport 03455000: `03455000-20261107T183044853720Z`, `03455000-20261107T180338309804Z`
+- Swannanoa 03451000: `03451000-20261107T175417762432Z`
 
 ## Smoke test (curl, 14:37 EST)
 | Check | Result |
