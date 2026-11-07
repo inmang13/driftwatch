@@ -67,4 +67,4 @@ def test_drifted_gauge_with_flag_is_stale():
         )
     )
     assert ts.band == "Stale"
-    assert ts.score == pytest.approx(100 - 40 - 10 - 15)
+    assert ts.score == pytest.approx(100 - trust.RESIDUAL_MAX - 10 - 15)

@@ -1,6 +1,14 @@
 """Snapshot -> Report for one gauge: pairing, base rating, drift test, trust score, likely cause.
 
 The likely cause here is the deterministic triage call (no LLM). The agents in M2 refine it.
+
+Two sets of measurements, on purpose:
+- visits (`visits_since_reference`): every paired gauging from the reference start on, including
+  the Helene-excluded flood gaugings and invalid_domain ones. A visit is a visit: these drive
+  staleness, the 12-month data count, and field-note flags / note-based causes.
+- tested (`segmentation.tested_measurements`): the drift-test series. Helene-excluded and
+  invalid_domain gaugings stay out; it drives the fit, the drift test, the recent residual and
+  the recent quality grade.
 """
 
 from __future__ import annotations
@@ -18,45 +26,59 @@ NOTE_SEVERITY_POINTS = {"light": 3.0, "moderate": 8.0, "heavy": 12.0}
 CONTROL_CHANGED_POINTS = 15.0
 
 
-def recent_measurements(ds: Dataset, drift: DriftResult):
+def visits_since_reference(ds: Dataset):
+    """Every paired gauging from the reference start on, excluded or not, in time order."""
+    return [m for m in ds.measurements if m.time.date() >= ds.reference_start]
+
+
+def recent_measurements(ds: Dataset, rel: Relationship, drift: DriftResult):
     """Newest RECENT_N tested measurements inside the latest stable period."""
-    ms = segmentation.tested_measurements(ds)
+    ms = segmentation.tested_measurements(ds, rel)
     if drift.stable_periods:
         start = drift.stable_periods[-1].start
         ms = [m for m in ms if m.time >= start]
     return ms[-RECENT_N:]
 
 
+DASHES = str.maketrans({"–": "-", "—": "-", "−": "-"})  # en, em, minus sign
+
+
+def note_severity_points(note: str) -> float:
+    """Points for a transient note like 'Debris - Moderate'. En/em dashes count as hyphens;
+    an unreadable severity falls back to light."""
+    sev = note.translate(DASHES).split("-")[-1].strip().lower()
+    return NOTE_SEVERITY_POINTS.get(sev, NOTE_SEVERITY_POINTS["light"])
+
+
 def field_flags(ds: Dataset) -> list[tuple[str, float]]:
     """Open field-note flags: control changes since the reference window, transients only if on
     the latest visit (a later visit without them means they cleared)."""
-    tested = segmentation.tested_measurements(ds)
+    visits = visits_since_reference(ds)
     flags: dict[str, float] = {}
-    for m in tested:
+    for m in visits:
         note = m.control_condition or ""
         if m.time.date() > ds.reference_end and "control changed" in note.lower():
             flags[note] = CONTROL_CHANGED_POINTS
-    if tested:
-        note = tested[-1].control_condition or ""
+    if visits:
+        note = visits[-1].control_condition or ""
         cause = causes.cause_for_note(note)
         if cause and cause.transient:
-            sev = note.split("-")[-1].strip().lower()
-            flags[note] = NOTE_SEVERITY_POINTS.get(sev, NOTE_SEVERITY_POINTS["light"])
+            flags[note] = note_severity_points(note)
     return list(flags.items())
 
 
 def trust_inputs(ds: Dataset, rel: Relationship, drift: DriftResult, as_of: datetime):
-    recent = recent_measurements(ds, drift)
-    tested = segmentation.tested_measurements(ds)
+    recent = recent_measurements(ds, rel, drift)
+    visits = visits_since_reference(ds)
     h = [m.stage_ft for m in recent]
     q = [m.discharge_cfs for m in recent]
     return trust.TrustInputs(
         recent_residual_pct=[float(x) for x in rating.residual_pct(rel, h, q)] if recent else [],
         normal_scatter_pct=rating.mdape(rel, rating.reference_measurements(ds)),
-        days_since_last=(as_of - tested[-1].time).total_seconds() / 86400 if tested else None,
+        days_since_last=(as_of - visits[-1].time).total_seconds() / 86400 if visits else None,
         recent_rated=[m.rated for m in recent],
         field_flags=field_flags(ds),
-        n_last_year=sum(1 for m in tested if m.time > as_of - timedelta(days=365)),
+        n_last_year=sum(1 for m in visits if m.time > as_of - timedelta(days=365)),
     )
 
 
@@ -86,7 +108,7 @@ def likely_cause(
         return "insufficient_data", "Too few recent measurements to name a cause."
     direction = "positive" if med > 0 else "negative"
     noted = []
-    for m in segmentation.tested_measurements(ds):
+    for m in visits_since_reference(ds):
         c = causes.cause_for_note(m.control_condition)
         if c and m.time.date() > ds.reference_end and c not in noted:
             noted.append(c)
@@ -146,4 +168,9 @@ def summary_line(report: Report) -> str:
     )
     name = report.site_name or report.site
     cause = f" · likely {report.likely_cause}" if report.likely_cause else ""
-    return f"{name} ({report.site}): {report.trust.band} {report.trust.score:.0f} · {shift}{cause}"
+    n_bad = report.drift.n_invalid_domain
+    bad = f" · {n_bad} at or below rating zero (not tested)" if n_bad else ""
+    return (
+        f"{name} ({report.site}): {report.trust.band} {report.trust.score:.0f} · {shift}"
+        f"{cause}{bad}"
+    )

@@ -1,17 +1,17 @@
 {
   "site": "02085000",
   "site_name": "ENO RIVER AT HILLSBOROUGH, NC",
-  "generated_at": "2026-11-07T04:18:09.500515Z",
+  "generated_at": "2026-11-07T15:11:52.488926Z",
   "source": "snapshot",
   "relationship": {
     "kind": "power_law",
-    "a": 37.2920888044655,
-    "b": 1.846670301923329,
-    "e": 1.2003603668278915,
+    "a": 37.29208880408239,
+    "b": 1.8466703019000998,
+    "e": 1.200360366827878,
     "reference_start": "2015-01-01",
     "reference_end": "2025-07-06",
     "n": 86,
-    "rmse_log": 0.3495561691364968
+    "rmse_log": 0.34955616913709125
   },
   "drift": {
     "site": "02085000",
@@ -41,7 +41,7 @@
         "size_pct": -43.57,
         "size_ft": -0.094,
         "direction": "negative",
-        "n_after": 6,
+        "n_after": 38,
         "confidence": 0.9966
       },
       {
@@ -55,6 +55,7 @@
     ],
     "n_tested": 97,
     "n_excluded": 0,
+    "n_invalid_domain": 0,
     "penalty": 50.0
   },
   "trust": {
@@ -64,7 +65,7 @@
       {
         "name": "residual",
         "points": 6.3,
-        "reason": "Recent measurements carry 11.1 % less water than the rating predicts (median of 8); this gauge's normal scatter is 8.0 %, so 3.1 % is excess at 2 points per % (cap 40)."
+        "reason": "Recent measurements carry 11.1 % less water than the rating predicts (median of 8); this gauge's normal scatter is 8.0 %, so 3.1 % is excess at 2 points per % (cap 50)."
       },
       {
         "name": "staleness",
@@ -84,7 +85,7 @@
       {
         "name": "insufficient_data",
         "points": 0.0,
-        "reason": "7 usable measurements in the last 12 months; 4 or more costs nothing, each one short costs 2.5."
+        "reason": "7 field measurements in the last 12 months; 4 or more costs nothing, each one short costs 2.5."
       }
     ]
   },

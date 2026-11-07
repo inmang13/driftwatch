@@ -1,17 +1,17 @@
 {
   "site": "03455000",
   "site_name": "FRENCH BROAD RIVER NEAR NEWPORT, TN",
-  "generated_at": "2026-11-07T04:18:00.349831Z",
+  "generated_at": "2026-11-07T15:11:51.597424Z",
   "source": "snapshot",
   "relationship": {
     "kind": "power_law",
-    "a": 942.0364222949676,
-    "b": 1.5015255463440411,
-    "e": 0.4383564017671864,
+    "a": 942.0364222934414,
+    "b": 1.5015255463303585,
+    "e": 0.438356401767342,
     "reference_start": "2012-01-01",
     "reference_end": "2024-09-25",
     "n": 80,
-    "rmse_log": 0.06091146683621161
+    "rmse_log": 0.060911466836010494
   },
   "drift": {
     "site": "03455000",
@@ -41,16 +41,17 @@
     ],
     "n_tested": 95,
     "n_excluded": 2,
+    "n_invalid_domain": 0,
     "penalty": 50.0
   },
   "trust": {
-    "score": 40.0,
+    "score": 30.0,
     "band": "Stale",
     "deductions": [
       {
         "name": "residual",
-        "points": 40.0,
-        "reason": "Recent measurements carry 46.0 % less water than the rating predicts (median of 8); this gauge's normal scatter is 3.6 %, so 42.4 % is excess at 2 points per % (cap 40)."
+        "points": 50.0,
+        "reason": "Recent measurements carry 46.0 % less water than the rating predicts (median of 8); this gauge's normal scatter is 3.6 %, so 42.4 % is excess at 2 points per % (cap 50)."
       },
       {
         "name": "staleness",
@@ -70,7 +71,7 @@
       {
         "name": "insufficient_data",
         "points": 0.0,
-        "reason": "9 usable measurements in the last 12 months; 4 or more costs nothing, each one short costs 2.5."
+        "reason": "9 field measurements in the last 12 months; 4 or more costs nothing, each one short costs 2.5."
       }
     ]
   },

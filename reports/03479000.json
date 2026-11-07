@@ -1,17 +1,17 @@
 {
   "site": "03479000",
   "site_name": "WATAUGA RIVER NEAR SUGAR GROVE, NC",
-  "generated_at": "2026-11-07T04:18:08.540114Z",
+  "generated_at": "2026-11-07T15:11:52.387476Z",
   "source": "snapshot",
   "relationship": {
     "kind": "power_law",
-    "a": 140.0413246053289,
-    "b": 1.717095159964515,
-    "e": 0.9477031249162049,
+    "a": 140.04132460075127,
+    "b": 1.717095160143788,
+    "e": 0.9477031249162128,
     "reference_start": "2012-01-01",
     "reference_end": "2024-09-25",
     "n": 102,
-    "rmse_log": 0.07599126289375524
+    "rmse_log": 0.07599126290047485
   },
   "drift": {
     "site": "03479000",
@@ -26,6 +26,7 @@
     "shifts": [],
     "n_tested": 114,
     "n_excluded": 1,
+    "n_invalid_domain": 0,
     "penalty": 50.0
   },
   "trust": {
@@ -35,7 +36,7 @@
       {
         "name": "residual",
         "points": 0.0,
-        "reason": "Recent measurements carry 0.5 % more water than the rating predicts (median of 8); this gauge's normal scatter is 4.5 %, so 0.0 % is excess at 2 points per % (cap 40)."
+        "reason": "Recent measurements carry 0.5 % more water than the rating predicts (median of 8); this gauge's normal scatter is 4.5 %, so 0.0 % is excess at 2 points per % (cap 50)."
       },
       {
         "name": "staleness",
@@ -55,7 +56,7 @@
       {
         "name": "insufficient_data",
         "points": 0.0,
-        "reason": "6 usable measurements in the last 12 months; 4 or more costs nothing, each one short costs 2.5."
+        "reason": "6 field measurements in the last 12 months; 4 or more costs nothing, each one short costs 2.5."
       }
     ]
   },

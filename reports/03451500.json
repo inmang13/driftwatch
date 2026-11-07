@@ -1,17 +1,17 @@
 {
   "site": "03451500",
   "site_name": "FRENCH BROAD RIVER AT ASHEVILLE, NC",
-  "generated_at": "2026-11-07T04:18:04.557233Z",
+  "generated_at": "2026-11-07T15:11:51.978531Z",
   "source": "snapshot",
   "relationship": {
     "kind": "power_law",
-    "a": 807.5548341565591,
-    "b": 1.4609909197007889,
-    "e": 0.3864498653218089,
+    "a": 807.5548341930314,
+    "b": 1.46099091961377,
+    "e": 0.3864498653218454,
     "reference_start": "2012-01-01",
     "reference_end": "2024-09-25",
     "n": 111,
-    "rmse_log": 0.05348668568363676
+    "rmse_log": 0.05348668568172347
   },
   "drift": {
     "site": "03451500",
@@ -41,16 +41,17 @@
     ],
     "n_tested": 126,
     "n_excluded": 1,
+    "n_invalid_domain": 0,
     "penalty": 50.0
   },
   "trust": {
-    "score": 55.6,
-    "band": "Watch",
+    "score": 45.6,
+    "band": "Stale",
     "deductions": [
       {
         "name": "residual",
-        "points": 40.0,
-        "reason": "Recent measurements carry 41.1 % more water than the rating predicts (median of 8); this gauge's normal scatter is 3.5 %, so 37.6 % is excess at 2 points per % (cap 40)."
+        "points": 50.0,
+        "reason": "Recent measurements carry 41.1 % more water than the rating predicts (median of 8); this gauge's normal scatter is 3.5 %, so 37.6 % is excess at 2 points per % (cap 50)."
       },
       {
         "name": "staleness",
@@ -70,7 +71,7 @@
       {
         "name": "insufficient_data",
         "points": 0.0,
-        "reason": "7 usable measurements in the last 12 months; 4 or more costs nothing, each one short costs 2.5."
+        "reason": "7 field measurements in the last 12 months; 4 or more costs nothing, each one short costs 2.5."
       }
     ]
   },

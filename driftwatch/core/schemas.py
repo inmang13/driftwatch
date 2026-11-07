@@ -41,7 +41,7 @@ class Measurement(BaseModel):
     discharge_cfs: float
     rated: Rated = "Unspecified"
     weight: float = Field(gt=0, default=1.5)  # Excellent 4, Good 3, Fair 2, Poor 1, else 1.5
-    pairing: str = "exact"  # "exact" or "nearest (<gap>)" within the same visit
+    pairing: str = "exact"  # always "exact": same field_visit_id and time (no fallback)
     control_condition: str | None = None
     approval_status: str | None = None
     excluded: bool = False  # True = kept for plots, left out of the drift test
@@ -76,6 +76,9 @@ class Relationship(BaseModel):
     rmse_log: float | None = None
 
     def discharge(self, stage_ft: float) -> float:
+        """Rated discharge; NaN at or below e (a negative base would give a complex number)."""
+        if stage_ft <= self.e:
+            return float("nan")
         return self.a * (stage_ft - self.e) ** self.b
 
 
@@ -111,6 +114,7 @@ class DriftResult(BaseModel):
     shifts: list[Shift] = Field(default_factory=list)
     n_tested: int = Field(ge=0, default=0)
     n_excluded: int = Field(ge=0, default=0)
+    n_invalid_domain: int = Field(ge=0, default=0)  # stage <= e: no rated flow, left out of test
     penalty: float | None = None
 
 

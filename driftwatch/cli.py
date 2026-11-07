@@ -6,6 +6,7 @@ Writes reports/<site>.json (Report schema) and prints one line per site.
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 import sys
 from pathlib import Path
@@ -33,6 +34,8 @@ def main(argv: list[str] | None = None) -> int:
     rp.add_argument("--source", choices=("snapshot", "live"), default="snapshot")
     rp.add_argument("--out", type=Path, default=None)
     args = ap.parse_args(argv)
+    # Pairing drop counts etc. go to stderr; the summary lines stay alone on stdout.
+    logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stderr)
 
     if args.source != "snapshot":
         print(
