@@ -3,7 +3,7 @@ IN PROGRESS — Pi job #1 (M1), started 2026-11-06
 | # | Step | State |
 |---|---|---|
 | 1 | pairing.py + test | done |
-| 2 | rating.py + Eno MdAPE test | not started |
+| 2 | rating.py + Eno MdAPE test | done (Eno MdAPE 8.0 %) |
 | 3 | segmentation.py + penalty choice | not started |
 | 4 | causes.py | not started |
 | 5 | core/trust.py | not started |
@@ -11,4 +11,4 @@ IN PROGRESS — Pi job #1 (M1), started 2026-11-06
 | 7 | make test + make demo + ruff + black | not started |
 | 8 | docs/m1_results.md | not started |
 
-Next: step 2, the base rating fit.
+Next: step 3, segmentation and the penalty choice.
