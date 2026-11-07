@@ -1,0 +1,79 @@
+{
+  "site": "03451500",
+  "site_name": "FRENCH BROAD RIVER AT ASHEVILLE, NC",
+  "generated_at": "2026-11-07T04:18:04.557233Z",
+  "source": "snapshot",
+  "relationship": {
+    "kind": "power_law",
+    "a": 807.5548341565591,
+    "b": 1.4609909197007889,
+    "e": 0.3864498653218089,
+    "reference_start": "2012-01-01",
+    "reference_end": "2024-09-25",
+    "n": 111,
+    "rmse_log": 0.05348668568363676
+  },
+  "drift": {
+    "site": "03451500",
+    "stable_periods": [
+      {
+        "start": "2012-02-08T18:09:00Z",
+        "end": "2025-06-03T17:21:39Z",
+        "n": 116,
+        "median_residual_pct": -0.34
+      },
+      {
+        "start": "2025-07-23T17:37:24Z",
+        "end": "2026-10-16T14:42:27Z",
+        "n": 10,
+        "median_residual_pct": 35.78
+      }
+    ],
+    "shifts": [
+      {
+        "time": "2025-07-23T17:37:24Z",
+        "size_pct": 36.12,
+        "size_ft": 0.269,
+        "direction": "positive",
+        "n_after": 10,
+        "confidence": 1.0
+      }
+    ],
+    "n_tested": 126,
+    "n_excluded": 1,
+    "penalty": 50.0
+  },
+  "trust": {
+    "score": 55.6,
+    "band": "Watch",
+    "deductions": [
+      {
+        "name": "residual",
+        "points": 40.0,
+        "reason": "Recent measurements carry 41.1 % more water than the rating predicts (median of 8); this gauge's normal scatter is 3.5 %, so 37.6 % is excess at 2 points per % (cap 40)."
+      },
+      {
+        "name": "staleness",
+        "points": 0.0,
+        "reason": "Last field measurement was 22 days ago; deductions start after 90 days and reach 20 at 365."
+      },
+      {
+        "name": "quality",
+        "points": 4.4,
+        "reason": "Recent measurements rated 2 Poor, 1 Fair, 5 Good (Poor costs 1, unrated 0.5, Fair 1/3, Good 0); average 0.29 x 15."
+      },
+      {
+        "name": "field_notes",
+        "points": 0.0,
+        "reason": "0 open field-note flags on the control."
+      },
+      {
+        "name": "insufficient_data",
+        "points": 0.0,
+        "reason": "7 usable measurements in the last 12 months; 4 or more costs nothing, each one short costs 2.5."
+      }
+    ]
+  },
+  "likely_cause": "scour",
+  "narrative": "No field note explains it; 41 % more water than rated is the direction scour produces. Check channel area for confirmation."
+}

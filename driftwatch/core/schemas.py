@@ -32,7 +32,7 @@ def _require_tz(v: datetime | None) -> datetime | None:
 
 
 class Measurement(BaseModel):
-    """One paired stage/discharge gauging (pairing itself is built later)."""
+    """One paired stage/discharge gauging (see modules/rating_curve/pairing.py)."""
 
     site: str
     field_visit_id: str
@@ -40,6 +40,8 @@ class Measurement(BaseModel):
     stage_ft: float
     discharge_cfs: float
     rated: Rated = "Unspecified"
+    weight: float = Field(gt=0, default=1.5)  # Excellent 4, Good 3, Fair 2, Poor 1, else 1.5
+    pairing: str = "exact"  # "exact" or "nearest (<gap>)" within the same visit
     control_condition: str | None = None
     approval_status: str | None = None
     excluded: bool = False  # True = kept for plots, left out of the drift test

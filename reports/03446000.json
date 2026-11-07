@@ -1,0 +1,107 @@
+{
+  "site": "03446000",
+  "site_name": "MILLS RIVER NEAR MILLS RIVER, NC",
+  "generated_at": "2026-11-07T04:18:02.407607Z",
+  "source": "snapshot",
+  "relationship": {
+    "kind": "power_law",
+    "a": 83.5959083683143,
+    "b": 2.282655764418894,
+    "e": 0.8368138808726324,
+    "reference_start": "2012-01-01",
+    "reference_end": "2024-09-25",
+    "n": 163,
+    "rmse_log": 0.10315453124966073
+  },
+  "drift": {
+    "site": "03446000",
+    "stable_periods": [
+      {
+        "start": "2012-01-11T19:34:45Z",
+        "end": "2015-12-30T20:54:00Z",
+        "n": 62,
+        "median_residual_pct": 1.74
+      },
+      {
+        "start": "2016-02-03T15:02:00Z",
+        "end": "2016-02-03T18:34:00Z",
+        "n": 7,
+        "median_residual_pct": -49.65
+      },
+      {
+        "start": "2016-02-10T19:24:00Z",
+        "end": "2019-05-09T16:27:01Z",
+        "n": 41,
+        "median_residual_pct": 2.79
+      },
+      {
+        "start": "2019-05-09T17:41:17Z",
+        "end": "2026-10-07T17:04:07Z",
+        "n": 69,
+        "median_residual_pct": -4.3
+      }
+    ],
+    "shifts": [
+      {
+        "time": "2016-02-03T15:02:00Z",
+        "size_pct": -51.39,
+        "size_ft": -1.755,
+        "direction": "negative",
+        "n_after": 7,
+        "confidence": 1.0
+      },
+      {
+        "time": "2016-02-10T19:24:00Z",
+        "size_pct": 52.44,
+        "size_ft": 1.76,
+        "direction": "positive",
+        "n_after": 41,
+        "confidence": 1.0
+      },
+      {
+        "time": "2019-05-09T17:41:17Z",
+        "size_pct": -7.09,
+        "size_ft": -0.04,
+        "direction": "negative",
+        "n_after": 69,
+        "confidence": 1.0
+      }
+    ],
+    "n_tested": 179,
+    "n_excluded": 1,
+    "penalty": 50.0
+  },
+  "trust": {
+    "score": 73.3,
+    "band": "Watch",
+    "deductions": [
+      {
+        "name": "residual",
+        "points": 16.2,
+        "reason": "Recent measurements carry 11.6 % less water than the rating predicts (median of 8); this gauge's normal scatter is 3.5 %, so 8.1 % is excess at 2 points per % (cap 40)."
+      },
+      {
+        "name": "staleness",
+        "points": 0.0,
+        "reason": "Last field measurement was 30 days ago; deductions start after 90 days and reach 20 at 365."
+      },
+      {
+        "name": "quality",
+        "points": 2.5,
+        "reason": "Recent measurements rated 4 Fair, 4 Good (Poor costs 1, unrated 0.5, Fair 1/3, Good 0); average 0.17 x 15."
+      },
+      {
+        "name": "field_notes",
+        "points": 8.0,
+        "reason": "Open field-note flags: 'Debris - Moderate' (8) (cap 15)."
+      },
+      {
+        "name": "insufficient_data",
+        "points": 0.0,
+        "reason": "8 usable measurements in the last 12 months; 4 or more costs nothing, each one short costs 2.5."
+      }
+    ]
+  },
+  "likely_cause": "debris",
+  "narrative": "Field note says debris, and the gauge reads 12 % less water than rated, which is the direction debris produces."
+}

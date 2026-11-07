@@ -1,0 +1,134 @@
+"""Pair each discharge gauging with its stage reading.
+
+Rule: stage = the MeanGageHeight row (00065) on the same field_visit_id and the same time as the
+discharge row (00060). A visit can hold several discharges, each with its own MeanGageHeight. If
+there is no exact time match, the nearest MeanGageHeight in the same visit within 2 h is used and
+the measurement records that in `pairing`. No match -> the discharge is dropped.
+
+Rows with a blank, non-positive, or unparseable stage or discharge are dropped.
+Poor measurements taken 2024-09-26..28 (Helene peak, mostly indirect) are kept but marked
+excluded so plots show them and the drift test skips them.
+"""
+
+from __future__ import annotations
+
+from collections import defaultdict
+from datetime import UTC, date, datetime, timedelta
+
+from driftwatch.core.schemas import Dataset, Measurement
+from driftwatch.modules.rating_curve.usgs import load_snapshot
+
+STAGE_CODE = "00065"
+DISCHARGE_CODE = "00060"
+STAGE_READING = "MeanGageHeight"
+MAX_STAGE_GAP = timedelta(hours=2)
+
+QUALITY_WEIGHT = {"Excellent": 4.0, "Good": 3.0, "Fair": 2.0, "Poor": 1.0}
+DEFAULT_WEIGHT = 1.5
+RATED_VALUES = {"Excellent", "Good", "Fair", "Poor"}
+
+EXCLUDE_START = date(2024, 9, 26)
+EXCLUDE_END = date(2024, 9, 28)
+HELENE_REASON = "Poor measurement at the Helene flood peak (2024-09-26..28)"
+
+DEFAULT_REFERENCE = (date(2012, 1, 1), date(2024, 9, 25))
+REFERENCE_WINDOWS = {"02085000": (date(2015, 1, 1), date(2025, 7, 6))}
+
+
+def reference_window(site: str) -> tuple[date, date]:
+    return REFERENCE_WINDOWS.get(site, DEFAULT_REFERENCE)
+
+
+def quality_weight(rated: str | None) -> float:
+    return QUALITY_WEIGHT.get(rated or "", DEFAULT_WEIGHT)
+
+
+def _parse_time(s: str) -> datetime:
+    t = datetime.fromisoformat(s)  # 3.11+ accepts a trailing Z
+    return t if t.tzinfo else t.replace(tzinfo=UTC)
+
+
+def _parse_value(s: str | None) -> float | None:
+    if s is None or not str(s).strip():
+        return None
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
+def site_name(snapshot: dict) -> str | None:
+    locs = snapshot["collections"].get("monitoring-locations") or []
+    if not locs:
+        return None
+    return locs[0].get("properties", {}).get("monitoring_location_name")
+
+
+def pair_measurements(snapshot: dict) -> list[Measurement]:
+    """One Measurement per usable discharge row, sorted by time."""
+    site = snapshot["site"]
+    props = [f.get("properties", {}) for f in snapshot["collections"]["field-measurements"]]
+
+    stages: dict[str, list[tuple[datetime, float]]] = defaultdict(list)
+    for p in props:
+        if p.get("parameter_code") == STAGE_CODE and p.get("reading_type") == STAGE_READING:
+            v = _parse_value(p.get("value"))
+            if v is not None and p.get("time"):
+                stages[p["field_visit_id"]].append((_parse_time(p["time"]), v))
+
+    out: list[Measurement] = []
+    for p in props:
+        if p.get("parameter_code") != DISCHARGE_CODE or not p.get("time"):
+            continue
+        q = _parse_value(p.get("value"))
+        if q is None or q <= 0:
+            continue
+        t = _parse_time(p["time"])
+        candidates = stages.get(p.get("field_visit_id"), [])
+        if not candidates:
+            continue
+        gap, h = min(((abs(ts - t), v) for ts, v in candidates), key=lambda x: x[0])
+        if gap > MAX_STAGE_GAP or h <= 0:
+            continue
+        rated = p.get("measurement_rated")
+        rated = rated if rated in RATED_VALUES else "Unspecified"
+        excluded = rated == "Poor" and EXCLUDE_START <= t.date() <= EXCLUDE_END
+        out.append(
+            Measurement(
+                site=site,
+                field_visit_id=p["field_visit_id"],
+                time=t,
+                stage_ft=h,
+                discharge_cfs=q,
+                rated=rated,
+                weight=quality_weight(rated),
+                control_condition=p.get("control_condition"),
+                approval_status=p.get("approval_status"),
+                pairing="exact" if gap == timedelta(0) else f"nearest ({gap})",
+                excluded=excluded,
+                exclude_reason=HELENE_REASON if excluded else None,
+            )
+        )
+    out.sort(key=lambda m: m.time)
+    return out
+
+
+def build_dataset(snapshot: dict, source: str = "snapshot") -> Dataset:
+    site = snapshot["site"]
+    start, end = reference_window(site)
+    fetched = snapshot.get("fetched_at")
+    return Dataset(
+        site=site,
+        site_name=site_name(snapshot),
+        source=source,
+        fetched_at=_parse_time(fetched) if fetched else None,
+        reference_start=start,
+        reference_end=end,
+        measurements=pair_measurements(snapshot),
+    )
+
+
+def load_dataset(site: str, source: str = "snapshot") -> Dataset:
+    if source != "snapshot":
+        raise ValueError("only SOURCE=snapshot is supported for reports; run make snapshot first")
+    return build_dataset(load_snapshot(site), source)
