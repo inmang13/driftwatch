@@ -1,7 +1,7 @@
 {
   "site": "03455000",
   "site_name": "FRENCH BROAD RIVER NEAR NEWPORT, TN",
-  "generated_at": "2026-11-07T19:18:21.721695Z",
+  "generated_at": "2026-11-07T22:11:16.075865Z",
   "source": "snapshot",
   "relationship": {
     "kind": "power_law",
@@ -118,5 +118,7 @@
   "reference_note": null,
   "holdout_n": 14,
   "holdout_start": "2024-10-28T20:03:25Z",
-  "holdout_end": "2026-10-19T17:32:09Z"
+  "holdout_end": "2026-10-19T17:32:09Z",
+  "trend": null,
+  "trend_note": null
 }

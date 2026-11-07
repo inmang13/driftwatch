@@ -1,7 +1,7 @@
 {
   "site": "03451000",
   "site_name": "SWANNANOA RIVER AT BILTMORE, NC",
-  "generated_at": "2026-11-07T19:18:32.417830Z",
+  "generated_at": "2026-11-07T22:12:20.777267Z",
   "source": "snapshot",
   "relationship": {
     "kind": "power_law",
@@ -88,5 +88,18 @@
   "reference_note": null,
   "holdout_n": 11,
   "holdout_start": "2024-12-09T14:49:24Z",
-  "holdout_end": "2026-10-02T14:17:37Z"
+  "holdout_end": "2026-10-02T14:17:37Z",
+  "trend": {
+    "slope_pct_per_year": -0.27,
+    "ci_low": -0.711,
+    "ci_high": 0.085,
+    "p_value": 0.05284,
+    "n": 119,
+    "span_years": 14.63,
+    "significant": false,
+    "window_start": "2012-02-13T21:53:30Z",
+    "window_end": "2026-10-02T14:17:37Z",
+    "text": "Readings show no clear drift up or down since 2012 (119 measurements)."
+  },
+  "trend_note": "Most of this window is the period the curve was fitted on, so this is a slow slide worth watching, not a test on new data."
 }

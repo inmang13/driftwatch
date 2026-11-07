@@ -1,7 +1,7 @@
 {
   "site": "03451500",
   "site_name": "FRENCH BROAD RIVER AT ASHEVILLE, NC",
-  "generated_at": "2026-11-07T19:18:30.353869Z",
+  "generated_at": "2026-11-07T22:12:02.042809Z",
   "source": "snapshot",
   "relationship": {
     "kind": "power_law",
@@ -118,5 +118,7 @@
   "reference_note": null,
   "holdout_n": 13,
   "holdout_start": "2024-09-26T20:34:39Z",
-  "holdout_end": "2026-10-16T14:42:27Z"
+  "holdout_end": "2026-10-16T14:42:27Z",
+  "trend": null,
+  "trend_note": null
 }

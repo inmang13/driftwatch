@@ -1,7 +1,7 @@
 {
   "site": "03446000",
   "site_name": "MILLS RIVER NEAR MILLS RIVER, NC",
-  "generated_at": "2026-11-07T19:18:26.901637Z",
+  "generated_at": "2026-11-07T22:11:51.625611Z",
   "source": "snapshot",
   "relationship": {
     "kind": "power_law",
@@ -88,5 +88,18 @@
   "reference_note": null,
   "holdout_n": 16,
   "holdout_start": "2024-11-21T15:50:34Z",
-  "holdout_end": "2026-10-07T17:04:07Z"
+  "holdout_end": "2026-10-07T17:04:07Z",
+  "trend": {
+    "slope_pct_per_year": -0.844,
+    "ci_low": -1.098,
+    "ci_high": -0.603,
+    "p_value": 3.931e-13,
+    "n": 164,
+    "span_years": 14.74,
+    "significant": true,
+    "window_start": "2012-01-11T19:34:45Z",
+    "window_end": "2026-10-07T17:04:07Z",
+    "text": "Readings have drifted about 0.8 % lower each year since 2012 (164 measurements)."
+  },
+  "trend_note": "Most of this window is the period the curve was fitted on, so this is a slow slide worth watching, not a test on new data."
 }

@@ -1,7 +1,7 @@
 {
   "site": "03463300",
   "site_name": "SOUTH TOE RIVER NEAR CELO, NC",
-  "generated_at": "2026-11-07T19:18:34.324126Z",
+  "generated_at": "2026-11-07T22:12:39.731900Z",
   "source": "snapshot",
   "relationship": {
     "kind": "power_law",
@@ -88,5 +88,18 @@
   "reference_note": null,
   "holdout_n": 9,
   "holdout_start": "2024-12-04T15:42:47Z",
-  "holdout_end": "2026-10-14T17:00:32Z"
+  "holdout_end": "2026-10-14T17:00:32Z",
+  "trend": {
+    "slope_pct_per_year": 0.165,
+    "ci_low": -0.185,
+    "ci_high": 0.422,
+    "p_value": 0.6394,
+    "n": 119,
+    "span_years": 14.68,
+    "significant": false,
+    "window_start": "2012-02-09T15:20:30Z",
+    "window_end": "2026-10-14T17:00:32Z",
+    "text": "Readings show no clear drift up or down since 2012 (119 measurements)."
+  },
+  "trend_note": "Most of this window is the period the curve was fitted on, so this is a slow slide worth watching, not a test on new data."
 }
