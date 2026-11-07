@@ -16,6 +16,7 @@ Narrator: a template.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from driftwatch.agents.models import (
@@ -306,6 +307,34 @@ def disagreement(facts: dict[str, Any], ranking: Ranking, confidence: float) -> 
     )
 
 
+# An "open" cause (ranked, but no field note since the reference window backs it): the narration
+# states the drift, the direction and this check, and never names a mechanism (decision log, M3).
+OPEN_CHECK = (
+    "Schedule a field measurement and run levels from the reference marks to the gauge to find "
+    "what changed before the rating is adjusted."
+)
+MECHANISM_WORDS = re.compile(
+    r"\b(scour\w*|fill\w*|debris|vegetation|growth|datum|rebuil\w*|aggrad\w*|degrad\w*|"
+    r"erod\w*|erosion|deposit\w*|sediment\w*|gravel|backwater|wash(?:ed|out|ing)?|silt\w*|bed)\b"
+    r"|likely due|due to|caused by|because of|likely cause",
+    re.IGNORECASE,
+)
+
+
+def cause_status(final: dict[str, Any] | None, notes: list[str]) -> str:
+    """none (Trusted) | disagreement | corroborated (a field note since the reference window maps
+    to the final cause) | open (a cause was ranked, but no note backs it and no Disagreement)."""
+    if not final:
+        return "none"
+    if final.get("disagreement"):
+        return "disagreement"
+    for n in notes:
+        c = catalog.cause_for_note(n)
+        if c and c.key == final.get("cause"):
+            return "corroborated"
+    return "open"
+
+
 def confidence_word(conf: float) -> str:
     return "confident" if conf >= 0.8 else "likely" if conf >= 0.4 else "uncertain"
 
@@ -349,6 +378,13 @@ def narrate(facts: dict[str, Any], final: dict[str, Any] | None) -> Narration:
             f"uncertain). The field note says \"{d['field_note']['note']}\" "
             f"({d['field_note']['date']}). Why they disagree: {d['why_they_disagree']}",
             f"Double-check: {d['recommended_check']}",
+            what,
+        )
+    if final.get("cause_status") == "open":
+        return done(
+            "uncertain",
+            "The cause is open: no field note confirms what changed.",
+            f"Double-check: {OPEN_CHECK}",
             what,
         )
     cause = final["cause"]

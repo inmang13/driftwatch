@@ -134,3 +134,11 @@ def test_error_paths(client):
     assert client.post("/run/99999999").status_code == 404
     assert client.get("/replay/not-a-trace").status_code == 400
     assert client.get("/replay/99999999").status_code == 404
+
+
+def test_console_has_no_cdn_and_plotly_is_vendored(client):
+    html = client.get("/").text
+    assert "http://" not in html and "https://" not in html
+    assert 'src="static/plotly.min.js"' in html
+    js = client.get("/static/plotly.min.js")
+    assert js.status_code == 200 and "plotly.js v2.35.2" in js.text[:200]

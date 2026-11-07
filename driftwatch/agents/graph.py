@@ -167,7 +167,15 @@ NARRATOR_FIELDS = (
 )
 
 
-def narrator_view(facts: dict[str, Any]) -> dict[str, Any]:
+def narrator_final(final: dict | None) -> dict | None:
+    """The team's call as the narrator sees it. An open cause is passed without the cause, its
+    confidence or the skeptic's argument, so the model has no mechanism to name."""
+    if final and final.get("cause_status") == "open":
+        return {"cause_status": "open", "recommended_check": fallbacks.OPEN_CHECK}
+    return final
+
+
+def narrator_view(facts: dict[str, Any], final: dict | None = None) -> dict[str, Any]:
     """Everything the narrator may say, and nothing else. Direction is words, size is unsigned:
     signed residuals, signed shift sizes and the score-deduction prose are left out so the model
     can neither infer (and flip) the direction nor pick up claims that aren't facts."""
@@ -177,13 +185,15 @@ def narrator_view(facts: dict[str, Any]) -> dict[str, Any]:
     if t.get("top_shift"):
         v["shift_began"] = t["top_shift"]["time"][:10]
         v["measurements_since_shift"] = t["top_shift"]["n_after"]
+    if final:
+        v["cause_status"] = final.get("cause_status")
     return v
 
 
 def expected_confidence_word(final: dict | None) -> str:
     if final is None:
         return "n/a"
-    if final.get("disagreement"):
+    if final.get("disagreement") or final.get("cause_status") == "open":
         return "uncertain"
     return fallbacks.confidence_word(final["confidence"])
 
@@ -203,6 +213,11 @@ def narration_ok(
         return "the trust score is missing"
     if final and final.get("disagreement") and "double-check" not in text.lower():
         return "a Disagreement must end with 'Double-check: ...'"
+    if final and final.get("cause_status") == "open":
+        if "double-check" not in text.lower():
+            return "an open cause must give 'Double-check: ...'"
+        if m := fallbacks.MECHANISM_WORDS.search(text):
+            return f"an open cause must not name a mechanism ('{m.group(0)}')"
     if isinstance(n, str):
         return None
     for field in ("direction", "confidence_word", "cause_or_disagreement", "action"):
@@ -375,6 +390,8 @@ def build_graph(rec: TraceRecorder):
                 "skeptic_confidence": verdict.get("confidence"),
                 "disagreement": verdict.get("disagreement"),
             }
+            notes = facts.get("field_notes", {}).get("distinct_notes") or []
+            final["cause_status"] = fallbacks.cause_status(final, notes)
         meta: dict[str, Any] = {"model": "fallback"}
         fb = fallbacks.narrate(facts, final)
         parts, text = fb.model_dump(), fb.text
@@ -386,7 +403,9 @@ def build_graph(rec: TraceRecorder):
                     Narration,
                     llm.prompt("narrator"),
                     llm.prompt(
-                        "narrator_input", facts=_dump(narrator_view(facts)), final=_dump(final)
+                        "narrator_input",
+                        facts=_dump(narrator_view(facts, final)),
+                        final=_dump(narrator_final(final)),
                     ),
                 )
                 bad = narration_ok(n, facts, final)
