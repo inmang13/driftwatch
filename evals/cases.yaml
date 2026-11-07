@@ -120,3 +120,17 @@ cases:
     expect:
       fallback_runs_identical: true
       trace_replay_identical: true
+
+  - id: swannanoa_step
+    name: Swannanoa + synthetic +25 % step at 2025-01-01 - fires
+    kind: synthetic
+    site: "03451000"
+    modify: {step_pct: 25, at: "2025-01-01"}
+    note: >-
+      It does fire, but dated 2025-06-11 (+31 %), 161 days after the step. The only gauging in
+      between is 2025-02-10 (Fair), which read -13 % before the step, so +25 % lifts it to
+      only about +8 %, inside normal scatter; the search starts the new segment at the next
+      gauging. Swannanoa is gauged every few months, so 120 days is tighter than its gaps.
+    expect:
+      # a positive shift > the gate, starting at or after the injected date, within 120 days
+      shift_fires: {direction: positive, at: "2025-01-01", within_days: 120}
