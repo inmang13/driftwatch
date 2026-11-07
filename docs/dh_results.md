@@ -1,9 +1,9 @@
 # DH results: two residual series, quality weighting, suggested shift, magnitude gate, reference mode
 
-Run 2026-11-07 (round 2, 14:20) on the committed snapshot, branch `pi/dh-test`. `make test` 117 passed, `make demo` green offline.
-Decisions and thresholds: docs/decision_log.md, entries "dh 1" to "dh 4" and "dh round 2".
+Run 2026-11-07 (round 3, 15:00; tables for 1 and 3 from round 2, unchanged since fixed mode did not move) on the committed snapshot, branch `pi/dh-test`. `make test` 125 passed, `make demo` green offline.
+Decisions and thresholds: docs/decision_log.md, entries "dh 1" to "dh 4", "dh round 2" and "dh round 3".
 
-**Bottom line:** in the default `fixed` mode nothing changes band. Hepco and Newport stay Stale with a post-Helene step that is larger in ft and concentrated at low flows; Asheville's step is larger in %. The magnitude gate cuts the Eno null's false alarms about 5-fold (56 % → 12 % at 80 visits). The new `auto` rule turns three healthy controls Stale (Swannanoa, Watauga, Eno), so it should not become the default as written (see Surprises 1).
+**Bottom line:** the round-3 auto rule meets the expected result. The four controls (Swannanoa, South Toe, Watauga, Eno) are Trusted in both modes. Hepco and Newport are Stale in both, with the same shift date; so is Asheville. **One gauge disagrees: Mills River, Watch 73 fixed vs Trusted 90 auto** (Surprise 1). In fixed mode, Hepco and Newport show a post-Helene step larger in ft and concentrated at low flows; Asheville's step is larger in %. The magnitude gate cuts the Eno null's false alarms about 5-fold (56 % → 12 % at 80 visits).
 
 ## 1. Two residual series (fixed mode, gate on)
 
@@ -43,29 +43,32 @@ The null adds N post-window visits to Eno. Each visit is a reference stage with 
 
 The gate does not stop false alarms from growing with the number of looks (2 → 12 %), but it cuts them about 5-fold at every length. Eno has 8 searched post-window visits today.
 
-## 4. Reference mode: fixed vs auto (round 2 rule)
+## 4. Reference mode: fixed vs auto (round 3 rule)
 
-Auto = the most recent stable period from the full-history search that ends at least 8 searched measurements before the latest one, and still has ≥ 15 measurements over ≥ 2 years. "(fixed kept)" = no period qualified.
+Auto = the latest stable period of the full-history search, with its window ending the day before the newest 8 searched measurements; those 8 are the test set, plus any gauging taken the same day as the first of them. If the latest period has fewer than 20 measurements or spans less than 2 years, the previous stable period is the reference, whole, and everything after it is tested. Holdout = searched measurements (Poor left out) after the window.
 
-| Site | Gauge | Fixed: band | Fixed: top shift | Fixed holdout | Auto window | Auto holdout | Auto: band | Auto: top shift | Differs |
-|---|---|---|---|---|---|---|---|---|---|
-| 03459500 | Pigeon River near Hepco | Stale 24 | 2024-12-17 −26 % (−0.33 ft) | 12 | 2004-09-08..2024-08-22 | 12 | Stale 24 | 2024-12-17 −25 % (−0.31 ft) | top shift (size) |
-| 03455000 | French Broad near Newport | Stale 30 | 2024-10-28 −42 % (−0.71 ft) | 14 | 2004-09-09..2024-08-19 | 14 | Stale 30 | 2024-10-28 −43 % (−0.73 ft) | top shift (size) |
-| 03446000 | Mills River | Watch 73 | none | 16 | 2012-01-01..2024-09-25 (fixed kept) | 16 | Watch 73 | none | — |
-| 03451500 | French Broad at Asheville | Stale 46 | 2025-07-23 +46 % (+0.27 ft) | 13 | 2008-12-18..2025-06-03 | 8 | Stale 46 | 2025-07-23 +48 % (+0.27 ft) | top shift (size) |
-| 03451000 | Swannanoa at Biltmore | Trusted 94 | none | 11 | 2004-06-09..2009-08-12 | 136 | **Stale 48** | 2009-10-01 +19 % (+0.09 ft) | **band**, top shift |
-| 03463300 | South Toe near Celo | Trusted 95 | none | 9 | 2012-01-01..2024-09-25 (fixed kept) | 9 | Trusted 95 | none | — |
-| 03479000 | Watauga near Sugar Grove | Trusted 95 | none | 10 | 1940-05-29..1984-04-12 | 282 | **Stale 30** | 1984-06-26 +33 % (+0.13 ft) | **band**, top shift |
-| 02085000 | Eno at Hillsborough | Trusted 91 | none | 8 | 1999-10-12..2002-04-01 | 169 | **Stale 32** | 2009-06-04 +3,499 % (+0.11 ft) | **band**, top shift |
+| Site | Gauge | Fixed: band | Fixed: top shift | Fixed holdout | Auto window | Auto rule | Auto holdout | Auto: band | Auto: top shift | Differs |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 03459500 | Pigeon River near Hepco | Stale 24 | 2024-12-17 −26 % (−0.33 ft) | 12 | 2004-09-08..2024-08-22 | previous | 12 | Stale 24 | 2024-12-17 −25 % (−0.31 ft) | shift size |
+| 03455000 | French Broad near Newport | Stale 30 | 2024-10-28 −42 % (−0.71 ft) | 14 | 2004-09-09..2024-08-19 | previous | 14 | Stale 30 | 2024-10-28 −43 % (−0.73 ft) | shift size |
+| 03446000 | Mills River | Watch 73 | none | 16 | 1934-06-07..2025-12-03 | cut latest | 8 | **Trusted 90** | none | **band** |
+| 03451500 | French Broad at Asheville | Stale 46 | 2025-07-23 +46 % (+0.27 ft) | 13 | 2008-12-18..2025-06-03 | previous | 8 | Stale 46 | 2025-07-23 +48 % (+0.27 ft) | shift size |
+| 03451000 | Swannanoa at Biltmore | Trusted 94 | none | 11 | 2009-10-01..2025-06-10 | cut latest | 9 | Trusted 92 | none | — |
+| 03463300 | South Toe near Celo | Trusted 95 | none | 9 | 1959-01-14..2024-12-03 | cut latest | 9 | Trusted 95 | none | — |
+| 03479000 | Watauga near Sugar Grove | Trusted 95 | none | 10 | 1984-05-16..2025-05-07 | cut latest | 9 | Trusted 95 | none | — |
+| 02085000 | Eno at Hillsborough | Trusted 91 | none | 8 | 2011-07-22..2025-09-15 | cut latest | 8 | Trusted 88 | none | — |
 
-At Hepco, Newport and Asheville the shift date is the same in both modes; only its size moves by 1–2 points. The round-1 problem is gone: Newport's post-Helene period can no longer become the reference, because it runs to the latest gauging.
+Expected vs got: the four controls are Trusted in both modes ✔. Hepco and Newport are Stale in both with the same shift date (2024-12-17, 2024-10-28) ✔. Asheville is Stale in both ✔. At those three gauges the shift size moves by 1–2 points between modes; the date does not. The auto test set holds 9 measurements at Swannanoa, South Toe and Watauga, because a second gauging was taken on the same day as the first of the newest 8.
+
+Round 2's rule (the most recent period ending at least 8 measurements before the latest) turned Swannanoa, Watauga and Eno Stale by falling back to windows from 2004–09, 1940–84 and 1999–2002. Round 3 fixes that by cutting the latest period instead of skipping it.
 
 ## Surprises
 
-1. **The holdout rule breaks the healthy gauges.** When a gauge has been stable for a long time, its current state is one stable period that runs to the latest gauging, and the rule can never pick it. Auto then falls back to the period before it, which can be decades old: Swannanoa 2004–2009, Watauga 1940–1984, Eno 1999–2002. The result is a "shift" at the 2009 / 1984 / 2002 boundary and a Stale band. Eno's 1999–2002 rating extrapolates so badly at low flows that it reports steps of ±3,000 %. Mills and South Toe escape only because no older period qualifies, so they keep the fixed window. A likely fix: allow the latest period, but end the window 8 measurements before the latest gauging, so those 8 become the holdout. That is your call, so it is not built. The default stays `fixed`.
-2. **The low-flow clue fires at both hero gauges and nowhere else** (unchanged from round 1). At Hepco and Newport the step is larger in ft and concentrated at low flows, the pattern of a change in the control's zero-flow height. Asheville shows the opposite: the whole curve slid.
-3. **Gate merges reach the suggested shift.** Merging small in-window change points lengthens the latest stable period at Mills and Eno, so the suggested shift is now computed over 164 and 78 gaugings instead of 63 and 22. It is still about 0 ft at both.
-4. **The ft series splits more than the % series inside the reference windows**, and the gate removes most of those splits. Robust σ in ft is tiny at low-stage gauges, so the ft lists are evidence to read beside the % series, not a second alarm.
+1. **Mills River disagrees: Watch 73 in fixed mode, Trusted 90 in auto.** In the full-history search Mills is one stable period from 1934 to now. A rating fitted on that 91-year window puts the newest 8 gaugings at −4.2 %. The 2012–2024 fixed rating puts them at −11.6 %, which costs 16.2 points. The "Debris - Moderate" note on the latest visit costs 8 points in both modes. Neither band is clearly wrong: the fixed rating is tighter, so it sees a recent low reading; the long window absorbs it into the gauge's normal scatter. This is the gauge to look at if auto becomes the default.
+2. **Auto windows reach far back.** Mills 1934, South Toe 1959, Watauga 1984. The base rating then averages decades of channel. It works on these gauges, but the fixed windows are deliberately recent.
+3. **The low-flow clue fires at both hero gauges and nowhere else** (unchanged). At Hepco and Newport the step is larger in ft and concentrated at low flows, the pattern of a change in the control's zero-flow height. At Asheville the whole curve slid.
+4. **Gate merges reach the suggested shift.** Merging small in-window change points lengthens the latest stable period at Mills and Eno, so the suggested shift is now computed over 164 and 78 gaugings instead of 63 and 22. It is still about 0 ft at both.
+5. **The ft series splits more than the % series inside the reference windows**, and the gate removes most of those splits. The ft lists are evidence to read beside the % series, not a second alarm.
 
 ## Not done / limits
 

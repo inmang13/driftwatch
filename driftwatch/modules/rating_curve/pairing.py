@@ -14,7 +14,7 @@ excluded so plots show them and the drift test skips them.
 from __future__ import annotations
 
 import logging
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Literal
 
 from driftwatch.core.schemas import Dataset, Measurement, StablePeriod
@@ -41,9 +41,9 @@ REFERENCE_WINDOWS = {"02085000": (date(2015, 1, 1), date(2025, 7, 6))}
 ReferenceMode = Literal["fixed", "auto"]
 REFERENCE_MODES: tuple[str, ...] = ("fixed", "auto")
 DEFAULT_REFERENCE_MODE: ReferenceMode = "fixed"
-AUTO_MIN_N = 15  # auto window: at least this many measurements in the stable period
-AUTO_MIN_YEARS = 2.0  # ... spanning at least this many years
-AUTO_MIN_HOLDOUT = 8  # ... and ending at least this many measurements before the latest one
+AUTO_TEST_N = 8  # auto: the newest this-many measurements are held out as the test set
+AUTO_MIN_N = 20  # the latest stable period is the reference only with this many measurements
+AUTO_MIN_YEARS = 2.0  # ... spanning at least this many years; else the previous period is
 
 
 def reference_window(site: str) -> tuple[date, date]:
@@ -54,21 +54,33 @@ def reference_window(site: str) -> tuple[date, date]:
 def auto_reference_window(
     periods: list[StablePeriod],
     times: list[datetime],
-    min_holdout: int = AUTO_MIN_HOLDOUT,
+    test_n: int = AUTO_TEST_N,
     min_n: int = AUTO_MIN_N,
     min_years: float = AUTO_MIN_YEARS,
-) -> tuple[date, date] | None:
-    """reference_mode='auto': the most recent stable period that ends at least `min_holdout`
-    measurements before the latest one (those later measurements are the held-out test set),
-    and that still has >= min_n measurements spanning >= min_years so the base rating can be
-    fitted. `periods` and `times` (the searched measurement times) come from the change-point
-    search on the full history (report.auto_reference). Returns (first date, last date), or
-    None when no period qualifies."""
-    for p in sorted(periods, key=lambda p: p.start, reverse=True):
-        held_out = sum(1 for t in times if t > p.end)
-        span_years = (p.end - p.start).total_seconds() / (365.25 * 86400)
-        if held_out >= min_holdout and p.n >= min_n and span_years >= min_years:
-            return p.start.date(), p.end.date()
+) -> tuple[date, date, str] | None:
+    """reference_mode='auto'. `periods` and `times` (searched measurement times) come from the
+    change-point search on the full history (report.auto_reference).
+
+    - The latest stable period has >= min_n measurements spanning >= min_years: it is the
+      reference, with its window cut off before the newest `test_n` measurements (those are the
+      test set; a gauging on the same day as the first of them joins it). Returns
+      (start, the day before the test set starts, "latest").
+    - Otherwise the previous stable period is the reference, whole, and everything after it is
+      tested. Returns (start, end, "previous").
+    - None when there is no previous period to fall back to (the caller keeps the fixed window).
+    """
+    ps = sorted(periods, key=lambda p: p.start)
+    if not ps:
+        return None
+    latest = ps[-1]
+    span_years = (latest.end - latest.start).total_seconds() / (365.25 * 86400)
+    ts = sorted(times)
+    if latest.n >= min_n and span_years >= min_years and len(ts) > test_n:
+        # End the day before the test set's first measurement, so same-day gaugings stay
+        # together and the test set holds at least the newest test_n.
+        return latest.start.date(), ts[-test_n].date() - timedelta(days=1), "latest"
+    if len(ps) >= 2:
+        return ps[-2].start.date(), ps[-2].end.date(), "previous"
     return None
 
 

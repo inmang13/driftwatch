@@ -156,31 +156,35 @@ def likely_cause(
 
 def auto_reference(ds: Dataset) -> tuple[Dataset, str]:
     """reference_mode='auto': fit the fixed-window rating, run the change-point search on the
-    full history (every non-excluded gauging, any date), and move the reference window to the
-    most recent stable period that ends at least 8 measurements before the latest one and has
-    >= 15 measurements over >= 2 years (pairing.auto_reference_window). The measurements after
-    it are the held-out test set. Returns the dataset with that window and a note; falls back to
-    the fixed window (said in the note) when no period qualifies or the window cannot be fitted."""
+    full history (every non-excluded gauging, any date), then pairing.auto_reference_window:
+    the latest stable period cut off before the newest 8 measurements (the test set) when it
+    has >= 20 measurements over >= 2 years, else the previous stable period with everything
+    after it tested. Returns the dataset with that window and a note; falls back to the fixed
+    window (said in the note) when there is no previous period or the window cannot be fitted."""
     fixed = (ds.reference_start, ds.reference_end)
     rel = rating.fit_rating(ds)
     full = segmentation.drift_test(ds, rel, series_start=date.min)
     times = [m.time for m in segmentation.search_measurements(ds, rel, date.min)]
-    window = pairing.auto_reference_window(full.stable_periods, times)
-    rule = (
-        f"stable period ending >= {pairing.AUTO_MIN_HOLDOUT} measurements before the latest, "
-        f"with >= {pairing.AUTO_MIN_N} measurements over >= {pairing.AUTO_MIN_YEARS:g} years"
-    )
-    if window is None:
-        return ds, f"auto: no {rule}; fixed window kept"
-    moved = ds.model_copy(update={"reference_start": window[0], "reference_end": window[1]})
+    picked = pairing.auto_reference_window(full.stable_periods, times)
+    if picked is None:
+        return ds, "auto: only one stable period and it is too short to cut; fixed window kept"
+    start, end, which = picked
+    moved = ds.model_copy(update={"reference_start": start, "reference_end": end})
     try:
         rating.fit_rating(moved)
     except rating.FitError as exc:
-        return ds, f"auto: window {window[0]}..{window[1]} could not be fitted ({exc}); fixed kept"
-    return moved, (
-        f"auto: most recent {rule}, from the full-history search "
-        f"(fixed window was {fixed[0]}..{fixed[1]})"
-    )
+        return ds, f"auto: window {start}..{end} could not be fitted ({exc}); fixed window kept"
+    if which == "latest":
+        how = (
+            f"latest stable period, cut off before the newest {pairing.AUTO_TEST_N} "
+            f"measurements (the test set)"
+        )
+    else:
+        how = (
+            f"previous stable period (the latest has < {pairing.AUTO_MIN_N} measurements or "
+            f"spans < {pairing.AUTO_MIN_YEARS:g} years); everything after it is tested"
+        )
+    return moved, f"auto: {how}; fixed window was {fixed[0]}..{fixed[1]}"
 
 
 def holdout(ds: Dataset, rel: Relationship) -> tuple[int, datetime | None, datetime | None]:

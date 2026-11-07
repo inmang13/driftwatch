@@ -1,4 +1,4 @@
-# DH status: round 2 DONE (2026-11-07, 14:22); round 1 DONE 14:00
+# DH status: round 3 DONE (2026-11-07, 15:05); round 2 14:22; round 1 14:00
 
 Branch `pi/dh-test`, pushed. It is based on `main` at d30143c (after PR #9). No PR is open; Grace merges.
 Built in a separate worktree (`/srv/arx/work/dw-dh`), so the shared checkout at `/srv/arx/work/driftwatch` (on `pi/m1`) was not touched.
@@ -21,6 +21,12 @@ Built in a separate worktree (`/srv/arx/work/dw-dh`), so the shared checkout at 
 - Eno null rerun at 20 / 40 / 80 visits: 18 / 40 / 56 % without the gate, 2 / 8 / 12 % with it.
 - `make test` 117 passed; `make demo` green.
 - **Open for Grace:** the auto rule turns Swannanoa, Watauga and Eno Stale, because it falls back to decades-old windows (docs/dh_results.md, Surprise 1). A suggested fix is in that doc but not built.
+
+## Round 3
+- Auto = the latest stable period cut off before the newest 8 measurements (the test set). If the latest has fewer than 20 measurements or spans under 2 years, the previous period is the reference and everything after it is tested.
+- Expected outcome met. **Mills River disagrees** (Watch 73 fixed vs Trusted 90 auto).
+- `make test` 125 passed; `make demo` green.
+- Round 2's open item (controls going Stale in auto) is fixed.
 
 ## Files touched
 `driftwatch/modules/rating_curve/{segmentation,report,pairing}.py`, `driftwatch/core/schemas.py` (fields added only), `tests/test_segmentation.py`, `tests/test_report.py`, `docs/decision_log.md` (appended), `docs/dh_results.md`, `docs/dh_status.md`. Nothing under `driftwatch/agents/` or `driftwatch/api/`.

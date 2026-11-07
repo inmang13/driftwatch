@@ -262,28 +262,49 @@ def _period(start, end, n):
     )
 
 
-def test_auto_window_ends_at_least_8_measurements_before_the_latest():
+def test_auto_cuts_a_long_latest_period_before_the_newest_8():
     from datetime import UTC, date, datetime, timedelta
 
     from driftwatch.modules.rating_curve import pairing
 
-    periods = [
-        _period("2005-01-01", "2011-12-31", 40),
-        _period("2012-01-10", "2024-08-20", 90),
-        _period("2024-10-28", "2026-10-19", 14),  # runs to the latest gauging: no holdout
-    ]
-    after = [datetime(2024, 10, 28, tzinfo=UTC) + timedelta(days=50 * i) for i in range(14)]
-    assert pairing.auto_reference_window(periods, after) == (date(2012, 1, 10), date(2024, 8, 20))
-    # Only 7 measurements after the 2012..2024 period: not enough holdout, go one further back
-    # (the 2005..2011 period has those 7 plus 5 inside the 2012..2024 period after it).
-    inside = [datetime(2015, 1, 1, tzinfo=UTC) + timedelta(days=90 * i) for i in range(5)]
-    assert pairing.auto_reference_window(periods, inside + after[:7]) == (
-        date(2005, 1, 1),
-        date(2011, 12, 31),
-    )
-    # Still needs >= 15 measurements over >= 2 years to fit a rating.
-    short = [_period("2020-01-01", "2021-06-01", 30)]
-    assert pairing.auto_reference_window(short, after) is None
+    periods = [_period("2005-01-01", "2011-12-31", 40), _period("2012-01-10", "2026-10-01", 90)]
+    times = [datetime(2012, 1, 10, tzinfo=UTC) + timedelta(days=58 * i) for i in range(90)]
+    start, end, which = pairing.auto_reference_window(periods, times)
+    assert which == "latest" and start == date(2012, 1, 10)
+    assert end == times[-8].date() - timedelta(days=1)
+    assert sum(1 for t in times if t.date() > end) == 8
+
+
+def test_auto_keeps_same_day_gaugings_together_in_the_test_set():
+    from datetime import UTC, datetime, timedelta
+
+    from driftwatch.modules.rating_curve import pairing
+
+    times = [datetime(2012, 1, 10, 12, tzinfo=UTC) + timedelta(days=58 * i) for i in range(90)]
+    times[-9] = times[-8] - timedelta(minutes=40)  # two discharges on one visit
+    periods = [_period("2012-01-10", times[-1].isoformat()[:19], 90)]
+    _, end, _ = pairing.auto_reference_window(periods, times)
+    assert sum(1 for t in times if t.date() > end) == 9
+
+
+def test_auto_falls_back_to_the_previous_period_when_the_latest_is_short():
+    from datetime import UTC, date, datetime, timedelta
+
+    from driftwatch.modules.rating_curve import pairing
+
+    times = [datetime(2024, 10, 28, tzinfo=UTC) + timedelta(days=50 * i) for i in range(30)]
+    previous = _period("2004-09-09", "2024-08-19", 80)
+    few = _period("2024-10-28", "2026-10-19", 19)  # 19 measurements: < 20
+    brief = _period("2025-01-01", "2026-10-19", 30)  # 30 measurements over 1.8 years: < 2
+    for latest in (few, brief):
+        assert pairing.auto_reference_window([previous, latest], times) == (
+            date(2004, 9, 9),
+            date(2024, 8, 19),
+            "previous",
+        )
+    assert pairing.auto_reference_window([few], times) is None  # nothing to fall back to
+    enough = _period("2024-10-28", "2026-11-01", 20)
+    assert pairing.auto_reference_window([previous, enough], times)[2] == "latest"
 
 
 def test_fixed_is_the_default_and_recorded(reports):
@@ -300,22 +321,24 @@ def test_unknown_reference_mode_is_refused():
         report.build_report("03459500", reference_mode="latest")
 
 
-def test_auto_keeps_a_short_post_step_period_out_of_the_reference():
-    ds, ms = _stepped_ds(n_post=12)  # 12 visits, 1.4 years after the step: too short
+def test_auto_short_post_step_period_tests_everything_after_the_previous_one():
+    ds, ms = _stepped_ds(n_post=12)  # 10 searched visits, 1.4 years after the step: too short
     rep = report.build_report("x", ds=ds, reference_mode="auto")
     assert rep.reference_mode == "auto"
+    assert "previous stable period" in rep.reference_note
     assert rep.reference_end <= ms[79].time.date()
     assert rep.relationship.reference_end == rep.reference_end
-    assert "auto:" in rep.reference_note
+    assert rep.holdout_n == 10
     assert report.top_shift(rep.reference_end, rep.drift).time >= ms[80].time
 
 
-def test_auto_never_takes_the_period_that_runs_to_the_latest_gauging():
-    ds, ms = _stepped_ds(n_post=60, poor_every=1000)  # 7.4 years of the new channel
+def test_auto_on_a_quiet_gauge_holds_out_the_newest_8():
+    ds, ms = _stepped_ds(n_post=0)  # one long stable period, nothing changes
     rep = report.build_report("x", ds=ds, reference_mode="auto")
-    assert rep.reference_end < ms[-1].time.date()
-    assert rep.holdout_n >= 8
-    assert rep.holdout_end == ms[-1].time
+    assert "latest stable period, cut off" in rep.reference_note
+    assert rep.holdout_n == 8
+    assert rep.holdout_start == ms[-8].time
+    assert rep.trust.band == "Trusted"
 
 
 def test_holdout_is_recorded_in_both_modes():
@@ -328,9 +351,22 @@ def test_holdout_is_recorded_in_both_modes():
     assert report.build_report("x", ds=ds).holdout_n == 20
 
 
-def test_auto_on_newport_still_ends_before_helene():
-    from datetime import date
-
-    rep = report.build_report("03455000", reference_mode="auto")
-    assert rep.reference_end < date(2024, 9, 26)
-    assert rep.trust.band == "Stale"
+@pytest.mark.parametrize(
+    "site, band",
+    [
+        ("03459500", "Stale"),
+        ("03455000", "Stale"),
+        ("03451500", "Stale"),
+        ("03451000", "Trusted"),
+        ("03463300", "Trusted"),
+        ("03479000", "Trusted"),
+        ("02085000", "Trusted"),
+    ],
+)
+def test_auto_and_fixed_agree_on_band_and_shift_date(site, band):
+    fixed = report.build_report(site)
+    auto = report.build_report(site, reference_mode="auto")
+    assert fixed.trust.band == auto.trust.band == band
+    top_f = report.top_shift(fixed.reference_end, fixed.drift)
+    top_a = report.top_shift(auto.reference_end, auto.drift)
+    assert (top_f and top_f.time) == (top_a and top_a.time)
