@@ -1,0 +1,79 @@
+{
+  "site": "03455000",
+  "site_name": "FRENCH BROAD RIVER NEAR NEWPORT, TN",
+  "generated_at": "2026-11-07T04:18:00.349831Z",
+  "source": "snapshot",
+  "relationship": {
+    "kind": "power_law",
+    "a": 942.0364222949676,
+    "b": 1.5015255463440411,
+    "e": 0.4383564017671864,
+    "reference_start": "2012-01-01",
+    "reference_end": "2024-09-25",
+    "n": 80,
+    "rmse_log": 0.06091146683621161
+  },
+  "drift": {
+    "site": "03455000",
+    "stable_periods": [
+      {
+        "start": "2012-02-23T17:06:00Z",
+        "end": "2024-08-19T18:20:46Z",
+        "n": 80,
+        "median_residual_pct": 0.17
+      },
+      {
+        "start": "2024-10-28T20:03:25Z",
+        "end": "2026-10-19T17:32:09Z",
+        "n": 15,
+        "median_residual_pct": -42.34
+      }
+    ],
+    "shifts": [
+      {
+        "time": "2024-10-28T20:03:25Z",
+        "size_pct": -42.51,
+        "size_ft": -0.716,
+        "direction": "negative",
+        "n_after": 15,
+        "confidence": 1.0
+      }
+    ],
+    "n_tested": 95,
+    "n_excluded": 2,
+    "penalty": 50.0
+  },
+  "trust": {
+    "score": 40.0,
+    "band": "Stale",
+    "deductions": [
+      {
+        "name": "residual",
+        "points": 40.0,
+        "reason": "Recent measurements carry 46.0 % less water than the rating predicts (median of 8); this gauge's normal scatter is 3.6 %, so 42.4 % is excess at 2 points per % (cap 40)."
+      },
+      {
+        "name": "staleness",
+        "points": 0.0,
+        "reason": "Last field measurement was 18 days ago; deductions start after 90 days and reach 20 at 365."
+      },
+      {
+        "name": "quality",
+        "points": 5.0,
+        "reason": "Recent measurements rated 1 Poor, 5 Fair, 2 Good (Poor costs 1, unrated 0.5, Fair 1/3, Good 0); average 0.33 x 15."
+      },
+      {
+        "name": "field_notes",
+        "points": 15.0,
+        "reason": "Open field-note flags: 'Fill control changed' (15) (cap 15)."
+      },
+      {
+        "name": "insufficient_data",
+        "points": 0.0,
+        "reason": "9 usable measurements in the last 12 months; 4 or more costs nothing, each one short costs 2.5."
+      }
+    ]
+  },
+  "likely_cause": "fill",
+  "narrative": "Field note says fill / aggradation, and the gauge reads 46 % less water than rated, which is the direction fill / aggradation produces."
+}

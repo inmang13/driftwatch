@@ -1,0 +1,64 @@
+{
+  "site": "03451000",
+  "site_name": "SWANNANOA RIVER AT BILTMORE, NC",
+  "generated_at": "2026-11-07T04:18:06.082326Z",
+  "source": "snapshot",
+  "relationship": {
+    "kind": "power_law",
+    "a": 172.73865881167183,
+    "b": 1.5613692334373255,
+    "e": 0.9870313773784182,
+    "reference_start": "2012-01-01",
+    "reference_end": "2024-09-25",
+    "n": 116,
+    "rmse_log": 0.082484693115277
+  },
+  "drift": {
+    "site": "03451000",
+    "stable_periods": [
+      {
+        "start": "2012-02-13T21:53:30Z",
+        "end": "2026-10-02T14:17:37Z",
+        "n": 127,
+        "median_residual_pct": 0.53
+      }
+    ],
+    "shifts": [],
+    "n_tested": 127,
+    "n_excluded": 1,
+    "penalty": 50.0
+  },
+  "trust": {
+    "score": 93.7,
+    "band": "Trusted",
+    "deductions": [
+      {
+        "name": "residual",
+        "points": 4.4,
+        "reason": "Recent measurements carry 7.0 % more water than the rating predicts (median of 8); this gauge's normal scatter is 4.8 %, so 2.2 % is excess at 2 points per % (cap 40)."
+      },
+      {
+        "name": "staleness",
+        "points": 0.0,
+        "reason": "Last field measurement was 36 days ago; deductions start after 90 days and reach 20 at 365."
+      },
+      {
+        "name": "quality",
+        "points": 1.9,
+        "reason": "Recent measurements rated 3 Fair, 5 Good (Poor costs 1, unrated 0.5, Fair 1/3, Good 0); average 0.12 x 15."
+      },
+      {
+        "name": "field_notes",
+        "points": 0.0,
+        "reason": "0 open field-note flags on the control."
+      },
+      {
+        "name": "insufficient_data",
+        "points": 0.0,
+        "reason": "7 usable measurements in the last 12 months; 4 or more costs nothing, each one short costs 2.5."
+      }
+    ]
+  },
+  "likely_cause": null,
+  "narrative": null
+}

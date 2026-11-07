@@ -41,7 +41,7 @@ class TrustInputs:
 
 def residual_deduction(recent: Sequence[float], normal: float) -> Deduction:
     if len(recent) == 0:
-        return Deduction(name="residual", points=0, reason="No recent measurements to compare.")
+        return Deduction(name="residual", points=0, reason="0 recent measurements to compare.")
     med = float(np.median(recent))
     excess = max(0.0, abs(med) - normal)
     pts = min(RESIDUAL_MAX, RESIDUAL_POINTS_PER_PCT * excess)
@@ -58,7 +58,7 @@ def residual_deduction(recent: Sequence[float], normal: float) -> Deduction:
 
 def staleness_deduction(days: float | None) -> Deduction:
     if days is None:
-        return Deduction(name="staleness", points=STALE_MAX, reason="No measurement on record.")
+        return Deduction(name="staleness", points=STALE_MAX, reason="0 measurements on record.")
     frac = (days - STALE_GRACE_DAYS) / (STALE_FULL_DAYS - STALE_GRACE_DAYS)
     pts = STALE_MAX * float(np.clip(frac, 0.0, 1.0))
     return Deduction(
@@ -71,7 +71,7 @@ def staleness_deduction(days: float | None) -> Deduction:
 
 def quality_deduction(rated: Sequence[str]) -> Deduction:
     if len(rated) == 0:
-        return Deduction(name="quality", points=0, reason="No recent measurements to grade.")
+        return Deduction(name="quality", points=0, reason="0 recent measurements to grade.")
     cost = float(np.mean([QUALITY_COST.get(r, QUALITY_COST_DEFAULT) for r in rated]))
     pts = QUALITY_MAX * cost
     counts = {k: sum(1 for r in rated if r == k) for k in ("Poor", "Fair", "Good", "Excellent")}
@@ -88,7 +88,7 @@ def quality_deduction(rated: Sequence[str]) -> Deduction:
 def notes_deduction(flags: Sequence[tuple[str, float]]) -> Deduction:
     if not flags:
         return Deduction(
-            name="field_notes", points=0, reason="No open field-note flags on the control."
+            name="field_notes", points=0, reason="0 open field-note flags on the control."
         )
     pts = min(NOTES_MAX, sum(p for _, p in flags))
     listed = "; ".join(f"'{n}' ({p:g})" for n, p in flags)

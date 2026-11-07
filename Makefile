@@ -26,7 +26,7 @@ snapshot:
 	$(PY) -m driftwatch.modules.rating_curve.usgs --source $(SOURCE)
 
 report:
-	@echo not yet: make report SITE=$(SITE)
+	$(PY) -m driftwatch.cli report --site $(SITE) --source $(SOURCE)
 
 run:
 	@echo not yet: make run SITE=$(SITE)
@@ -40,5 +40,7 @@ test:
 evals:
 	@echo not yet: make evals
 
+# Demo must pass offline. M2 adds the agent runs here: make run SITE=... with LLM=fallback for both sites.
 demo:
-	@echo not yet: make demo
+	$(PY) -m driftwatch.cli report --site 03459500 --source snapshot
+	$(PY) -m driftwatch.cli report --site 03451000 --source snapshot
