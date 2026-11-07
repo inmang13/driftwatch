@@ -112,10 +112,24 @@ class DriftResult(BaseModel):
     site: str
     stable_periods: list[StablePeriod] = Field(default_factory=list)
     shifts: list[Shift] = Field(default_factory=list)
+    # Same search on the stage-shift residual in ft (segmentation.py). The two lists can differ.
+    stable_periods_ft: list[StablePeriod] = Field(default_factory=list)
+    shifts_ft: list[Shift] = Field(default_factory=list)
+    # Largest post-reference step in each series, in units of that series' reference scatter.
+    step_pct_sigma: float | None = None
+    step_ft_sigma: float | None = None
+    larger_step_series: Literal["pct", "ft"] | None = None  # None: no post-reference shift
+    # After that step: |ft residual| larger in the lowest third of flows than in the top third.
+    low_flow_concentrated: bool = False
     n_tested: int = Field(ge=0, default=0)
     n_excluded: int = Field(ge=0, default=0)
     n_invalid_domain: int = Field(ge=0, default=0)  # stage <= e: no rated flow, left out of test
+    n_poor_unsearched: int = Field(ge=0, default=0)  # Poor-rated tested gaugings kept out of search
     penalty: float | None = None
+    # Magnitude gate: change points with |size_pct| <= this are merged away, not reported.
+    min_shift_pct: float | None = None
+    n_gated: int = Field(ge=0, default=0)  # % series change points dropped by the gate
+    n_gated_ft: int = Field(ge=0, default=0)  # ft series change points dropped by the gate
 
 
 class Deduction(BaseModel):
@@ -164,8 +178,23 @@ class Report(BaseModel):
     trust: TrustScore
     likely_cause: str | None = None
     narrative: str | None = None
+    # Weighted median stage shift over the latest stable period (report.suggested_shift).
+    # Provisional: a hydrographer confirms before it is applied.
+    suggested_shift_ft: float | None = None
+    suggested_shift_n: int = Field(ge=0, default=0)
+    suggested_shift_label: str = "provisional: a hydrographer confirms"
+    # Which reference window the base rating used: "fixed" (pairing.reference_window, default) or
+    # "auto" (latest long stable period from the full-history search; report.auto_reference).
+    reference_mode: Literal["fixed", "auto"] = "fixed"
+    reference_start: date | None = None
+    reference_end: date | None = None
+    reference_note: str | None = None
+    # Held-out test set: searched measurements (Poor left out) after reference_end.
+    holdout_n: int = Field(ge=0, default=0)
+    holdout_start: datetime | None = None
+    holdout_end: datetime | None = None
 
-    _tz = field_validator("generated_at")(_require_tz)
+    _tz = field_validator("generated_at", "holdout_start", "holdout_end")(_require_tz)
 
 
 class TraceEvent(BaseModel):
