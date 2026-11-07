@@ -1,12 +1,15 @@
 # M1 results — what the drift engine says about the 8 gauges
 
-*Pi job #1, built overnight 2026-11-06 from the committed snapshot (offline, no LLM).*
+*Pi job #1, built overnight 2026-11-06 from the committed snapshot (offline, no LLM). Numbers
+re-run 2026-11-07 on branch m1-fixes (error cap 40 → 50, exact-only pairing, and the other review
+fixes in `docs/decision_log.md`).*
 
 ## Verdict
 
 **M1 complete.** The two hero gauges come out
 **Stale**, each with a cause. The three controls come out **Trusted** and no cause gets named for
-them. Mills River lands on **Watch**, which is what the plan expected.
+them. Mills River lands on **Watch**, which is what the plan expected. Asheville is now **Stale**
+(it was Watch under the old 40-point error cap).
 
 - **Newport (03455000) is the safe hero.** The river has carried about 43 % less water than the
   rating says since late October 2024. The field note says "Fill control changed", and the
@@ -22,10 +25,10 @@ the gauge publishes is too high.
 
 | Site | Station (USGS name) | Band | Score | Shifts found since the reference window | Median off by, after 2024-09-26 |
 |---|---|---|---|---|---|
-| 03459500 | Pigeon River near Hepco, NC | **Stale** | 34 | 2024-12-17: −28 % (−0.33 ft) | **−28.5 %** (18 visits) |
-| 03455000 | French Broad River near Newport, TN | **Stale** | 40 | 2024-10-28: −43 % (−0.72 ft) | **−42.3 %** (15) |
+| 03459500 | Pigeon River near Hepco, NC | **Stale** | 24 | 2024-12-17: −28 % (−0.33 ft) | **−28.5 %** (18 visits) |
+| 03455000 | French Broad River near Newport, TN | **Stale** | 30 | 2024-10-28: −43 % (−0.72 ft) | **−42.3 %** (15) |
 | 03446000 | Mills River near Mills River, NC | Watch | 73 | none | −10.5 % (16) |
-| 03451500 | French Broad River at Asheville, NC | Watch | 56 | 2025-07-23: +36 % (+0.27 ft) | +31.6 % (15) |
+| 03451500 | French Broad River at Asheville, NC | **Stale** | 46 | 2025-07-23: +36 % (+0.27 ft) | +31.6 % (15) |
 | 03451000 | Swannanoa River at Biltmore, NC | Trusted | 94 | none | +2.8 % (11) |
 | 03463300 | South Toe River near Celo, NC | Trusted | 95 | none | −1.2 % (10) |
 | 03479000 | Watauga River near Sugar Grove, NC | Trusted | 95 | none | +2.2 % (12) |
@@ -36,8 +39,8 @@ Likely causes (simple rules, no AI yet): Newport **fill**, Hepco **datum change 
 "Debris – Moderate"), Asheville **scour** (no note, positive sign). None for the four Trusted
 gauges.
 
-Where the points went: both Stale gauges lose the full 40 for error, plus 15 for an open
-"control changed" note. Hepco also loses 11 because most of its recent measurements are rated
+Where the points went: both hero gauges lose the full 50 for error, plus 15 for an open
+"control changed" note. Asheville loses the full 50 for error and 4 for quality. Hepco also loses 11 because most of its recent measurements are rated
 Poor or Fair. Every deduction and its reason is in `reports/<site>.json`.
 
 Older shifts inside the reference window, kept out of the table because the base rating already
@@ -68,24 +71,24 @@ well.
 
 ## Surprises
 
-1. **Asheville is only "Watch" while being 32–36 % off.** The error deduction caps at 40 points
-   (plan §4), and Asheville loses almost nothing else, so it cannot fall below 50. Its shift also
-   starts in **July 2025**, ten months after Helene, not at the storm. The first visits after
-   the flood were close to the rating. If a gauge that far off should read Stale, the fix is a
-   rule change (for example, a detected shift larger than 25 % forces Stale). That is your call.
+1. **Asheville is Stale (46) now that the error cap is 50.** Under the old cap of 40 it could
+   not fall below 50 while losing almost nothing else, so it read Watch while 32–36 % off. Grace
+   set the cap to 50 on 2026-11-07. Its shift still starts in **July 2025**, ten months after
+   Helene, not at the storm; the first visits after the flood were close to the rating.
 2. **Eno's rating is twice as noisy as the mountain gauges** (normal scatter 8 % vs 3–5 %). A
    plain fit missed the "< 10 %" test (10.7 %). A robust fit that stops a few odd low-flow
    measurements from bending the curve passes at 8.0 %. The trust score measures each gauge
    against its own normal scatter, so Eno is not marked down for being Eno.
 3. **The change-point setting was easy to pick.** Any penalty from 25 to 150 gives the
    required answer (Eno and Swannanoa quiet after Helene, Newport fires). I used 50.
-4. **Every discharge had an exact-time stage match.** The "nearest within 2 h" fallback never
-   fired on the snapshot.
+4. **Pairing is exact-match only.** The "nearest within 2 h" fallback is gone (it never fired
+   on the snapshot). Six discharges at three sites are now dropped because two stage readings on
+   the same visit and time disagree; all are from before 1990, outside every reference window.
 5. **Station names:** 03459500 is Hepco and 03463300 is South Toe near Celo (already in the
    decision log). All output uses the USGS names. The site IDs were left alone.
 
 ## How to reproduce
 
-`make test` (47 tests, about 20 s on the Pi) · `make demo` · `make report SITE=03455000`.
+`make test` (60 tests, about 5 s on the laptop) · `make demo` · `make report SITE=03455000`.
 All 8 sites: `.venv/bin/python -m driftwatch.cli report`. Choices the plan left open are in
 `docs/decision_log.md`, each dated 2026-11-06.
