@@ -16,6 +16,7 @@ dependencies = [
     "pandas>=2.1",
     "scipy>=1.11",
     "ruptures>=1.1.9",
+    "pyyaml>=6",
 ]
 
 [project.optional-dependencies]
@@ -48,3 +49,6 @@ target-version = ["py311"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+
+[tool.setuptools.package-data]
+"driftwatch.modules" = ["specs/*.yaml"]
