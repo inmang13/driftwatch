@@ -22,7 +22,7 @@ Drift monitoring for calibrated engineering relationships. Module #1: USGS ratin
 Build contract: docs/plan.md (§4 architecture, §7 schedule). How to work: docs/agent_playbook.md. Decisions: docs/decision_log.md (append, dated).
 
 ## Stack
-Python 3.11 · pydantic v2 · numpy/pandas/scipy · ruptures · LangGraph · langchain-google-vertexai (Gemini) · langchain-openai pointed at OpenRouter (skeptic) · FastAPI + sse-starlette · Plotly.js in one static page · pytest · black + ruff.
+Python 3.11+ (3.13 on both laptop and thoth) · pydantic v2 · numpy/pandas/scipy · ruptures · LangGraph · langchain-google-vertexai (Gemini) · langchain-openai pointed at OpenRouter (skeptic) · FastAPI + sse-starlette · Plotly.js in one static page · pytest · black + ruff.
 Package: `driftwatch/` (core, modules/rating_curve, modules/specs, agents, api). Data: `data/snapshot/<site>.json`. Traces: `traces/`.
 
 ## Commands
@@ -41,7 +41,7 @@ make install · make snapshot (SOURCE=live, only on request) · make report SITE
 - Sites: 03459500 03455000 03446000 03451500 03451000 03463300 03479000 02085000. Reference window for the base rating: 2012-01-01 .. 2024-09-25 (Eno: 2015-01-01 .. 2025-07-06).
 
 ## Done means
-make test green · make demo green offline · Canton (03459500) and Newport (03455000) come out Stale with a documented cause · Swannanoa (03451000), North Toe (03463300), Eno (02085000) come out Trusted · README run instructions work from a clean clone.
+make test green · make demo green offline · Hepco (03459500) and Newport (03455000) come out Stale with a documented cause · Swannanoa (03451000), South Toe (03463300), Eno (02085000) come out Trusted · README run instructions work from a clean clone.
 ```
 
 ## C. Tonight (Fri 10–11 pm) — human + Claude Code, laptop
@@ -58,42 +58,34 @@ make test green · make demo green offline · Canton (03459500) and Newport (034
 
 **Launch Pi job #1 at ~11 pm** (section D). Go to sleep.
 
-## D. Orange Pi job #1 — Fri night, unattended (M1)
+## D. Orange Pi job #1 — Fri night, unattended (M1) — on thoth
 
-Run from the repo on the Pi, on a branch:
+Prompt lives in `docs/prompts/pi_job1.md`; launcher in `docs/prompts/launch_job1.sh` (both committed to the repo). On thoth, from the repo root:
 ```
-git checkout -b pi/m1
-claude -p --permission-mode acceptEdits --allowedTools "Bash(make:*) Bash(git:*) Bash(python:*) Bash(.venv/bin/*)" --max-turns 200 "$(cat docs/prompts/pi_job1.md)"
+git pull                       # picks up docs/prompts
+bash docs/prompts/launch_job1.sh
+tail -f logs/pi_job1.log       # Ctrl-C leaves it running; nohup survives SSH disconnect
 ```
-`docs/prompts/pi_job1.md`:
-> You are building stage M1 of DriftWatch unattended overnight. Read CLAUDE.md, docs/plan.md §3–§4, and docs/agent_playbook.md section A. Nobody will answer questions: when the plan is silent, choose the simplest option, write one dated line in docs/decision_log.md, and continue.
-> Build, in order, committing after each green step:
-> 1. `pairing.py`: from the snapshot, one row per discharge measurement with stage (MeanGageHeight on the same field_visit_id and time), discharge, time (UTC), measurement_rated, control_condition, quality weight (Excellent 4, Good 3, Fair 2, Poor 1, else 1.5). Unit test with a 2-discharge visit fixture.
-> 2. `rating.py`: weighted log-space power-law fit Q = a(H−e)^b on the reference window; `predict_q(H)`, `predict_h(Q)`; residual_pct and stage_shift_ft per measurement. Constrain e below the minimum reference stage. Unit test on Eno: MdAPE within the reference window < 10 %.
-> 3. `segmentation.py`: Darienzo-style recursive segmentation — change points on the residual series with `ruptures` (Pelt, model="l2"), minimum segment 6 points, recurse until no change point improves the penalized cost; output stable periods and shifts {time, size_pct, size_ft, direction, n_after, confidence}. Choose the penalty so Eno and Swannanoa report no shift after 2024-09-26 and Newport reports one. Record the chosen penalty in decision_log.md.
-> 4. `causes.py`: the cause catalog (scour, fill/aggradation, debris, vegetation, datum change/gauge rebuild, measurement quality, insufficient data) each with expected residual sign and the evidence fields an investigator should look at.
-> 5. `core/trust.py`: the glass-box score exactly as plan §4; every deduction carries a reason string.
-> 6. `cli.py` + `make report SITE=…`: writes `reports/<site>.json` (Report schema) and prints a one-line summary: site name, band, score, top shift.
-> 7. `make test` green; `make demo` runs report for 03459500 and 03451000 offline.
-> 8. Write `docs/m1_results.md`: a table of all 8 sites (band, score, shifts found, median post-2024-09-26 residual) and anything that surprised you.
-> Stop when done or when any step fails twice; push the branch (`git push origin pi/m1`; do not open a PR, you cannot) and leave a short `docs/m1_status.md` describing where you stopped. Never touch main.
+Before launching: `main` protected on GitHub; `.env` on thoth has `LLM=fallback`, `SOURCE=snapshot`; `.venv/bin/python -c "import ruptures, scipy"` works.
+What it does: creates `pi/m1` from `origin/main`, builds pairing → rating fit → recursive segmentation → cause catalog → trust score → CLI → tests → `docs/m1_results.md`, commits after each green step, pushes the branch, writes `docs/m1_status.md`. It cannot open a PR; Grace opens it from GitHub in the morning.
+If it stops early: `tail -50 logs/pi_job1.log` and `cat docs/m1_status.md` tell you where; Claude Code on the laptop resumes from the branch.
 
 ## E. Saturday — session by session
 
 ### 8:00–9:30 · M1 review (human + Claude Code laptop + Codex)
 - Human: read `docs/m1_results.md` and `docs/m1_status.md` first (5 min). Open the PR for `pi/m1` from the link on GitHub, pull the branch, `make test`, `make demo`.
 - Codex review #1, paste: *"Review branch pi/m1 of this repo against CLAUDE.md non-negotiables. List, ranked, anything that will produce a wrong trust score or a wrong shift: pairing errors, leakage, sign errors, unit mix-ups, timezone, penalty overfitting. Do not rewrite code; produce a checklist."*
-- Claude Code session 2: fix the checklist, confirm Canton/Newport fire and controls stay quiet, merge to main.
+- Claude Code session 2: fix the checklist, confirm Hepco/Newport fire and controls stay quiet, merge to main.
 
 ### 9:30–1:00 · M2 agents (Claude Code laptop, worktree `backend`)
 Paste:
-> Read CLAUDE.md, plan §4 "Agents", playbook A. Build `driftwatch/agents/`: LangGraph `StateGraph` with nodes triage → evidence_collector → hypothesis_ranker → skeptic → narrator, conditional edges exactly as plan §4 (skeptic objection loops to ranker at most twice; triage on a healthy gauge goes straight to narrator). Tools in `tools.py` are pure Python over the Report + snapshot: `channel_geometry_trend(site, before, after)` (width, area, mean depth = area/width, velocity; before vs after the first shift), `field_notes(site, since)`, `flood_context(site)` (max discharge measured between the last in-period and first post-shift measurement; also the dataset's peak-of-record if it falls there), `site_metadata(site)`. LLM clients in `llm.py`: `gemini` (langchain-google-vertexai), `openrouter` (langchain-openai with base_url), `fallback` (rule-based: ranker picks the catalog cause whose sign matches and has the most evidence; skeptic accepts unless the sign mismatches; narrator fills a template). Structured outputs via pydantic. Every node emits TraceEvent to an asyncio queue and to `traces/`. `make run SITE=…` prints the narration and writes the trace. Tests with LLM=fallback on Canton, Newport, Swannanoa. Then run all 8 with LLM=gemini and summarize in `docs/m2_results.md`.
+> Read CLAUDE.md, plan §4 "Agents", playbook A. Build `driftwatch/agents/`: LangGraph `StateGraph` with nodes triage → evidence_collector → hypothesis_ranker → skeptic → narrator, conditional edges exactly as plan §4 (skeptic objection loops to ranker at most twice; triage on a healthy gauge goes straight to narrator). Tools in `tools.py` are pure Python over the Report + snapshot: `channel_geometry_trend(site, before, after)` (width, area, mean depth = area/width, velocity; before vs after the first shift), `field_notes(site, since)`, `flood_context(site)` (max discharge measured between the last in-period and first post-shift measurement; also the dataset's peak-of-record if it falls there), `site_metadata(site)`. LLM clients in `llm.py`: `gemini` (langchain-google-vertexai), `openrouter` (langchain-openai with base_url), `fallback` (rule-based: ranker picks the catalog cause whose sign matches and has the most evidence; skeptic accepts unless the sign mismatches; narrator fills a template). Structured outputs via pydantic. Every node emits TraceEvent to an asyncio queue and to `traces/`. `make run SITE=…` prints the narration and writes the trace. Tests with LLM=fallback on Hepco, Newport, Swannanoa. Then run all 8 with LLM=gemini and summarize in `docs/m2_results.md`.
 - **Human meanwhile:** write `docs/pitch.md` (3-minute script from plan §2) and start `docs/devpost.md`. Read the first Gemini narrations and fix tone in `prompts/` (utility-manager voice, no jargon, name the evidence).
 - Codex review #2 at the end: *"Find places where an LLM output can crash the graph or where the fallback diverges from the LLM path."*
 
 ### 1:00–3:30 · M3 console (Claude Code, worktree `ui`)
 Paste:
-> Read plan §4 "UI". Build `driftwatch/api/app.py` (FastAPI): GET /gauges (band, score, name), GET /report/{site}, POST /run/{site} streaming TraceEvents as SSE, GET /trace/{id}, GET /replay/{id} (SSE at human pace), GET /registry (from modules/specs/*.yaml), static `console.html` at /. The page: left gauge list with band colors; center Plotly stage–discharge scatter (reference vs post-shift colored, base curve drawn) above a residual timeline with Helene (2024-09-27) and detected shift times as vertical lines; right a 5-box agent graph that highlights the running node plus a streaming log; bottom the finding card with the score arithmetic. Registry tab renders the YAML specs as cards (1 live, 7 specified). Vanilla JS, one file, phone-usable. `make serve`. Then run Canton end to end and screenshot.
+> Read plan §4 "UI". Build `driftwatch/api/app.py` (FastAPI): GET /gauges (band, score, name), GET /report/{site}, POST /run/{site} streaming TraceEvents as SSE, GET /trace/{id}, GET /replay/{id} (SSE at human pace), GET /registry (from modules/specs/*.yaml), static `console.html` at /. The page: left gauge list with band colors; center Plotly stage–discharge scatter (reference vs post-shift colored, base curve drawn) above a residual timeline with Helene (2024-09-27) and detected shift times as vertical lines; right a 5-box agent graph that highlights the running node plus a streaming log; bottom the finding card with the score arithmetic. Registry tab renders the YAML specs as cards (1 live, 7 specified). Vanilla JS, one file, phone-usable. `make serve`. Then run Hepco end to end and screenshot.
 - **Human meanwhile:** watch the first run on the page and note every moment that would confuse a judge; those become the prompt edits.
 
 ### 3:30–4:00 · Informer spike (human + Claude Code with the Informer plugin)
@@ -109,7 +101,7 @@ Paste:
 
 ### 8:00–10:30 · freeze, write, record, submit
 - 8:00 **freeze core/ and agents/**. Claude chat (this one): tighten README, DevPost text, slide text from `docs/pitch.md`.
-- 9:00 record the video in one take: 20 s problem, 70 s Canton run, 20 s Swannanoa quiet, 10 s registry and evals. Screenshots. Submit DevPost by 10:30.
+- 9:00 record the video in one take: 20 s problem, 70 s Hepco run, 20 s Swannanoa quiet, 10 s registry and evals. Screenshots. Submit DevPost by 10:30.
 - Launch Pi job #2 (section F). Stop at 11.
 
 ## F. Orange Pi job #2 — Sat night, unattended (docs only)
@@ -120,7 +112,7 @@ Branch `pi/docs`. Prompt:
 Merge `pi/docs` if `make test` and `make evals` are green; otherwise merge only the README. Final DevPost edits. Done by 8:30. Judging runs from snapshot mode with Cloud Run as the URL; keep `make serve` running locally as the backup.
 
 ## H. Human-only jobs (things agents should not do)
-- Decide the hero gauge after seeing M1 numbers (Canton vs Newport).
+- Decide the hero gauge after seeing M1 numbers (Hepco vs Newport).
 - Approve every narration's tone before it goes in the video.
 - Judge the Informer go/no-go at 4:00 pm sharp.
 - Keep `docs/decision_log.md` honest: every cut from the cut order gets a dated line.

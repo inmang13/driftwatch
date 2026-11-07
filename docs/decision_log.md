@@ -8,3 +8,4 @@
   - `requires-python >=3.11` (laptop venv is 3.13; stack targets 3.11). Agents/API deps installed via `make install` extras.
   - `field-measurements` row counts include both stage (00065) and discharge (00060) rows; pairing comes later.
   - **Site-name mismatch found in the API metadata:** 03459500 is "PIGEON RIVER NEAR HEPCO, NC" (Canton is 03456500), and 03463300 is "SOUTH TOE RIVER NEAR CELO, NC" (not North Toe at Altapass). Site IDs left as-is pending Grace's call.
+- 2026-11-06 23:05: Site names corrected everywhere (plan, playbook, prompts): 03459500 = Pigeon River near Hepco (not Canton); 03463300 = South Toe River near Celo (not North Toe at Altapass). Site IDs kept — the Friday-night drift numbers were computed for these IDs. docs/prompts/pi_job1.md + launch_job1.sh written for thoth.

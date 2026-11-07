@@ -26,7 +26,7 @@
 ## 2. Pitch (unchanged from v1 except the method line)
 
 - **Who:** utility/infrastructure managers first; then anyone building predictions or models on gauge data (forecasters, modelers, planners). UI copy is plain English, trust score first, "what should I do" second; the evidence panel carries the hydrographer detail (ft of shift, control condition).
-- **Numbers to say out loud:** every US streamflow number is computed from stage through a rating curve. Helene set 18 provisional flood records in NC and left 40+ gauges needing indirect measurements. Our check: Pigeon River at Canton post-Helene measurements sit 20–38 % below the pre-storm rating; French Broad at Newport TN 33–51 % below. A USGS study of 174 Virginia gauges found the median lag between a shift starting and being entered was ~240–300 days through 2001 and still months after (SIR 2017-5137).
+- **Numbers to say out loud:** every US streamflow number is computed from stage through a rating curve. Helene set 18 provisional flood records in NC and left 40+ gauges needing indirect measurements. Our check: Pigeon River near Hepco post-Helene measurements sit 20–38 % below the pre-storm rating; French Broad at Newport TN 33–51 % below. A USGS study of 174 Virginia gauges found the median lag between a shift starting and being entered was ~240–300 days through 2001 and still months after (SIR 2017-5137).
 - **Differentiation table** (keep in slides):
 
 | What exists | Does | Gap |
@@ -38,15 +38,15 @@
 | Trinnex waterCAST, Innovyze Info360, Xylem Vue | Utility analytics platforms ("glass-box AI") | Platforms, not a drift primitive — DriftWatch is the module they'd plug in |
 
 - **One-liner:** *Rating-curve tools find the shift if an expert is looking. ML-ops tools watch models, not meters. DriftWatch watches any engineered relationship, explains the drift in plain English, and gives a trust score anyone can act on.*
-- **3-minute pitch:** hook (gauge wrong by a third) → generalize (every utility runs on unwatched calibrations) → live demo Canton then Swannanoa → engine + registry → eval table → next step (meter under-registration with a utility partner).
+- **3-minute pitch:** hook (gauge wrong by a third) → generalize (every utility runs on unwatched calibrations) → live demo Hepco then Swannanoa → engine + registry → eval table → next step (meter under-registration with a utility partner).
 
 ## 3. Data (verified Fri night; details in v1 archived below)
 
-Sites: **03459500 Pigeon R at Canton** (hero, −32 %, "Scour control changed"), **03455000 French Broad at Newport TN** (hero #2, −43 %, "Fill control changed"), 03446000 Mills R (−11 %, Watch), 03451500 French Broad at Asheville (check), **03451000 Swannanoa at Biltmore** (control), **03463300 North Toe at Altapass** (control), 03479000 Watauga (control), **02085000 Eno at Hillsborough** (Durham-local control).
+Sites: **03459500 Pigeon R nr Hepco** (hero, −32 %, "Scour control changed"), **03455000 French Broad at Newport TN** (hero #2, −43 %, "Fill control changed"), 03446000 Mills R (−11 %, Watch), 03451500 French Broad at Asheville (check), **03451000 Swannanoa at Biltmore** (control), **03463300 South Toe at Celo** (control), 03479000 Watauga (control), **02085000 Eno at Hillsborough** (Durham-local control).
 
 Rules carried over from the course reviewer: pair each discharge with the `reading_type='MeanGageHeight'` stage row on (`field_visit_id`,`time`); never use channel area/velocity as predictors (Q=A·V leakage) — evidence only; report stage shift in **ft** for the evidence panel and **%** flow error for the trust score; keep `b`,`e` fixed from the base rating and let `a` slide; exclude Sept 27 2024 flood-peak measurements (Poor, indirect) from the test, plot them as context; `time` is UTC.
 
-Sign convention (encode + explain in UI): scour → residual positive; fill/aggradation → negative; debris/vegetation → negative, usually transient; datum change or gauge rebuild → a step of either sign with no channel evidence. **Canton's note (scour) disagrees with its sign (negative): either a rebuild/datum story or an artifact of my quick fit — re-check with proper pairing before pitching it; Newport is the safe hero.**
+Sign convention (encode + explain in UI): scour → residual positive; fill/aggradation → negative; debris/vegetation → negative, usually transient; datum change or gauge rebuild → a step of either sign with no channel evidence. **Hepco's note (scour) disagrees with its sign (negative): either a rebuild/datum story or an artifact of my quick fit — re-check with proper pairing before pitching it; Newport is the safe hero.**
 
 ## 4. Architecture
 
@@ -86,7 +86,7 @@ docs/           plan.md · agent_playbook.md · decision_log.md · pitch.md · d
 | Claude chat (this) | Pitch coaching, DevPost copy, prompt review, decisions. |
 
 ## 6. Eval suite
-`evals/cases.yaml`: Canton → Stale, cause ∈ {fill, datum/rebuild}, skeptic raises sign/notes mismatch · Newport → Stale, fill, cites "Fill control changed" · Mills → Watch · Swannanoa, North Toe, Eno → Trusted, no invented cause · synthetic +25 % step injected into Eno at 2025-07-01 → fires, scour on top · replay determinism. Report pass/fail + tokens + wall time. Doubles as IDS 706 Part 3 evidence.
+`evals/cases.yaml`: Hepco → Stale, cause ∈ {fill, datum/rebuild}, skeptic raises sign/notes mismatch · Newport → Stale, fill, cites "Fill control changed" · Mills → Watch · Swannanoa, South Toe, Eno → Trusted, no invented cause · synthetic +25 % step injected into Eno at 2025-07-01 → fires, scour on top · replay determinism. Report pass/fail + tokens + wall time. Doubles as IDS 706 Part 3 evidence.
 
 ## 7. Schedule (ET) — sized to 8 am–11 pm
 
@@ -94,8 +94,8 @@ docs/           plan.md · agent_playbook.md · decision_log.md · pitch.md · d
 |---|---|---|---|
 | **Fri 10–11 pm** | 1 | Create repo (`driftwatch`, public), drop in `CLAUDE.md` + this plan + playbook; Claude Code: scaffold + `usgs.py` fetch + commit `data/snapshot/` for the 8 sites; Orange Pi prep (~10 min: clone, venv, `make install`; Claude Code and the push key are already on the box); launch Pi job #1 at ~11 pm. | **M0:** snapshot committed, Pi running. |
 | Fri night (Pi) | — | Job #1: pairing, rating fit, segmentation, trust score, CLI, tests, `report.json` for 8 sites. Pushes `pi/m1` (no PR; Grace opens it). | — |
-| **Sat 8–9:30** | 1.5 | Review Pi PR: run tests, check Canton/Newport fire and controls stay quiet, fix with Claude Code. Codex review #1. | **M1** |
-| **Sat 9:30–1:00** | 3.5 | Agents: graph, tools, prompts, fallbacks, trace. Gemini + OpenRouter wired. Run all 8 sites. (If the Informer tenant lands during this block, do the 30-min spike at the next natural break.) | **M2:** 8 traces, Canton/Newport fire, controls quiet. |
+| **Sat 8–9:30** | 1.5 | Review Pi PR: run tests, check Hepco/Newport fire and controls stay quiet, fix with Claude Code. Codex review #1. | **M1** |
+| **Sat 9:30–1:00** | 3.5 | Agents: graph, tools, prompts, fallbacks, trace. Gemini + OpenRouter wired. Run all 8 sites. (If the Informer tenant lands during this block, do the 30-min spike at the next natural break.) | **M2:** 8 traces, Hepco/Newport fire, controls quiet. |
 | **Sat 1:00–3:30** | 2.5 | FastAPI SSE + `console.html` (scatter, residual timeline, glowing graph, log, finding card). | **M3:** full live demo locally. |
 | **Sat 3:30–4:00** | 0.5 | Informer spike: CLI login, plugin, hello app with a server route fetching Cloud Run. Go/no-go. | — |
 | **Sat 4:00–6:30** | 2.5 | Go: Informer app — gauge list + finding cards + run history + registry tab, live console embedded/linked; `inf deploy`. No-go: polish console, add registry tab there. | **M4:** product UI at a real URL. |
@@ -114,7 +114,7 @@ docs/           plan.md · agent_playbook.md · decision_log.md · pitch.md · d
 | Pi job #1 produces something wrong overnight | Spec is tight (§4 + playbook); tests + fixture gauges gate it; worst case Claude Code rebuilds M1 in 2 h Saturday morning — still inside the schedule. |
 | Informer tenant arrives late or sandbox can't reach Cloud Run | Console page exists by 3:30 pm regardless; Informer is additive. |
 | Gemini/OpenRouter outage in judging | Replay traces; deterministic fallbacks. |
-| Canton puzzle is an artifact | Newport is the hero; Canton becomes a second example. |
+| Hepco puzzle is an artifact | Newport is the hero; Hepco becomes a second example. |
 | Hydrology judge | Lead with the Virginia lag stat; name Darienzo/ShiftHappens as the lineage; never say USGS flows are wrong — say latency and everything that isn't a gauge. |
 | Rate limits on Claude Code during the Pi job | Job runs at low intensity (one task at a time, tests between); if quota hits, it stops cleanly with the branch pushed. |
 
@@ -126,11 +126,11 @@ Name · tagline ("Drift monitoring for the relationships water systems run on") 
 ## Archive — v1 data table (Fri night check)
 | Gauge | Post-Helene n | Median residual | Field note |
 |---|---|---|---|
-| 03459500 Pigeon R at Canton | 18 | −32 % | Scour control changed (Dec 2024) |
+| 03459500 Pigeon R nr Hepco | 18 | −32 % | Scour control changed (Dec 2024) |
 | 03455000 French Broad at Newport TN | 17 | −43 % | Fill control changed (Oct 2024) |
 | 03446000 Mills R nr Mills River | 17 | −11 % | Debris – Moderate |
 | 03451500 French Broad at Asheville | 16 | +32 % (first visits ≈ 0) | — |
 | 03451000 Swannanoa R at Biltmore | 12 | +9 % | Clear |
-| 03463300 N Toe R at Altapass | 11 | +1 % | Debris – Light |
+| 03463300 South Toe R nr Celo | 11 | +1 % | Debris – Light |
 | 03479000 Watauga R nr Sugar Grove | 13 | +4 % | Vegetation – Heavy |
 Method: power-law fit on 2012 → Sept 2024, residual = (Q_meas − Q_curve)/Q_curve. Endpoint: `https://api.waterdata.usgs.gov/ogcapi/v0/collections/field-measurements/items?f=json&monitoring_location_id=USGS-<site>`.
