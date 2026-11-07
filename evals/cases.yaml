@@ -84,8 +84,9 @@ cases:
       change point (no shift at 2025-07 even with the gate off). The search splits Eno's
       2022 blip instead. Gauge stays Trusted.
     expect:
-      # a positive shift > the gate, starting at or after the injected date, within 120 days
-      shift_fires: {direction: positive, at: "2025-07-01", within_days: 120}
+      # a positive shift > the gate, dated on or after the injected date and at or before the
+      # 2nd searched gauging on or after it
+      shift_fires: {direction: positive, at: "2025-07-01", by_gauging: 2}
 
   - id: eno_slope
     name: Eno + synthetic -1.5 %/yr slope - trend fires, no step
@@ -132,5 +133,6 @@ cases:
       only about +8 %, inside normal scatter; the search starts the new segment at the next
       gauging. Swannanoa is gauged every few months, so 120 days is tighter than its gaps.
     expect:
-      # a positive shift > the gate, starting at or after the injected date, within 120 days
-      shift_fires: {direction: positive, at: "2025-01-01", within_days: 120}
+      # a positive shift > the gate, dated on or after the injected date and at or before the
+      # 2nd searched gauging on or after it
+      shift_fires: {direction: positive, at: "2025-01-01", by_gauging: 2}

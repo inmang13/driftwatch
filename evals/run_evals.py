@@ -17,7 +17,7 @@ import platform
 import sys
 import tempfile
 import time
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -37,9 +37,11 @@ OUT = REPO / "docs" / "eval_report.md"
 NOT_RUN = "[run on laptop]"
 HOW_BUILT = """## How the synthetic cases are built
 
-- **Step:** every Eno gauging on or after 2025-07-01 has its discharge multiplied by 1.25. The
-  check accepts a positive shift dated 2025-07-01 .. +120 days. (Eno's reference window ends
-  2025-07-06; no searched gauging falls between the two dates, so none of the step is in the fit.)
+- **Steps (Eno, Swannanoa):** every gauging on or after the step date (Eno 2025-07-01,
+  Swannanoa 2025-01-01) has its discharge multiplied by 1.25. The check accepts a positive
+  shift dated on or after the step date and at or before the 2nd searched gauging on or after
+  it. (Eno's reference window ends 2025-07-06; no searched gauging falls between the two dates,
+  so none of its step is in the fit. Swannanoa's window ends 2024-09-25, before its step.)
 - **Slope:** every Eno gauging from the reference start (2015-01-01) on has its discharge
   multiplied by 1 - 0.015 x years since then. It adds to Eno's own slope (-0.95 %/yr, not
   significant on the real data).
@@ -69,7 +71,7 @@ def post_reference_shifts(rep):
     return [s for s in rep.drift.shifts if s.time.date() > rep.reference_end]
 
 
-def check_report(rep, exp: dict, c: Check) -> None:
+def check_report(rep, exp: dict, c: Check, ds=None) -> None:
     if "band" in exp:
         c.that(rep.trust.band == exp["band"], f"band {rep.trust.band} (want {exp['band']})")
     if "post_reference_shifts" in exp:
@@ -93,11 +95,22 @@ def check_report(rep, exp: dict, c: Check) -> None:
     if "shift_fires" in exp:
         f = exp["shift_fires"]
         at = date.fromisoformat(f["at"])
+        # deadline: the Nth gauging on or after the step date, in the searched series (the one
+        # shifts are dated on), so the window follows how often the gauge is visited
+        k = f["by_gauging"]
+        after = [
+            m.time
+            for m in segmentation.search_measurements(ds, rep.relationship)
+            if m.time.date() >= at
+        ]
+        if len(after) < k:
+            c.that(False, f"only {len(after)} gauging(s) on or after {at}; need {k}")
+            return
+        deadline = after[k - 1]
         hits = [
             s
             for s in rep.drift.shifts
-            if s.direction == f["direction"]
-            and at <= s.time.date() <= at + timedelta(days=f["within_days"])
+            if s.direction == f["direction"] and at <= s.time.date() and s.time <= deadline
         ]
         if hits:
             s = hits[0]
@@ -249,7 +262,7 @@ async def run_case(case: dict, mode: str, tmp: Path) -> tuple[Check, float]:
             check_report(rc_report.build_report(case["site"], with_trend=True), exp, c)
         elif kind == "synthetic":
             ds = synthetic_dataset(case["site"], case["modify"])
-            check_report(rc_report.build_report(case["site"], ds=ds, with_trend=True), exp, c)
+            check_report(rc_report.build_report(case["site"], ds=ds, with_trend=True), exp, c, ds)
         elif kind == "replay":
             await check_replay(case["site"], c, tmp)
         else:
@@ -307,7 +320,7 @@ async def main_async(extra_modes: list[str]) -> int:
         ),
         "",
         (
-            "Cases 4 and 9-12 never call an LLM (deterministic report, synthetic data, replay), so "
+            "Cases 4 and 9-13 never call an LLM (deterministic report, synthetic data, replay), so "
             "their result is the same in every column. The LLM=gemini column is filled by "
             "`make evals LLM=gemini` on the laptop (needs the Vertex credentials)."
         ),
