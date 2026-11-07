@@ -370,3 +370,26 @@ def test_auto_and_fixed_agree_on_band_and_shift_date(site, band):
     top_f = report.top_shift(fixed.reference_end, fixed.drift)
     top_a = report.top_shift(auto.reference_end, auto.drift)
     assert (top_f and top_f.time) == (top_a and top_a.time)
+
+
+def _stored(site):
+    data = json.loads((cli.REPORTS_DIR / f"{site}.json").read_text(encoding="utf-8"))
+    return Report.model_validate(data)
+
+
+def test_stored_mills_report_has_a_significant_downward_trend():
+    rep = _stored("03446000")
+    assert rep.trend is not None and rep.trend.significant
+    assert "lower" in rep.trend.text
+    assert rep.trend_note and "not a test on new data" in rep.trend_note
+
+
+def test_stored_hepco_report_has_no_trend():
+    """Under 3 years since the Helene shift: trend.fit_trend declines to claim one."""
+    rep = _stored("03459500")
+    assert rep.trend is None and rep.trend_note is None
+
+
+def test_build_report_skips_the_trend_by_default(reports):
+    for rep in reports.values():
+        assert rep.trend is None and rep.trend_note is None

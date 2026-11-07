@@ -1,7 +1,7 @@
 {
   "site": "02085000",
   "site_name": "ENO RIVER AT HILLSBOROUGH, NC",
-  "generated_at": "2026-11-07T19:18:37.050501Z",
+  "generated_at": "2026-11-07T22:13:07.362225Z",
   "source": "snapshot",
   "relationship": {
     "kind": "power_law",
@@ -88,5 +88,18 @@
   "reference_note": null,
   "holdout_n": 8,
   "holdout_start": "2025-09-16T17:22:06Z",
-  "holdout_end": "2026-10-15T16:24:27Z"
+  "holdout_end": "2026-10-15T16:24:27Z",
+  "trend": {
+    "slope_pct_per_year": -0.949,
+    "ci_low": -1.662,
+    "ci_high": -0.098,
+    "p_value": 0.01175,
+    "n": 78,
+    "span_years": 11.62,
+    "significant": false,
+    "window_start": "2015-03-04T19:54:00Z",
+    "window_end": "2026-10-15T16:24:27Z",
+    "text": "Readings show no clear drift up or down since 2015 (78 measurements)."
+  },
+  "trend_note": "Most of this window is the period the curve was fitted on, so this is a slow slide worth watching, not a test on new data."
 }

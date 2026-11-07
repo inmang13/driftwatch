@@ -1,7 +1,7 @@
 {
   "site": "03479000",
   "site_name": "WATAUGA RIVER NEAR SUGAR GROVE, NC",
-  "generated_at": "2026-11-07T19:18:36.047411Z",
+  "generated_at": "2026-11-07T22:12:55.376099Z",
   "source": "snapshot",
   "relationship": {
     "kind": "power_law",
@@ -88,5 +88,18 @@
   "reference_note": null,
   "holdout_n": 10,
   "holdout_start": "2025-02-05T15:03:25Z",
-  "holdout_end": "2026-10-14T15:41:36Z"
+  "holdout_end": "2026-10-14T15:41:36Z",
+  "trend": {
+    "slope_pct_per_year": -0.205,
+    "ci_low": -0.683,
+    "ci_high": 0.2,
+    "p_value": 0.1696,
+    "n": 104,
+    "span_years": 14.73,
+    "significant": false,
+    "window_start": "2012-01-19T19:30:30Z",
+    "window_end": "2026-10-14T15:41:36Z",
+    "text": "Readings show no clear drift up or down since 2012 (104 measurements)."
+  },
+  "trend_note": "Most of this window is the period the curve was fitted on, so this is a slow slide worth watching, not a test on new data."
 }

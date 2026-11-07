@@ -1,7 +1,7 @@
 {
   "site": "03459500",
   "site_name": "PIGEON RIVER NEAR HEPCO, NC",
-  "generated_at": "2026-11-07T19:18:20.144142Z",
+  "generated_at": "2026-11-07T22:11:07.561108Z",
   "source": "snapshot",
   "relationship": {
     "kind": "power_law",
@@ -118,5 +118,7 @@
   "reference_note": null,
   "holdout_n": 12,
   "holdout_start": "2024-12-17T18:18:38Z",
-  "holdout_end": "2026-08-07T16:06:09Z"
+  "holdout_end": "2026-08-07T16:06:09Z",
+  "trend": null,
+  "trend_note": null
 }

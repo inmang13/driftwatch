@@ -21,11 +21,12 @@ from __future__ import annotations
 from datetime import datetime
 
 import numpy as np
-from pydantic import BaseModel
 from scipy.stats import norm
 
-from driftwatch.core.schemas import Dataset, DriftResult, Relationship
+from driftwatch.core.schemas import Dataset, DriftResult, Relationship, TrendResult
 from driftwatch.modules.rating_curve import rating, segmentation
+
+__all__ = ["TrendResult", "fit_trend", "mann_kendall_p", "site_trend", "trend_measurements"]
 
 MIN_N = 12
 MIN_SPAN_YEARS = 3.0
@@ -35,19 +36,6 @@ ALPHA = 0.01
 MIN_SLOPE_PCT_PER_YEAR = 0.75
 DAYS_PER_YEAR = 365.25
 _BATCH = 100  # bootstrap resamples per vectorized batch (memory: _BATCH x n(n-1)/2 floats)
-
-
-class TrendResult(BaseModel):
-    slope_pct_per_year: float
-    ci_low: float
-    ci_high: float
-    p_value: float
-    n: int
-    span_years: float
-    significant: bool
-    window_start: datetime
-    window_end: datetime
-    text: str
 
 
 def _weighted_median_rows(x: np.ndarray, w: np.ndarray) -> np.ndarray:

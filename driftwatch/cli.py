@@ -1,6 +1,6 @@
 """DriftWatch command line. `python -m driftwatch.cli report --site 03459500`.
 
-Writes reports/<site>.json (Report schema) and prints one line per site.
+Writes reports/<site>.json (Report schema, with the slow-drift trend) and prints one line per site.
 """
 
 from __future__ import annotations
@@ -88,7 +88,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
     for site in args.site or SITES:
-        rep = rc_report.build_report(site, args.source)
+        rep = rc_report.build_report(site, args.source, with_trend=True)
         write_report(rep, args.out)
         print(rc_report.summary_line(rep))
     return 0
