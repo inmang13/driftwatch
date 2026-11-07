@@ -36,7 +36,7 @@ class TrustInputs:
     days_since_last: float | None  # None = never measured
     recent_rated: Sequence[str]
     field_flags: Sequence[tuple[str, float]] = field(default_factory=list)  # (note, points)
-    n_last_year: int = 0
+    n_last_year: int = 0  # every field measurement, including Helene-excluded flood gaugings
 
 
 def residual_deduction(recent: Sequence[float], normal: float) -> Deduction:
@@ -105,7 +105,7 @@ def data_deduction(n_last_year: int) -> Deduction:
     return Deduction(
         name="insufficient_data",
         points=round(pts, 1),
-        reason=f"{n_last_year} usable measurements in the last 12 months; "
+        reason=f"{n_last_year} field measurements in the last 12 months; "
         f"{DATA_TARGET_PER_YEAR} or more costs nothing, each one short costs "
         f"{DATA_POINTS_PER_MISSING:g}.",
     )
