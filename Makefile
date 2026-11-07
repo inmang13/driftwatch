@@ -33,8 +33,9 @@ report:
 run:
 	$(PY) -m driftwatch.cli run --site $(SITE) --llm=$(LLM)
 
+# Console at http://localhost:8000/ . LLM for POST /run comes from .env / the shell.
 serve:
-	@echo not yet: make serve
+	$(PY) -m uvicorn driftwatch.api.app:app --host 127.0.0.1 --port 8000
 
 test:
 	$(PY) -m pytest -q
