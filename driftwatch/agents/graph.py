@@ -210,7 +210,7 @@ def build_graph(rec: TraceRecorder):
                     llm.prompt("skeptic"),
                     llm.prompt(
                         "skeptic_input",
-                        facts=_dump(_ranker_view(facts)),
+                        facts=_dump(_ranker_view(facts, channel=False)),
                         channel=_dump(facts.get("channel_geometry")),
                         ranking=_dump(ranking.model_dump()),
                         signature=fallbacks.channel_signature(facts.get("channel_geometry")),
@@ -310,9 +310,13 @@ def build_graph(rec: TraceRecorder):
     return g.compile()
 
 
-def _ranker_view(facts: dict[str, Any]) -> dict[str, Any]:
-    """Facts for the prompt, minus the per-visit list (notes are summarized)."""
+def _ranker_view(facts: dict[str, Any], channel: bool = False) -> dict[str, Any]:
+    """Facts for a prompt, minus the per-visit list (notes are summarized). Channel geometry is
+    left out unless asked for: it is the skeptic's independent cross-check, so the ranker
+    (LLM or rules) reasons from the residual, notes, flood and site facts only."""
     v = dict(facts)
+    if not channel:
+        v.pop("channel_geometry", None)
     if "field_notes" in v:
         fn = dict(v["field_notes"])
         fn["visits"] = [x for x in fn["visits"] if x["note"] and x["note"].lower() != "clear"]

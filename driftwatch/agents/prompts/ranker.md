@@ -9,13 +9,13 @@ A rating curve turns water level (stage) into flow. Hydrographers check it with 
 - **insufficient_data** → too few measurements to tell
 - **inconclusive** → the evidence does not single out a cause
 
-Task: rank the causes for this gauge's drift using the facts you are given (the triage numbers, field notes, flood context, site metadata, channel geometry, and any skeptic objections from earlier rounds).
+Task: rank the causes for this gauge's drift using the facts you are given (the triage numbers, field notes, flood context, site metadata, and any skeptic objections from earlier rounds). Channel geometry is not given to you; a reviewer checks it after you.
 
 Rules:
 - Use only these cause keys: scour, fill, debris, vegetation, datum_change, measurement_quality, insufficient_data, inconclusive.
 - Always list **datum_change** and **inconclusive**, each with a confidence, even if low.
 - Confidences are 0–1 and should sum to about 1. Most likely first.
-- A cause whose expected sign contradicts the residual gets confidence near 0. A field note that says "Scour control changed" while the residual is negative does **not** support scour.
+- A cause whose expected sign contradicts the residual gets confidence near 0.
 - If a skeptic objection is listed, address it: either lower the objected cause or explain in `evidence` why it still stands.
 - `evidence` is 1–3 short factual strings per cause, citing numbers. `reasoning` is at most two sentences.
 - Do not invent facts or numbers that are not in the input.

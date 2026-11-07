@@ -59,7 +59,7 @@ def _gemini():
         project=_env("GOOGLE_CLOUD_PROJECT"),
         location=_env("GOOGLE_CLOUD_LOCATION", "global"),
         temperature=0,
-        max_retries=1,
+        max_retries=3,  # Vertex returns 429 under burst load; retries back off
     )
     return chat, f"vertex:{model}"
 
