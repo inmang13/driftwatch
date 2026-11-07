@@ -128,3 +128,9 @@ def test_run_streams_fallback_to_completion(client, tmp_path, monkeypatch):
 def test_console_served(client):
     r = client.get("/")
     assert r.status_code == 200 and "DriftWatch" in r.text
+
+
+def test_error_paths(client):
+    assert client.post("/run/99999999").status_code == 404
+    assert client.get("/replay/not-a-trace").status_code == 400
+    assert client.get("/replay/99999999").status_code == 404

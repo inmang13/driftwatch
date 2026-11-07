@@ -154,11 +154,11 @@ table.score td.pts { text-align: right; font-variant-numeric: tabular-nums; whit
       <div class="arrow">▼</div>
       <div class="node" data-node="evidence_collector">Evidence collector <small>tools</small></div>
       <div class="arrow">▼</div>
-      <div class="node" data-node="hypothesis_ranker">Hypothesis ranker <small id="rank-round">Gemini</small></div>
+      <div class="node" data-node="hypothesis_ranker">Hypothesis ranker <small id="rank-round">LLM</small></div>
       <div class="arrow">▼ ▲ objection loops back</div>
       <div class="node" data-node="skeptic">Skeptic <small>second model</small></div>
       <div class="arrow">▼</div>
-      <div class="node" data-node="narrator">Narrator <small>Gemini</small></div>
+      <div class="node" data-node="narrator">Narrator <small class="llm-name">LLM</small></div>
     </div>
     <h2>Log</h2>
     <div id="log"></div>
@@ -332,7 +332,7 @@ const vlabel = (x, text, side) => ({ x, xref: "x", yref: "paper", y: 1, yanchor:
 /* ---------- agent graph + log ---------- */
 function resetGraph() {
   document.querySelectorAll(".node").forEach((n) => n.className = "node");
-  $("rank-round").textContent = "Gemini";
+  $("rank-round").textContent = "LLM";
 }
 function setNode(node, cls) {
   const el = document.querySelector(`.node[data-node="${node}"]`);
@@ -422,6 +422,8 @@ async function stream(path, method, label) {
     await streamSSE(path, method, (ev, data) => {
       if (ev === "meta") {
         meta = data;
+        document.querySelectorAll(".llm-name").forEach((n) => n.textContent = data.llm);
+        $("rank-round").textContent = data.llm;
         const l = data.replay ? `replay of ${fmtTime(data.started_at)} · ${data.llm}` : `live run · ${data.llm}`;
         $("run-label").textContent = l; $("run-label").className = "label" + (data.replay ? " replay" : "");
       } else if (ev === "trace") onTrace(data);
@@ -453,9 +455,8 @@ function renderCard(f, label) {
     <dd><span class="status corroborated">None needed.</span> The rating still fits; triage sent this gauge straight to the narrator.</dd></dl>`;
   else if (f.cause_status === "disagreement") {
     const d = f.disagreement;
-    causeHTML = `<dl class="rows">
-      <dt>Status</dt><dd><span class="status disagreement">Disagreement</span> — the team would not overrule the hydrographer without proof.</dd>
-      <dt>Best guess</dt><dd>${esc(cause(d.best_guess.cause))} · confidence ${num(d.best_guess.confidence, 2)} (uncertain)</dd>
+    causeHTML = `<p><span class="status disagreement">Disagreement</span> — the team would not overrule the hydrographer without proof.</p>
+      <dl class="rows"><dt>Best guess</dt><dd>${esc(cause(d.best_guess.cause))} · confidence ${num(d.best_guess.confidence, 2)} (uncertain)</dd>
       <dt>Field note</dt><dd>“${esc(d.field_note.note)}” · ${esc(d.field_note.date)}</dd>
       <dt>Why they disagree</dt><dd>${esc(d.why_they_disagree)}</dd>
       <dt>Double-check</dt><dd>${esc(d.recommended_check)}</dd></dl>`;
