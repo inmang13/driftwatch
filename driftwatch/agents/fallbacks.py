@@ -28,6 +28,7 @@ from driftwatch.agents.models import (
     Ranking,
     SkepticVerdict,
 )
+from driftwatch.core import trust
 from driftwatch.modules.rating_curve import causes as catalog
 
 # Channel signature thresholds (decision log 2026-11-07, M2). Percent change at the same stage.
@@ -35,6 +36,8 @@ SPEED_MIN_PCT = 15.0  # velocity must move at least this much to count
 SPEED_VS_AREA = 1.5  # ... and by at least this multiple of the area change
 AREA_ONLY_PCT = 15.0  # area moved this much while speed moved < half as much
 
+DATA_TARGET_PER_YEAR = trust.DATA_TARGET_PER_YEAR  # same target as the trust score
+INSUFFICIENT_DATA_POINTS = 2
 PERSISTENT_MIN_AFTER = 4  # a shift with this many measurements since it is a persistent step
 OBJECTION_PENALTY = 3
 SUGGESTION_BONUS = 2
@@ -77,7 +80,7 @@ def channel_signature(ch: dict | None) -> str:
 
 
 def _sign_ok(key: str, direction: str) -> bool:
-    if key == "inconclusive":
+    if key in ("inconclusive", "insufficient_data"):  # no expected sign; never ruled out by it
         return True
     return catalog.sign_agrees(catalog.get_cause(key), direction)
 
@@ -143,6 +146,16 @@ def rank(facts: dict[str, Any], objections: list[dict] | None = None) -> Ranking
     if rated and rough * 2 > len(rated):
         add(
             "measurement_quality", 1, f"{rough} of {len(rated)} recent measurements rated Poor/Fair"
+        )
+    n_year = t.get("n_visits_last_12_months")
+    if n_year is not None and n_year < DATA_TARGET_PER_YEAR:
+        score["insufficient_data"] = score.get("insufficient_data", 0)
+        why.setdefault("insufficient_data", [])
+        add(
+            "insufficient_data",
+            INSUFFICIENT_DATA_POINTS,
+            f"only {n_year} field measurements in the last 12 months (target "
+            f"{DATA_TARGET_PER_YEAR})",
         )
     if t.get("m1_cause") in score:
         add(t["m1_cause"], 1, "the M1 rule-based triage named it")

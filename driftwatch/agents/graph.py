@@ -92,6 +92,11 @@ def triage_facts(site: str) -> dict[str, Any]:
         "direction_phrase": "above the rating" if med > 0 else "below the rating",
         "published_flows": "too low" if med > 0 else "too high",
         "off_by_pct": round(abs(med), 1),
+        "days_since_last_visit": (
+            round(inputs.days_since_last) if inputs.days_since_last is not None else None
+        ),
+        "n_visits_last_12_months": inputs.n_last_year,
+        "latest_control_note": _latest_note(ds),
         "recent_rated": list(inputs.recent_rated),
         "top_shift": top.model_dump(mode="json") if top else None,
         "reference_window": [
@@ -101,6 +106,11 @@ def triage_facts(site: str) -> dict[str, Any]:
         "m1_cause": rep.likely_cause,
         "m1_why": rep.narrative,
     }
+
+
+def _latest_note(ds) -> str | None:
+    visits = rc_report.visits_since_reference(ds)
+    return (visits[-1].control_condition or None) if visits else None
 
 
 def collect_evidence(site: str, triage: dict[str, Any]) -> dict[str, Any]:

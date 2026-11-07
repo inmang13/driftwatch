@@ -266,3 +266,13 @@ def test_missing_credentials_degrade_to_rules_with_a_warning(monkeypatch, tmp_pa
     warns = [e.payload.get("warning") for e in replay(out["trace_path"]) if e.status == "completed"]
     assert any(w and "GOOGLE_CLOUD_PROJECT is not set" in w for w in warns)
     assert out["final"]["cause"] != "scour"
+
+
+def test_fallback_ranker_scores_insufficient_data_with_few_visits():
+    facts = {"triage": graph.triage_facts(HEPCO)}
+    facts.update(graph.collect_evidence(HEPCO, facts["triage"]))
+    assert "insufficient_data" not in {h.cause for h in fallbacks.rank(facts).hypotheses}
+    facts["triage"] = {**facts["triage"], "n_visits_last_12_months": 2}
+    hyps = {h.cause: h for h in fallbacks.rank(facts).hypotheses}
+    assert hyps["insufficient_data"].confidence > 0
+    assert hyps["insufficient_data"].sign_matches
