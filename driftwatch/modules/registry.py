@@ -56,7 +56,9 @@ def load_spec(path: Path) -> ModuleSpec:
     with path.open(encoding="utf-8") as f:
         data = yaml.safe_load(f)
     if not isinstance(data, dict):
-        raise ValueError(f"{path.name}: expected a mapping at the top level")
+        raise ValueError(  # noqa: TRY004 - bad file content, same error type as the other spec checks
+            f"{path.name}: expected a mapping at the top level"
+        )
     spec = ModuleSpec.model_validate(data)
     if spec.name != path.stem:
         raise ValueError(f"{path.name}: name '{spec.name}' does not match the file name")

@@ -6,115 +6,164 @@
 <title>DriftWatch Console</title>
 <script src="static/plotly.min.js"></script>  <!-- plotly.js 2.35.2, vendored -->
 <style>
+/* Fonts: Archivo + IBM Plex Mono, OFL, vendored in static/fonts (no CDN) */
+@font-face { font-family: "Archivo"; font-weight: 400; font-display: swap;
+  src: url("static/fonts/archivo-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Archivo"; font-weight: 600; font-display: swap;
+  src: url("static/fonts/archivo-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 400; font-display: swap;
+  src: url("static/fonts/ibm-plex-mono-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 500; font-display: swap;
+  src: url("static/fonts/ibm-plex-mono-latin-500-normal.woff2") format("woff2"); }
+
+/* "Subsection" design system tokens (playbook C10) */
 :root {
-  --bg: #f4f5f2; --panel: #ffffff; --ink: #1d2320; --muted: #66706b; --line: #dfe3dd;
-  --accent: #1f5f8b; --ref: #1f5f8b; --post: #d0632a; --between: #9aa39e;
-  --trusted: #2e7d4f; --watch: #b7791f; --stale: #b83a32;
-  --active: #1f5f8b; --done: #2e7d4f;
+  --paper: #ffdebe; --paper-sunk: #f3d6b8; --bed: #e0ba77; --water: #aab6b5; --water-deep: #5f7276;
+  --measured: #50637a; --measured-hover: #3c4d61; --on-measured: #ffdebe;
+  --bank: #92ab62; --bank-deep: #566138; --sky: #d3caba; --signal: #b82610;
+  --ink: #1c1710; --ink-muted: #5c4b33; --ink-label: #645f26; --rule: rgba(28, 23, 16, .38);
+  --grid: rgba(28, 23, 16, .14); --focus: var(--signal);
+  --s1: #1b5f9e; --s2: #c4530f; --s3: #95315c; --s4: #3f8529;
+  --good: #3f6b2a; --watch: #9a6a00; --serious: #b85a0c; --critical: #b82610;
+  --sans: "Archivo", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--ink);
-  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/23px var(--sans); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.mono, .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.lbl, .panel h2 { font: 500 11px/16px var(--mono); text-transform: uppercase; letter-spacing: .08em;
+  color: var(--ink-label); margin: 0 0 8px; }
+small, .small { font-size: 13px; line-height: 20px; }
+.caption { font: 12px/18px var(--mono); color: var(--ink-muted); margin: 4px 0 0; }
+
 header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-  padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
-header h1 { font-size: 18px; margin: 0; letter-spacing: .2px; }
-header h1 span { color: var(--muted); font-weight: 400; font-size: 13px; margin-left: 6px; }
+  padding: 12px 16px; border-bottom: 2px solid var(--ink); }
+header h1 { font: 600 18px/24px var(--sans); margin: 0; }
+header h1 span { font: 12px/18px var(--mono); color: var(--ink-muted); margin-left: 8px; }
 .tabs { display: flex; gap: 4px; margin-left: auto; }
-.tabs button, .btn { border: 1px solid var(--line); background: var(--panel); color: var(--ink);
-  padding: 6px 12px; border-radius: 6px; font: inherit; cursor: pointer; }
-.tabs button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
-.btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
-.btn:disabled { opacity: .5; cursor: default; }
+.tabs button, .btn { border: 1px solid var(--ink); background: var(--paper); color: var(--ink);
+  padding: 4px 12px; border-radius: 2px; font: 500 13px/20px var(--mono); cursor: pointer; }
+.tabs button:hover, .btn:hover { background: var(--paper-sunk); }
+.tabs button.on { background: var(--measured); color: var(--on-measured); border-color: var(--measured); }
+.btn.primary { background: var(--measured); color: var(--on-measured); border-color: var(--measured); }
+.btn.primary:hover { background: var(--measured-hover); }
+.btn:disabled { background: var(--sky); border-color: var(--sky); color: var(--ink-muted); cursor: default; }
+
 main { display: grid; gap: 12px; padding: 12px 16px;
-  grid-template-columns: 240px minmax(0, 1fr) 320px;
+  grid-template-columns: 248px minmax(0, 1fr) 320px;
   grid-template-areas: "gauges plots agents" "card card card"; }
-.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px;
-  min-width: 0; }
-.panel h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted);
-  margin: 0 0 8px; font-weight: 600; }
-#gauges { grid-area: gauges; }
-#plots { grid-area: plots; }
-#agents { grid-area: agents; }
-#card { grid-area: card; }
+.panel { background: var(--paper); border: 2px solid var(--ink); border-radius: 0; padding: 12px; min-width: 0; }
+#gauges { grid-area: gauges; } #plots { grid-area: plots; } #agents { grid-area: agents; } #card { grid-area: card; }
+
+/* status: a colour always carries a word */
+.st-word { font: 500 13px/20px var(--mono); }
+.Trusted { color: var(--good); } .Watch { color: var(--watch); } .Stale { color: var(--critical); }
+.sw { display: inline-block; width: 8px; height: 8px; margin-right: 6px; vertical-align: 1px; }
+.sw.Trusted { background: var(--good); } .sw.Watch { background: var(--watch); } .sw.Stale { background: var(--critical); }
+
 .gauge { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
-  padding: 8px; border: 1px solid transparent; border-radius: 6px; background: none;
+  padding: 8px; border: 0; border-top: 1px solid var(--rule); background: none;
   font: inherit; color: inherit; cursor: pointer; }
-.gauge:hover { background: var(--bg); }
-.gauge.sel { border-color: var(--accent); background: #eef4f8; }
-.gauge .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
-.gauge .nm { flex: 1; min-width: 0; font-size: 13px; }
-.gauge .nm small { display: block; color: var(--muted); font-size: 11px; }
-.gauge .sc { font-variant-numeric: tabular-nums; font-weight: 600; }
-.band { display: inline-block; padding: 1px 8px; border-radius: 10px; color: #fff; font-size: 12px;
-  font-weight: 600; }
-.Trusted { background: var(--trusted); } .Watch { background: var(--watch); }
-.Stale { background: var(--stale); }
-.dot.Trusted { background: var(--trusted); } .dot.Watch { background: var(--watch); }
-.dot.Stale { background: var(--stale); }
+.gauge:first-child { border-top: 0; }
+.gauge:hover { background: var(--paper-sunk); }
+.gauge { border-left: 4px solid transparent; }
+.gauge.sel { background: var(--paper-sunk); border-left-color: var(--measured); }
+.gauge .nm { flex: 1; min-width: 0; font-size: 13px; line-height: 20px; }
+.gauge .nm small { display: block; font: 12px/18px var(--mono); }
+.gauge .sc { font: 500 20px/24px var(--mono); }
+
 #scatter { height: 400px; } #timeline { height: 230px; }
 .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
-.label { color: var(--muted); font-size: 12px; }
-.label.replay { color: var(--accent); font-weight: 600; }
+.toolbar strong { font: 600 18px/24px var(--sans); }
+.label { font: 12px/18px var(--mono); color: var(--ink-muted); }
+.label.replay { color: var(--measured); font-weight: 500; }
+.note { border-left: 2px solid var(--ink); padding: 4px 0 4px 10px; margin: 8px 0; font-size: 13px; line-height: 20px; }
+
+details { border-top: 1px solid var(--rule); margin-top: 12px; padding-top: 8px; }
+summary { cursor: pointer; font: 500 11px/16px var(--mono); text-transform: uppercase;
+  letter-spacing: .08em; color: var(--ink-label); }
+details[open] summary { margin-bottom: 8px; }
+table.data { border-collapse: collapse; width: 100%; font: 12px/18px var(--mono); }
+table.data th { text-align: left; font-weight: 500; color: var(--ink-label); text-transform: uppercase;
+  font-size: 11px; letter-spacing: .08em; border-bottom: 2px solid var(--ink); padding: 4px 6px; }
+table.data td { border-top: 1px solid var(--rule); padding: 4px 6px; font-variant-numeric: tabular-nums; }
+table.data td.r, table.data th.r { text-align: right; }
+.scroll { max-height: 280px; overflow: auto; }
+
 /* agent graph */
-#graph { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
-.node { border: 1.5px solid var(--line); border-radius: 6px; padding: 6px 10px; font-size: 13px;
-  display: flex; justify-content: space-between; align-items: center; transition: all .2s; }
-.node small { color: var(--muted); font-size: 11px; }
-.node.active { border-color: var(--active); background: #e8f1f8;
-  box-shadow: 0 0 0 3px rgba(31, 95, 139, .25); animation: glow 1s ease-in-out infinite alternate; }
-.node.done { border-color: var(--done); }
-.node.done::after { content: "✓"; color: var(--done); font-weight: 700; }
-.node.skipped { opacity: .4; border-style: dashed; }
-@keyframes glow { from { box-shadow: 0 0 0 2px rgba(31,95,139,.2); }
-  to { box-shadow: 0 0 0 6px rgba(31,95,139,.35); } }
-.arrow { text-align: center; color: var(--muted); font-size: 11px; line-height: 1; }
-#log { font: 12px/1.4 ui-monospace, Consolas, monospace; background: #1d2320; color: #e7ece8;
-  border-radius: 6px; padding: 8px; height: 250px; overflow-y: auto; white-space: pre-wrap; }
-#log .n { color: #8fc1e3; } #log .w { color: #f0b46a; }
+#graph { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+.node { border: 1px solid var(--ink); padding: 4px 10px; font-size: 13px; line-height: 20px;
+  display: flex; justify-content: space-between; align-items: center; }
+.node small { font: 12px/18px var(--mono); color: var(--ink-muted); }
+.node.active { background: var(--measured); color: var(--on-measured); border-color: var(--measured); }
+.node.active small { color: var(--on-measured); }
+.node.done { border-width: 2px; padding: 3px 9px; }
+.node.done::after { content: "done"; font: 500 11px/16px var(--mono); text-transform: uppercase; color: var(--good); }
+.node.skipped { border-style: dashed; color: var(--ink-muted); }
+.arrow { text-align: center; color: var(--ink-muted); font: 11px/12px var(--mono); }
+#log { font: 12px/18px var(--mono); background: var(--paper-sunk); color: var(--ink);
+  border: 1px solid var(--rule); padding: 8px; height: 250px; overflow-y: auto; white-space: pre-wrap; }
+#log .n { color: var(--measured); font-weight: 500; } #log .w { color: var(--signal); }
+
 /* finding card */
-#card .head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
-#card .head h3 { margin: 0; font-size: 17px; }
-.narr { font-size: 15px; max-width: 900px; margin: 0 0 12px; }
+#card .head { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; margin-bottom: 8px; }
+#card .head h3 { margin: 0; font: 600 18px/24px var(--sans); }
+.meaning { margin: 0 0 12px; font-size: 13px; line-height: 20px; color: var(--ink-muted); }
+.readouts { display: flex; flex-wrap: wrap; gap: 0; border: 1px solid var(--ink); margin: 0 0 12px; max-width: 900px; }
+.readout { flex: 1 1 260px; padding: 8px 12px; border-left: 1px solid var(--ink); }
+.readout:first-child { border-left: 0; }
+.readout .v { font: 500 20px/24px var(--mono); margin: 2px 0; }
+.readout .v.sig { color: var(--signal); }
+.narr { max-width: 900px; margin: 0 0 12px; }
 .grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
-.rows { display: grid; grid-template-columns: 140px 1fr; gap: 6px 12px; margin: 0; }
-.rows dt { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .4px;
-  padding-top: 2px; }
-.rows dd { margin: 0; }
-.status { font-weight: 700; }
-.status.open { color: var(--watch); } .status.disagreement { color: var(--stale); }
-.status.corroborated { color: var(--trusted); }
-table.score { border-collapse: collapse; width: 100%; font-size: 13px; }
-table.score td { border-top: 1px solid var(--line); padding: 5px 6px; vertical-align: top; }
-table.score td.pts { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap;
-  font-weight: 600; }
-.arith { font-variant-numeric: tabular-nums; font-weight: 600; margin: 4px 0 8px; }
+.rows { display: grid; grid-template-columns: 150px 1fr; gap: 0; margin: 0; }
+.rows dt, .rows dd { border-top: 1px solid var(--rule); padding: 6px 0; margin: 0; }
+.rows dt { font: 500 11px/20px var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--ink-label); padding-right: 8px; }
+.status { font-weight: 600; }
+.status.open { color: var(--watch); } .status.disagreement { color: var(--serious); }
+.status.corroborated { color: var(--good); }
+table.score { border-collapse: collapse; width: 100%; font-size: 13px; line-height: 20px; }
+table.score td { border-top: 1px solid var(--rule); padding: 6px; vertical-align: top; }
+table.score td.pts { text-align: right; font-family: var(--mono); white-space: nowrap; font-weight: 500; }
+.arith { font: 500 13px/20px var(--mono); margin: 4px 0 8px; }
+.gloss dt { font-weight: 600; margin-top: 6px; } .gloss dd { margin: 0 0 4px; font-size: 13px; line-height: 20px; }
+
 /* registry */
-#registry { display: none; padding: 12px 16px; }
+#registry, #education { display: none; padding: 12px 16px; }
 #registry .cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
-.mod { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
-.mod h3 { margin: 0 0 4px; font-size: 15px; }
-.mod .st { font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 1px 6px;
-  border-radius: 4px; }
-.mod .st.live { background: var(--trusted); color: #fff; }
-.mod .st.specified { background: var(--line); color: var(--muted); }
-.mod p { margin: 6px 0; font-size: 13px; color: var(--muted); }
-.mod dl { display: grid; grid-template-columns: 1fr; gap: 2px; margin: 8px 0 0; font-size: 13px; }
-.mod dt { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--accent);
-  margin-top: 6px; font-weight: 600; }
+.mod { border: 2px solid var(--ink); padding: 12px; }
+.mod h3 { margin: 4px 0; font: 600 18px/24px var(--sans); }
+.mod .st { font: 500 11px/16px var(--mono); text-transform: uppercase; letter-spacing: .08em; }
+.mod .st.live { color: var(--good); } .mod .st.specified { color: var(--ink-muted); }
+.mod p { margin: 6px 0; font-size: 13px; line-height: 20px; color: var(--ink-muted); }
+.mod dl { margin: 8px 0 0; font-size: 13px; line-height: 20px; }
+.mod dt { font: 500 11px/16px var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--ink-label); margin-top: 8px; }
 .mod dd { margin: 0; }
+
+/* education */
+#education .intro { max-width: 760px; margin: 0 0 12px; }
+.edu { display: grid; grid-template-columns: 136px minmax(0, 1fr); gap: 16px; border-top: 1px solid var(--rule);
+  padding: 16px 0; max-width: 980px; }
+.edu:first-of-type { border-top: 2px solid var(--ink); }
+.edu svg { display: block; border: 1px solid var(--rule); background: var(--paper-sunk); }
+.edu h3 { margin: 0 0 4px; font: 600 18px/24px var(--sans); }
+.edu p { margin: 0 0 8px; }
+.edu .rows { grid-template-columns: 150px 1fr; font-size: 13px; line-height: 20px; }
+
 @media (max-width: 1100px) {
-  main { grid-template-columns: 220px minmax(0, 1fr);
-    grid-template-areas: "gauges plots" "agents agents" "card card"; }
+  main { grid-template-columns: 228px minmax(0, 1fr); grid-template-areas: "gauges plots" "agents agents" "card card"; }
 }
 @media (max-width: 720px) {
-  main { grid-template-columns: minmax(0, 1fr); padding: 10px;
-    grid-template-areas: "gauges" "plots" "agents" "card"; }
-  #gauges .list { display: flex; overflow-x: auto; gap: 4px; }
-  .gauge { flex: none; width: auto; max-width: 220px; }
+  main { grid-template-columns: minmax(0, 1fr); padding: 12px; grid-template-areas: "gauges" "plots" "agents" "card"; }
+  #gauges .list { display: flex; overflow-x: auto; gap: 0; }
+  .gauge { flex: none; width: auto; max-width: 220px; border-top: 0; border-left: 1px solid var(--rule); }
   .grid2 { grid-template-columns: minmax(0, 1fr); }
-  .rows { grid-template-columns: 1fr; }
-  #scatter { height: 380px; } #timeline { height: 200px; }
+  .rows, .edu .rows { grid-template-columns: 1fr; }
+  .rows dd { border-top: 0; padding-top: 0; }
+  .edu { grid-template-columns: minmax(0, 1fr); }
+  #scatter { height: 380px; } #timeline { height: 220px; }
   .tabs { margin-left: 0; }
+  #registry, #education { padding: 12px; }
 }
 </style>
 </head>
@@ -124,22 +173,27 @@ table.score td.pts { text-align: right; font-variant-numeric: tabular-nums; whit
   <div class="tabs">
     <button id="tab-console" class="on" onclick="showTab('console')">Console</button>
     <button id="tab-registry" onclick="showTab('registry')">Registry</button>
+    <button id="tab-education" onclick="showTab('education')">Education</button>
   </div>
 </header>
 
 <main id="console">
   <section id="gauges" class="panel">
     <h2>Gauges</h2>
-    <div class="list" id="gauge-list">Loading…</div>
+    <div class="list" id="gauge-list">Loading</div>
   </section>
 
   <section id="plots" class="panel">
     <div class="toolbar">
-      <strong id="site-title">—</strong>
+      <strong id="site-title">[pick a gauge]</strong>
       <span class="label" id="ref-label"></span>
     </div>
     <div id="scatter"></div>
+    <p class="caption" id="scatter-cap"></p>
+    <p class="note" id="misfit-note" hidden></p>
     <div id="timeline"></div>
+    <p class="caption" id="timeline-cap"></p>
+    <details id="table-view"><summary>Table view</summary><div class="scroll" id="table-body"></div></details>
   </section>
 
   <section id="agents" class="panel">
@@ -151,13 +205,13 @@ table.score td.pts { text-align: right; font-variant-numeric: tabular-nums; whit
     <h2>Agent team</h2>
     <div id="graph">
       <div class="node" data-node="triage">Triage <small>rules</small></div>
-      <div class="arrow">▼</div>
+      <div class="arrow">down</div>
       <div class="node" data-node="evidence_collector">Evidence collector <small>tools</small></div>
-      <div class="arrow">▼</div>
-      <div class="node" data-node="hypothesis_ranker">Hypothesis ranker <small id="rank-round">LLM</small></div>
-      <div class="arrow">▼ ▲ objection loops back</div>
+      <div class="arrow">down</div>
+      <div class="node" data-node="hypothesis_ranker">Cause ranker <small id="rank-round">LLM</small></div>
+      <div class="arrow">down, an objection loops back up</div>
       <div class="node" data-node="skeptic">Skeptic <small>second model</small></div>
-      <div class="arrow">▼</div>
+      <div class="arrow">down</div>
       <div class="node" data-node="narrator">Narrator <small class="llm-name">LLM</small></div>
     </div>
     <h2>Log</h2>
@@ -171,7 +225,15 @@ table.score td.pts { text-align: right; font-variant-numeric: tabular-nums; whit
 </main>
 
 <section id="registry">
-  <div class="cards" id="reg-cards">Loading…</div>
+  <div class="cards" id="reg-cards">Loading</div>
+</section>
+
+<section id="education">
+  <h2 class="lbl">Education</h2>
+  <p class="intro">How rivers change their ratings. A rating curve turns the water level at a gauge into a flow.
+    When the channel changes, field measurements stop matching the curve. Each sketch shows how far
+    readings sit from the curve over time: blue before the change, orange after.</p>
+  <div id="edu-list">Loading</div>
 </section>
 
 <script>
@@ -181,9 +243,22 @@ const DEMO_FIRST = "03455000";  // Newport leads the list
 const params = new URLSearchParams(location.search);
 const PACE = params.get("pace");
 const CAUSE_LABEL = { fill: "fill", scour: "scour", debris: "debris", vegetation: "vegetation",
-  datum_change: "datum change / gauge rebuild", measurement_quality: "measurement quality",
+  datum_change: "datum change or gauge rebuild", measurement_quality: "measurement quality",
   insufficient_data: "insufficient data", inconclusive: "inconclusive" };
-let gauges = [], current = null, currentReport = null, busy = false, regLoaded = false;
+const BAND_MEANING = {
+  Trusted: "The curve still matches recent field measurements; published flows can be used as they are.",
+  Watch: "Recent measurements are starting to pull away from the curve; check before relying on published flows.",
+  Stale: "The curve no longer matches recent field measurements; published flows are off until it is redrawn.",
+};
+const DEDUCTION_LABEL = { residual: "distance from the curve", staleness: "time since last visit",
+  quality: "measurement quality", field_notes: "field notes", insufficient_data: "too few measurements" };
+const PERIOD = {
+  reference: "Baseline period",
+  between: "After the baseline, before the change",
+  post_shift: "Since the change in the channel",
+  post_none: "After the baseline period",
+};
+let gauges = [], current = null, currentReport = null, busy = false, regLoaded = false, eduLoaded = false;
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) =>
@@ -191,8 +266,37 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) =>
 const fmtTime = (iso) => iso ? new Date(iso).toLocaleString([], { month: "short", day: "numeric",
   hour: "numeric", minute: "2-digit" }) : "";
 const fmtDate = (iso) => iso ? iso.slice(0, 10) : "";
-const cause = (c) => CAUSE_LABEL[c] || c || "—";
-const num = (x, d = 1) => (x == null ? "—" : Number(x) === 0 ? "0" : Number(x).toFixed(d));
+const fmtMonth = (iso) => iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" }) : "";
+const cause = (c) => CAUSE_LABEL[c] || c || "[none]";
+const num = (x, d = 1) => (x == null ? "[none]" : Number(x) === 0 ? "0" : Number(x).toFixed(d));
+const pct = (x) => (x == null ? "[none]" : `${x > 0 ? "+" : x < 0 ? "−" : ""}${Math.abs(Math.round(x))} %`);
+const conf = (c) => (c == null ? "[none]" : `${Math.round(c * 100)} %`);
+// C11.5: round percents in model-written text to whole numbers ("33.1 %" -> "33 %", "-22.1%" -> "-22 %")
+const roundPct = (s) => String(s ?? "").replace(/([+\-−]?)(\d+)\.\d+\s?%/g,
+  (m, sg, n) => `${sg}${Math.round(Number(m.replace(/[^\d.]/g, "")))} %`);
+// interface copy carries no em dashes; model text gets a comma in their place
+// C11.1 for model-written text: same words as the rest of the page (display only; traces untouched)
+const PLAIN_SWAPS = [
+  [/\b(?:a |the )?positive residual\b/gi, "readings above the curve"],
+  [/\b(?:a |the )?negative residual\b/gi, "readings below the curve"],
+  [/\bresiduals? (?:are |is )?positive\b/gi, "readings above the curve"],
+  [/\bresiduals? (?:are |is )?negative\b/gi, "readings below the curve"],
+  [/\b(?:recent |observed )?median residual\b/gi, "middle reading"],
+  [/\bresiduals\b/gi, "readings"],
+  [/\bresidual\b/gi, "reading"],
+  [/\bthe rating\b(?! curve)/gi, "the curve"],
+  [/\b(below|above) rating\b/gi, "$1 the curve"],
+  [/\bvelocity\b/gi, "water speed"],
+  [/\bpost-shift\b/gi, "after the change"],
+  [/\breference window\b/gi, "baseline period"],
+  [/\bshift\b/gi, "change"],
+  // keep last: drops the sign the words already carry
+  [/[+−-](\d+ %) (below|above)\b/g, "$1 $2"],  // "-33 % below" says the sign twice
+];
+const plain = (s) => PLAIN_SWAPS.reduce((t, [re, to]) => t.replace(re, to),
+  roundPct(s).replace(/\s*—\s*/g, ", "));
+const shortName = (n) => (n || "").replace(/, (NC|TN)$/i, "").toLowerCase()
+  .replace(/\b\w/g, (c) => c.toUpperCase()).replace(/\bNr\b/, "near");
 
 async function getJSON(path) {
   const r = await fetch(API + path);
@@ -230,14 +334,9 @@ async function loadGauges() {
   gauges.sort((a, b) => (b.site === DEMO_FIRST) - (a.site === DEMO_FIRST) || a.score - b.score);
   $("gauge-list").innerHTML = gauges.map((g) => `
     <button class="gauge" data-site="${g.site}" onclick="selectSite('${g.site}')">
-      <span class="dot ${g.band}"></span>
-      <span class="nm">${esc(shortName(g.name))}<small>${g.site} · ${g.band}</small></span>
+      <span class="nm">${esc(shortName(g.name))}<small>USGS ${g.site} · <span class="${g.band}"><span class="sw ${g.band}"></span>${g.band}</span></small></span>
       <span class="sc">${Math.round(g.score)}</span>
     </button>`).join("");
-}
-function shortName(n) {
-  return (n || "").replace(/, (NC|TN)$/i, "").toLowerCase()
-    .replace(/\b\w/g, (c) => c.toUpperCase()).replace(/\bNr\b/, "near");
 }
 
 async function selectSite(site) {
@@ -260,74 +359,114 @@ async function selectSite(site) {
 }
 
 /* ---------- plots ---------- */
+const COLOR = { reference: "--s1", post_shift: "--s2", between: "--s3" };
+function periodName(key, d) {
+  if (key === "post_shift") return d.split_time ? `${PERIOD.post_shift} (${fmtDate(d.split_time)})` : PERIOD.post_none;
+  return PERIOD[key];
+}
 function drawPlots(d) {
   const rel = d.report.relationship;
-  $("ref-label").textContent = `base rating Q = ${num(rel.a, 1)}·(H − ${num(rel.e, 2)})^${num(rel.b, 2)} ` +
-    `· reference ${rel.reference_start} → ${rel.reference_end}`;
-  const groups = [
-    ["reference", "Reference window", "--ref"],
-    ["between", "After reference, before shift", "--between"],
-    ["post_shift", d.split_time ? `Since shift (${fmtDate(d.split_time)})` : "After reference window", "--post"],
-  ];
+  const gaugeName = `${shortName(d.report.site_name)}, USGS ${d.report.site}`;
+  $("ref-label").textContent = `baseline period ${rel.reference_start} to ${rel.reference_end}`;
   const css = getComputedStyle(document.documentElement);
   const col = (v) => css.getPropertyValue(v).trim();
+  const font = { family: "IBM Plex Mono, monospace", size: 11, color: col("--ink") };
+  const hoverlabel = { bgcolor: col("--paper"), bordercolor: col("--ink"), font: { ...font, size: 12 } };
   const traces = [];
-  for (const [key, name, c] of groups) {
+  for (const key of ["reference", "between", "post_shift"]) {
     const pts = d.points.filter((p) => p.period === key);
     if (!pts.length) continue;
+    const c = col(COLOR[key]), name = periodName(key, d);
     for (const excl of [false, true]) {
       const sub = pts.filter((p) => !!p.excluded === excl);
       if (!sub.length) continue;
       traces.push({
         x: sub.map((p) => p.discharge_cfs), y: sub.map((p) => p.stage_ft), mode: "markers",
-        type: "scatter", name: excl ? `${name}: Helene peak, excluded` : name,
-        marker: excl ? { size: 10, color: "rgba(0,0,0,0)", line: { color: col(c), width: 2 }, symbol: "circle" }
-                     : { size: 7, color: col(c), opacity: key === "reference" ? 0.55 : 0.9 },
-        text: sub.map((p) => `${fmtDate(p.time)} · ${p.rated}${p.control_condition ? " · " + p.control_condition : ""}`),
+        type: "scatter", name: excl ? `${name}: Helene peak, left out of the test` : name,
+        marker: excl ? { size: 9, color: "rgba(0,0,0,0)", line: { color: c, width: 1.5 } }
+                     : { size: 6, color: c, opacity: key === "reference" ? 0.6 : 0.95 },
+        text: sub.map((p) => `${fmtDate(p.time)} · rated ${p.rated}${p.control_condition ? " · " + p.control_condition : ""}`),
         hovertemplate: "%{x:,.0f} cfs at %{y:.2f} ft<br>%{text}<extra></extra>",
       });
     }
   }
   traces.push({ x: d.curve.map((p) => p.discharge_cfs), y: d.curve.map((p) => p.stage_ft),
-    mode: "lines", name: "Base rating", line: { color: col("--ink"), width: 2 }, hoverinfo: "skip" });
+    mode: "lines", name: "Rating curve", line: { color: col("--ink"), width: 2 }, hoverinfo: "skip" });
   const base = { margin: { l: 52, r: 10, t: 26, b: 40 }, paper_bgcolor: "rgba(0,0,0,0)",
-    plot_bgcolor: "rgba(0,0,0,0)", font: { size: 11 },
-    legend: { orientation: "h", y: -0.32, yanchor: "top", font: { size: 11 } } };
+    plot_bgcolor: "rgba(0,0,0,0)", font, hoverlabel,
+    legend: { orientation: "h", y: -0.32, yanchor: "top", font } };
+  const axis = { gridcolor: col("--grid"), linecolor: col("--ink"), zeroline: false };
   const narrow = window.innerWidth < 720;
   Plotly.react("scatter", traces, { ...base, margin: { l: 52, r: 10, t: 26, b: 110 },
-    title: { text: "Stage vs discharge", font: { size: 13 }, x: 0.01 },
-    xaxis: { title: "Discharge (cfs, log)", type: "log", gridcolor: "#eee" },
-    yaxis: { title: "Stage (ft)", gridcolor: "#eee" } }, { displayModeBar: false, responsive: true });
+    title: { text: "Water level against flow", font: { ...font, size: 13 }, x: 0.01 },
+    xaxis: { ...axis, title: "Flow (cfs, log scale)", type: "log" },
+    yaxis: { ...axis, title: "Water level (ft)" } }, { displayModeBar: false, responsive: true });
 
-  // residual timeline
+  const times = d.points.map((p) => p.time).sort();
+  const range = times.length ? `${fmtDate(times[0])} to ${fmtDate(times[times.length - 1])}` : "[no measurements]";
+  $("scatter-cap").textContent = `${gaugeName} · field measurements ${range} · line is the rating curve fit to the baseline period`;
+  const mf = d.high_flow_misfit;
+  $("misfit-note").hidden = !mf?.show;
+  $("misfit-note").textContent = mf?.show ? "The curve is a single line; at higher flows this river behaves like two " +
+    "channels, so the line misses some points. This doesn't change the verdict because the newest readings are " +
+    "at low and middle flows." : "";
+
+  // distance-from-curve timeline
   const tl = [];
-  for (const [key, name, c] of groups) {
+  for (const key of ["reference", "between", "post_shift"]) {
     const sub = d.points.filter((p) => p.period === key && p.residual_pct != null);
     if (!sub.length) continue;
+    const c = col(COLOR[key]);
     tl.push({ x: sub.map((p) => p.time), y: sub.map((p) => p.residual_pct), mode: "markers",
-      type: "scatter", name, showlegend: false,
+      type: "scatter", name: periodName(key, d), showlegend: false,
       marker: { size: sub.map((p) => p.excluded ? 9 : 6),
-        color: sub.map((p) => p.excluded ? "rgba(0,0,0,0)" : col(c)),
-        line: { color: col(c), width: sub.map((p) => p.excluded ? 2 : 0) } },
-      text: sub.map((p) => `${p.rated}${p.excluded ? " · excluded (Helene peak)" : ""}`),
-      hovertemplate: "%{x|%Y-%m-%d}: %{y:+.1f} %<br>%{text}<extra></extra>" });
+        color: sub.map((p) => p.excluded ? "rgba(0,0,0,0)" : c),
+        line: { color: c, width: sub.map((p) => p.excluded ? 1.5 : 0) } },
+      text: sub.map((p) => `rated ${p.rated}${p.excluded ? " · Helene peak, left out of the test" : ""}`),
+      hovertemplate: "%{x|%Y-%m-%d}: %{y:+.0f} % from the curve<br>%{text}<extra></extra>" });
   }
-  const shapes = [vline(d.helene, col("--stale"), "dash")], ann = [vlabel(d.helene, "Helene", "right")];
-  for (const s of d.report.drift.shifts) {
-    shapes.push(vline(s.time, col("--post"), "dot"));
-    ann.push(vlabel(s.time, `shift ${s.size_pct > 0 ? "+" : ""}${num(s.size_pct, 0)} %`, "left"));
-  }
-  shapes.push({ type: "line", xref: "paper", x0: 0, x1: 1, y0: 0, y1: 0, line: { color: "#999", width: 1 } });
-  Plotly.react("timeline", tl, { ...base, margin: { l: 52, r: 10, t: 26, b: 30 },
-    title: { text: narrow ? "Residual vs rating (%)" : "Residual vs base rating (%; + = more water than rated)",
-      font: { size: 13 }, x: 0.01 },
-    xaxis: { type: "date", gridcolor: "#eee" }, yaxis: { gridcolor: "#eee", ticksuffix: " %" },
-    shapes, annotations: ann }, { displayModeBar: false, responsive: true });
+  const t0 = times.length ? Date.parse(times[0]) : 0, t1 = times.length ? Date.parse(times[times.length - 1]) : 1;
+  const marks = [{ time: d.helene, text: "Helene", color: col("--signal"), dash: "solid" }];
+  for (const s of d.report.drift.shifts)
+    marks.push({ time: s.time, text: `change ${pct(s.size_pct)}`, color: col("--ink-muted"), dash: "dash" });
+  const { shapes, annotations } = markLines(marks, t0, t1, d.report.drift.shifts.length > 3);
+  shapes.push({ type: "line", xref: "paper", x0: 0, x1: 1, y0: 0, y1: 0, line: { color: col("--ink-muted"), width: 1 } });
+  Plotly.react("timeline", tl, { ...base, margin: { l: 52, r: 10, t: 40, b: 30 },
+    title: { text: narrow ? "How far readings sit from the curve" : "How far readings sit from the curve (+ means more water than the curve says)",
+      font: { ...font, size: 13 }, x: 0.01, y: 0.98, yanchor: "top" },
+    xaxis: { ...axis, type: "date" }, yaxis: { ...axis, ticksuffix: " %" },
+    shapes, annotations }, { displayModeBar: false, responsive: true });
+  $("timeline-cap").textContent = `${gaugeName} · ${range} · hollow points are Helene-peak measurements left out of the test`;
+
+  // table view of both charts
+  $("table-body").innerHTML = `<table class="data"><thead><tr><th>Date</th><th class="r">Level ft</th>
+    <th class="r">Flow cfs</th><th class="r">From curve</th><th>Rated</th><th>Period</th></tr></thead><tbody>` +
+    d.points.slice().reverse().map((p) => `<tr><td>${fmtDate(p.time)}</td><td class="r">${num(p.stage_ft, 2)}</td>
+      <td class="r">${Number(p.discharge_cfs).toLocaleString()}</td><td class="r">${pct(p.residual_pct)}</td>
+      <td>${esc(p.rated)}</td><td>${esc(periodName(p.period, d))}${p.excluded ? ", left out" : ""}</td></tr>`).join("") +
+    "</tbody></table>";
 }
-const vline = (x, color, dash) => ({ type: "line", xref: "x", yref: "paper", x0: x, x1: x, y0: 0, y1: 1,
-  line: { color, width: 1.5, dash } });
-const vlabel = (x, text, side) => ({ x, xref: "x", yref: "paper", y: 1, yanchor: "bottom", text,
-  showarrow: false, font: { size: 10 }, xanchor: side, xshift: side === "right" ? -3 : 3 });
+
+/* Vertical marker lines with labels. C11.2: a label that would land within 5 % of the time span of
+   the previous label moves down one row; with more than three change lines, labels move to hover. */
+function markLines(marks, t0, t1, hoverOnly) {
+  const span = Math.max(t1 - t0, 1), shapes = [], annotations = [];
+  const sorted = marks.filter((m) => m.time).map((m) => ({ ...m, t: Date.parse(m.time) })).sort((a, b) => a.t - b.t);
+  let lastT = -Infinity, row = 0;
+  for (const m of sorted) {
+    shapes.push({ type: "line", xref: "x", yref: "paper", x0: m.time, x1: m.time, y0: 0, y1: 1,
+      line: { color: m.color, width: 1.5, dash: m.dash } });
+    row = (m.t - lastT) / span < 0.05 ? row + 1 : 0;
+    lastT = m.t;
+    const hover = hoverOnly && m.text !== "Helene";
+    annotations.push({ x: m.time, xref: "x", yref: "paper", y: 1, yanchor: "bottom",
+      text: hover ? "?" : m.text, hovertext: hover ? `${m.text} · ${fmtDate(m.time)}` : `${fmtDate(m.time)}`,
+      showarrow: false, xanchor: "left", xshift: 3, yshift: hover ? 0 : -14 * row - (row ? 2 : 0),
+      font: { family: "IBM Plex Mono, monospace", size: 10, color: m.color },
+      bgcolor: row ? "rgba(255,222,190,.9)" : "rgba(0,0,0,0)" });
+  }
+  return { shapes, annotations };
+}
 
 /* ---------- agent graph + log ---------- */
 function resetGraph() {
@@ -364,35 +503,35 @@ function summarize(e) {
   if (e.status === "error") return `error: ${p.error || JSON.stringify(p).slice(0, 120)}`;
   if (e.node === "triage") {
     const t = p.top_shift;
-    return `${p.band} ${Math.round(p.score)} · recent ${num(p.recent_median_residual_pct)} % ` +
-      (t ? `· shift ${fmtDate(t.time)} ${num(t.size_pct)} % ` : "· no shift ") +
-      `→ ${p.route === "narrator" ? "narrator (no cause to find)" : "collect evidence"}`;
+    return `${p.band} ${Math.round(p.score)} · newest readings ${pct(p.recent_median_residual_pct)} from the curve ` +
+      (t ? `· change in the channel ${fmtDate(t.time)} ${pct(t.size_pct)} ` : "· no change in the channel ") +
+      `· next: ${p.route === "narrator" ? "narrator (no cause to find)" : "collect evidence"}`;
   }
   if (e.node === "evidence_collector" && e.status === "progress") {
     const r = p.result || {};
     if (p.tool === "channel_geometry") return r.sufficient
-      ? `channel at ${num(r.at_stage_ft, 2)} ft: area ${num(r.area_change_pct)} %, speed ${num(r.velocity_change_pct)} %`
-      : "channel geometry: not enough measurements";
+      ? `channel at ${num(r.at_stage_ft, 2)} ft: area ${pct(r.area_change_pct)}, speed ${pct(r.velocity_change_pct)}`
+      : "channel shape: not enough measurements";
     if (p.tool === "field_notes") return `field notes: ${(r.distinct_notes || []).join(", ") || "none"}`;
     if (p.tool === "flood_context") return r.peak
-      ? `flood: ${Number(r.peak.discharge_cfs).toLocaleString()} cfs on ${fmtDate(r.peak.time)} (${num(r.peak.x_largest_reference)}× largest reference)`
-      : `flood context: Helene in gap ${r.helene_in_gap ? "yes" : "no"}`;
+      ? `flood: ${Number(r.peak.discharge_cfs).toLocaleString()} cfs on ${fmtDate(r.peak.time)} (${num(r.peak.x_largest_reference)} times the largest baseline flow)`
+      : `flood context: Helene between visits ${r.helene_in_gap ? "yes" : "no"}`;
     if (p.tool === "site_metadata") return `site: ${r.county_name || ""}, ${r.drainage_area ?? "?"} sq mi`;
     return `${p.tool}`;
   }
-  if (e.node === "evidence_collector") return `channel signature: ${p.channel_signature || "—"}`;
+  if (e.node === "evidence_collector") return `channel evidence: ${p.channel_signature || "[none]"}`;
   if (e.node === "hypothesis_ranker") {
     const h = (p.hypotheses || [])[0];
-    return `round ${p.round}: ${h ? `${cause(h.cause)} ${num(h.confidence, 2)}` : "—"}` +
-      ((p.hypotheses || [])[1] ? ` (next: ${cause(p.hypotheses[1].cause)} ${num(p.hypotheses[1].confidence, 2)})` : "") +
+    return `round ${p.round}: ${h ? `${cause(h.cause)} ${conf(h.confidence)}` : "[none]"}` +
+      ((p.hypotheses || [])[1] ? ` (next: ${cause(p.hypotheses[1].cause)} ${conf(p.hypotheses[1].confidence)})` : "") +
       (p.model ? ` · ${p.model}` : "");
   }
   if (e.node === "skeptic") {
-    if (p.verdict === "object") return `OBJECTS (${String(p.objection).replace(/_/g, " ")}) → back to ranker`;
-    if (p.verdict === "disagree") return `DISAGREES with the field note · best guess ${cause(p.suggested_cause)} ${num(p.confidence, 2)}`;
-    return `accepts ${cause(p.suggested_cause)} ${num(p.confidence, 2)}`;
+    if (p.verdict === "object") return `OBJECTS (${String(p.objection).replace(/_/g, " ")}), back to the ranker`;
+    if (p.verdict === "disagree") return `DISAGREES with the field note · best guess ${cause(p.suggested_cause)} ${conf(p.confidence)}`;
+    return `accepts ${cause(p.suggested_cause)} ${conf(p.confidence)}`;
   }
-  if (e.node === "narrator") return `"${(p.narration || "").slice(0, 110)}…"`;
+  if (e.node === "narrator") return `"${plain(p.narration || "").slice(0, 110)}..."`;
   return null;
 }
 function onTrace(e) {
@@ -407,8 +546,8 @@ function onTrace(e) {
     });
   }
   const s = summarize(e);
-  if (s) logLine(`<span class="n">${e.node.replace("_", " ")}</span> ${esc(s)}`,
-    /OBJECTS|DISAGREES|error/.test(s) ? "w" : "");
+  const who = { hypothesis_ranker: "cause ranker", evidence_collector: "evidence" }[e.node] || e.node;
+  if (s) logLine(`<span class="n">${esc(who)}</span> ${esc(s)}`, /OBJECTS|DISAGREES|error/.test(s) ? "w" : "");
 }
 
 async function stream(path, method, label) {
@@ -441,51 +580,78 @@ async function stream(path, method, label) {
 }
 function replay() {
   if (!current?.replay) return;
-  stream(`/replay/${current.replay.id}${PACE != null ? `?pace=${PACE}` : ""}`, "GET", "replaying…");
+  stream(`/replay/${current.replay.id}${PACE != null ? `?pace=${PACE}` : ""}`, "GET", "replaying");
 }
-function runLive() { stream(`/run/${current.site}`, "POST", "running… (live LLM calls take 30–90 s)"); }
+function runLive() { stream(`/run/${current.site}`, "POST", "running (live LLM calls take 30 to 90 s)"); }
 
 /* ---------- finding card ---------- */
+function readoutsHTML(d) {
+  if (!d) return "";
+  const top = d.top_shift, r = d.recent;
+  const parts = [];
+  if (top) parts.push(`<div class="readout"><div class="lbl">Size of the change in the channel</div>
+    <div class="v">changed by ${pct(top.size_pct)} in ${fmtMonth(top.time)}</div>
+    <div class="caption">how much readings moved at once when the channel changed (${num(top.size_ft, 2)} ft)</div></div>`);
+  if (r && r.median_pct != null) parts.push(`<div class="readout"><div class="lbl">Where the newest readings sit now</div>
+    <div class="v sig">${Math.abs(Math.round(r.median_pct))} % ${r.median_pct >= 0 ? "above" : "below"} the curve</div>
+    <div class="caption">middle value of the newest ${r.n} field measurements</div></div>`);
+  return parts.length ? `<div class="readouts">${parts.join("")}</div>` : "";
+}
+function detailsHTML(d) {
+  if (!d) return "";
+  const rel = d.report.relationship, sh = d.report.drift.shifts;
+  return `<details><summary>Details and technical names</summary><dl class="gloss">
+    <dt>Rating curve</dt><dd>Power-law rating Q = ${num(rel.a, 1)} · (H − ${num(rel.e, 2)})<sup>${num(rel.b, 2)}</sup>,
+      fit to ${rel.n} measurements. The exponent and offset stay fixed; drift slides only the multiplier.</dd>
+    <dt>Residual</dt><dd>How far readings sit from the curve: (measured flow − curve flow) / curve flow. Positive means more water than the curve says.</dd>
+    <dt>Reference window</dt><dd>The period we trust as the baseline: ${rel.reference_start} to ${rel.reference_end}.</dd>
+    <dt>Shift</dt><dd>A change in the channel: a lasting step in the residuals. ${sh.length
+      ? sh.map((s) => `${fmtDate(s.time)}: ${pct(s.size_pct)} (${num(s.size_ft, 3)} ft, ${s.n_after} measurements after)`).join("; ")
+      : "None found."}</dd>
+  </dl></details>`;
+}
 function renderCard(f, label) {
-  const rep = currentReport?.report;
-  const trust = rep?.trust;
+  const d = currentReport, rep = d?.report, trust = rep?.trust;
   let causeHTML;
   if (!f) causeHTML = `<dl class="rows"><dt>Cause</dt><dd>No saved agent run for this gauge.</dd></dl>`;
   else if (f.cause_status === "none") causeHTML = `<dl class="rows"><dt>Cause</dt>
-    <dd><span class="status corroborated">None needed.</span> The rating still fits; triage sent this gauge straight to the narrator.</dd></dl>`;
+    <dd><span class="status corroborated">None needed.</span> The curve still fits; triage sent this gauge straight to the narrator.</dd></dl>`;
   else if (f.cause_status === "disagreement") {
-    const d = f.disagreement;
-    causeHTML = `<p><span class="status disagreement">Disagreement</span> — the team would not overrule the hydrographer without proof.</p>
-      <dl class="rows"><dt>Best guess</dt><dd>${esc(cause(d.best_guess.cause))} · confidence ${num(d.best_guess.confidence, 2)} (uncertain)</dd>
-      <dt>Field note</dt><dd>“${esc(d.field_note.note)}” · ${esc(d.field_note.date)}</dd>
-      <dt>Why they disagree</dt><dd>${esc(d.why_they_disagree)}</dd>
-      <dt>Double-check</dt><dd>${esc(d.recommended_check)}</dd></dl>`;
+    const g = f.disagreement;
+    causeHTML = `<p><span class="status disagreement">Disagreement.</span> The team would not overrule the hydrographer without proof.</p>
+      <dl class="rows"><dt>Best guess</dt><dd>${esc(cause(g.best_guess.cause))} · confidence ${conf(g.best_guess.confidence)} (uncertain)</dd>
+      <dt>Field note</dt><dd>“${esc(g.field_note.note)}” · ${esc(g.field_note.date)}</dd>
+      <dt>Why they disagree</dt><dd>${esc(plain(g.why_they_disagree))}</dd>
+      <dt>Double-check</dt><dd>${esc(plain(g.recommended_check))}</dd></dl>`;
   } else if (f.cause_status === "open") causeHTML = `<dl class="rows">
-      <dt>Cause</dt><dd><span class="status open">Open.</span> Best fit so far is ${esc(cause(f.cause))}
-        (confidence ${num(f.confidence, 2)}), but no field note since the reference window backs it.
-        Treat it as a lead, not a finding.</dd>
-      <dt>Skeptic</dt><dd>${esc(f.skeptic_argument || "—")}</dd></dl>`;
+      <dt>Lead (unconfirmed)</dt><dd><span class="status open">${esc(cause(f.cause))}</span> fits best so far
+        (confidence ${conf(f.confidence)}), but no field note since the baseline period backs it.
+        Treat it as a lead, not a finding; the team is still checking.</dd>
+      <dt>Skeptic</dt><dd>${esc(plain(f.skeptic_argument) || "[none]")}</dd></dl>`;
   else causeHTML = `<dl class="rows">
       <dt>Cause</dt><dd><span class="status corroborated">${esc(cause(f.cause))}</span> · confidence
-        ${num(f.confidence, 2)} (${esc(f.confidence_word)})${f.objections ? ` · after ${f.objections} objection(s)` : ""}</dd>
+        ${conf(f.confidence)} (${esc(f.confidence_word)})${f.objections ? ` · after ${f.objections} objection(s)` : ""}</dd>
       <dt>Backed by</dt><dd>${f.supporting_notes.map((n) => `“${esc(n)}”`).join(", ")}</dd>
-      <dt>Skeptic</dt><dd>${esc(f.skeptic_argument || "—")}</dd></dl>`;
+      <dt>Skeptic</dt><dd>${esc(plain(f.skeptic_argument) || "[none]")}</dd></dl>`;
 
   let scoreHTML = "";
   if (trust) {
     const ds = trust.deductions;
-    const arith = `100 ${ds.map((d) => `− ${num(d.points)}`).join(" ")} = ${num(trust.score)} → ` +
+    const arith = `100 ${ds.map((x) => `− ${num(x.points)}`).join(" ")} = ${num(trust.score)}, shown as ` +
       `${Math.round(trust.score)}/100`;
-    scoreHTML = `<div class="arith">${arith} <span class="band ${trust.band}">${trust.band}</span></div>
-      <table class="score">${ds.map((d) => `<tr><td class="pts">${d.points ? "−" + num(d.points) : "0"}</td>
-        <td><strong>${esc(d.name.replace(/_/g, " "))}</strong> · ${esc(d.reason)}</td></tr>`).join("")}</table>`;
+    scoreHTML = `<div class="arith">${arith} <span class="st-word ${trust.band}"><span class="sw ${trust.band}"></span>${trust.band}</span></div>
+      <table class="score">${ds.map((x) => `<tr><td class="pts">${x.points ? "−" + num(x.points) : "0"}</td>
+        <td><strong>${esc(DEDUCTION_LABEL[x.name] || x.name.replace(/_/g, " "))}</strong> · ${esc(plain(x.reason))}</td></tr>`).join("")}</table>`;
   }
   $("card-body").innerHTML = `
     <div class="head"><h3>${esc(shortName(current?.name))}</h3>
-      ${trust ? `<span class="band ${trust.band}">${trust.band} ${Math.round(trust.score)}</span>` : ""}
+      ${trust ? `<span class="st-word ${trust.band}"><span class="sw ${trust.band}"></span>${trust.band} ${Math.round(trust.score)}</span>` : ""}
       <span class="label ${/replay/.test(label) ? "replay" : ""}">${esc(label || "")}</span></div>
-    ${f?.narration ? `<p class="narr">${esc(f.narration)}</p>` : ""}
-    <div class="grid2"><div>${causeHTML}</div><div><h2>Trust score arithmetic</h2>${scoreHTML}</div></div>`;
+    ${trust ? `<p class="meaning">${esc(BAND_MEANING[trust.band] || "")}</p>` : ""}
+    ${readoutsHTML(d)}
+    ${f?.narration ? `<p class="narr">${esc(plain(f.narration))}</p>` : ""}
+    <div class="grid2"><div>${causeHTML}</div><div><h2 class="lbl">Trust score arithmetic</h2>${scoreHTML}</div></div>
+    ${detailsHTML(d)}`;
 }
 
 /* ---------- registry ---------- */
@@ -499,19 +665,73 @@ async function loadRegistry() {
     <dl>${slots.map(([k, t]) => `<dt>${t}</dt><dd>${esc(m[k])}</dd>`).join("")}</dl></div>`).join("");
   regLoaded = true;
 }
+
+/* ---------- education (static/education.json) ---------- */
+// 120x60 sketch of how far readings sit from the curve over time; x 14..116, zero line at y 30
+const SKETCH = {
+  step_up:     [[[14, 32], [40, 29], [62, 31]], [[62, 14], [88, 16], [116, 13]]],
+  step_down:   [[[14, 29], [40, 31], [62, 30]], [[62, 46], [88, 44], [116, 47]]],
+  dip_recover: [[[14, 30], [40, 31], [52, 30]], [[52, 46], [64, 44], [76, 36], [90, 31], [116, 30]]],
+  seasonal:    [[[14, 30], [27, 40], [40, 30], [53, 20], [66, 30], [79, 40], [92, 30], [105, 20], [116, 26]], []],
+  slope:       [[[14, 18], [116, 44]], []],
+  step_flip:   [[[14, 30], [40, 30]], [[40, 16], [76, 17]], [[76, 44], [116, 45]]],
+  step_none:   [[[14, 30], [62, 30]], [[62, 42], [116, 42]]],
+};
+function sketchSVG(kind) {
+  const css = getComputedStyle(document.documentElement);
+  const col = (v) => css.getPropertyValue(v).trim();
+  const series = [col("--s1"), col("--s2"), col("--s3")];
+  const segs = SKETCH[kind] || [];
+  const lines = segs.filter((s) => s.length).map((s, i) =>
+    `<polyline fill="none" stroke="${series[i]}" stroke-width="2" points="${s.map((p) => p.join(",")).join(" ")}"/>`).join("");
+  return `<svg width="120" height="60" viewBox="0 0 120 60" role="img" aria-label="sketch: ${esc(kind.replace(/_/g, " "))}">
+    <line x1="12" y1="30" x2="118" y2="30" stroke="${col("--ink-muted")}" stroke-width="1" stroke-dasharray="2 2"/>
+    <line x1="12" y1="4" x2="12" y2="52" stroke="${col("--ink")}" stroke-width="1"/>
+    <line x1="12" y1="52" x2="118" y2="52" stroke="${col("--ink")}" stroke-width="1"/>
+    ${lines}
+    <text x="116" y="59" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="8" fill="${col("--ink-label")}">time</text>
+    <text x="9" y="28" text-anchor="end" transform="rotate(-90 9 28)" font-family="IBM Plex Mono, monospace" font-size="8" fill="${col("--ink-label")}">residual</text>
+  </svg>`;
+}
+async function loadEducation() {
+  let entries;
+  try {
+    entries = await getJSON("/static/education.json");
+    if (!Array.isArray(entries) || !entries.length) throw new Error("empty");
+  } catch (err) {
+    $("edu-list").innerHTML = `<p>[content coming]</p>`;  // fallback only when the file can't be loaded
+    return;
+  }
+  $("edu-list").innerHTML = entries.map((e) => {
+    const ex = e.real_example;
+    const exHTML = ex ? `${esc(ex.name)} (USGS ${esc(ex.site)}). ${esc(ex.change)}` : "[no gauge in this set shows it]";
+    return `<article class="edu" id="edu-${esc(e.id)}">${sketchSVG(e.looks_like)}
+      <div><h3>${esc(e.title)}</h3><p>${esc(e.what_happens)}</p>
+      <dl class="rows">
+        <dt>What readings do</dt><dd>${esc(e.direction)} <span class="mono">(${esc(e.sign)})</span></dd>
+        <dt>How long</dt><dd>${esc(e.how_long)}</dd>
+        <dt>Typical size</dt><dd>${esc(e.typical_size)}</dd>
+        <dt>Real example</dt><dd>${exHTML}</dd>
+        <dt>What we check</dt><dd>${esc(e.what_we_check)}</dd>
+      </dl></div></article>`;
+  }).join("");
+  eduLoaded = true;
+}
+
 function showTab(t) {
   $("console").style.display = t === "console" ? "" : "none";
   $("registry").style.display = t === "registry" ? "block" : "none";
-  $("tab-console").classList.toggle("on", t === "console");
-  $("tab-registry").classList.toggle("on", t === "registry");
+  $("education").style.display = t === "education" ? "block" : "none";
+  for (const k of ["console", "registry", "education"]) $(`tab-${k}`).classList.toggle("on", t === k);
   if (t === "registry" && !regLoaded) loadRegistry();
+  if (t === "education" && !eduLoaded) loadEducation();
   if (t === "console") window.dispatchEvent(new Event("resize"));
 }
 
-/* ---------- boot (deep links: ?site=…&replay=1&pace=0 · ?site=…&run=1 · ?tab=registry) ---------- */
+/* ---------- boot (deep links: ?site=…&replay=1&pace=0 · ?site=…&run=1 · ?tab=registry|education) ---------- */
 (async () => {
   await loadGauges();
-  if (params.get("tab") === "registry") showTab("registry");
+  if (["registry", "education"].includes(params.get("tab"))) showTab(params.get("tab"));
   await selectSite(params.get("site") || gauges[0].site);
   if (params.get("replay")) replay();
   else if (params.get("run")) runLive();

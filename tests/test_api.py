@@ -142,3 +142,37 @@ def test_console_has_no_cdn_and_plotly_is_vendored(client):
     assert 'src="static/plotly.min.js"' in html
     js = client.get("/static/plotly.min.js")
     assert js.status_code == 200 and "plotly.js v2.35.2" in js.text[:200]
+
+
+def test_report_has_recent_median_and_misfit_flag(client):
+    hepco = client.get("/report/03459500").json()
+    assert hepco["recent"]["n"] == 8
+    assert round(hepco["recent"]["median_pct"]) == -33  # "newest readings sit 33 % below the curve"
+    assert round(hepco["top_shift"]["size_pct"]) == -26  # "changed by -26 % in Dec 2024"
+    assert hepco["high_flow_misfit"]["show"] is False
+    assert client.get("/report/03446000").json()["high_flow_misfit"]["show"] is True  # Mills
+
+
+def test_high_flow_misfit_needs_both_conditions():
+    from driftwatch.api.app import high_flow_misfit
+
+    def pt(q, res, period="reference"):
+        return {"discharge_cfs": q, "residual_pct": res, "period": period, "excluded": False}
+
+    ref = [pt(q, 0.0) for q in range(1, 13)] + [pt(q, 30.0) for q in range(13, 19)]
+    low_new = [pt(2, -5.0, "post_shift")] * 8
+    assert high_flow_misfit(ref + low_new)["show"] is True
+    high_new = low_new[:-1] + [pt(18, -5.0, "post_shift")]
+    assert high_flow_misfit(ref + high_new)["show"] is False  # a newest reading at high flow
+    assert high_flow_misfit([pt(q, 0.0) for q in range(1, 19)] + low_new)["show"] is False
+    assert high_flow_misfit(ref[:5] + low_new)["show"] is False  # too few reference points
+
+
+def test_console_has_education_tab_and_local_fonts(client):
+    html = client.get("/").text
+    assert 'id="tab-education"' in html and "static/education.json" in html
+    assert "[content coming]" in html  # fallback stays in place for a missing file
+    for f in ["archivo-latin-400-normal", "ibm-plex-mono-latin-400-normal"]:
+        assert client.get(f"/static/fonts/{f}.woff2").status_code == 200
+    edu = client.get("/static/education.json").json()
+    assert len(edu) == 8 and all("—" not in json.dumps(e, ensure_ascii=False) for e in edu)
