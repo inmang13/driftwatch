@@ -18,7 +18,16 @@ from __future__ import annotations
 
 from typing import Any
 
-from driftwatch.agents.models import REQUIRED_CAUSES, Hypothesis, Narration, Ranking, SkepticVerdict
+from driftwatch.agents.models import (
+    REQUIRED_CAUSES,
+    BestGuess,
+    Disagreement,
+    FieldNoteRef,
+    Hypothesis,
+    Narration,
+    Ranking,
+    SkepticVerdict,
+)
 from driftwatch.modules.rating_curve import causes as catalog
 
 # Channel signature thresholds (decision log 2026-11-07, M2). Percent change at the same stage.
@@ -221,23 +230,98 @@ def critique(facts: dict[str, Any], ranking: Ranking) -> SkepticVerdict:
     )
 
 
+DISAGREE_BELOW = 0.6  # skeptic confidence under this + a contradicting control note -> Disagreement
+NOTE_DISCOUNT = (
+    0.2  # the rules' skeptic trusts a cause this much less when a control note disagrees
+)
+
+# what to check on the next visit, by (what the note says, what the numbers say)
+RECOMMENDED_CHECK = {
+    ("scour", "fill"): "Survey the control section for deposited gravel and confirm the gauge "
+    "datum against the reference mark.",
+    ("scour", "datum_change"): "Run levels from the reference marks to the gauge to confirm the "
+    "datum, and survey the control for scour.",
+    ("fill", "scour"): "Survey the control for scour and confirm the gauge datum against the "
+    "reference mark.",
+}
+DEFAULT_CHECK = "Survey the control section and confirm the gauge datum against the reference mark."
+
+
+def contradicting_note(facts: dict[str, Any], cause: str) -> dict[str, str] | None:
+    """First 'control changed' note since the reference window whose cause is not `cause`."""
+    for v in facts.get("field_notes", {}).get("visits", []):
+        c = catalog.cause_for_note(v["note"])
+        if c and "control changed" in v["note"].lower() and c.key != cause:
+            return {"note": v["note"], "date": v["time"][:10], "cause": c.key}
+    return None
+
+
+def skeptic_confidence(facts: dict[str, Any], ranking: Ranking) -> float:
+    """The rules' skeptic: the ranker's confidence, discounted when a control note disagrees."""
+    c = ranking.top.confidence
+    if contradicting_note(facts, ranking.top.cause):
+        c -= NOTE_DISCOUNT
+    return round(max(c, 0.0), 2)
+
+
+def disagreement(facts: dict[str, Any], ranking: Ranking, confidence: float) -> Disagreement | None:
+    """Disagreement for the final verdict, or None when the rules don't call for one."""
+    top = ranking.top
+    note = contradicting_note(facts, top.cause)
+    if note is None or confidence >= DISAGREE_BELOW:
+        return None
+    t = facts["triage"]
+    ch = facts.get("channel_geometry") or {}
+    implied = catalog.get_cause(note["cause"])
+    want = {"positive": "above", "negative": "below"}.get(implied.expected_sign, "off")
+    nums = (
+        f"; at the same stage the flow area changed {ch['area_change_pct']:+.0f} % and the speed "
+        f"{ch['velocity_change_pct']:+.0f} %"
+        if ch.get("sufficient")
+        else ""
+    )
+    why = (
+        f"{implied.label} would put measurements {want} the rating, but they sit "
+        f"{t['off_by_pct']:.0f} % {t['direction_phrase']}{nums}, which fits "
+        f"{LABEL[top.cause].lower()} better."
+    )
+    return Disagreement(
+        best_guess=BestGuess(cause=top.cause, confidence=confidence),
+        field_note=FieldNoteRef(note=note["note"], date=note["date"]),
+        why_they_disagree=why,
+        recommended_check=RECOMMENDED_CHECK.get((note["cause"], top.cause), DEFAULT_CHECK),
+    )
+
+
 def narrate(facts: dict[str, Any], final: dict[str, Any] | None) -> Narration:
     t = facts["triage"]
     name = t.get("site_name") or t["site"]
     score = f"Trust score {t['score']:.0f}/100 ({t['band']})."
+    off = f"{t['off_by_pct']:.0f} % {t['direction_phrase']}"
     if final is None:
         return Narration(
             text=f"{name}: no lasting shift since the storm; recent field measurements average "
-            f"{t['recent_median_residual_pct']:+.0f} % from the rating, so published flows can be "
-            f"used as is. No action beyond the regular visit schedule. {score}"
+            f"{off}, so published flows can be used as is. No action beyond the regular visit "
+            f"schedule. {score}"
         )
-    med = t["recent_median_residual_pct"]
-    hi_lo = "too high" if med < 0 else "too low"
     shift = t.get("top_shift")
     since = f" (the shift began {shift['time'][:10]})" if shift else ""
+    what = (
+        f"{name}: recent field measurements{since} sit {off}, so published flows are about "
+        f"that much {t['published_flows']}."
+    )
+    d = final.get("disagreement")
+    if d:
+        bg = d["best_guess"]
+        return Narration(
+            text=f"{what} Best guess: {LABEL[bg['cause']].lower()} ({bg['confidence'] * 100:.0f} "
+            f"%, uncertain). The field note says \"{d['field_note']['note']}\" "
+            f"({d['field_note']['date']}). Why they disagree: {d['why_they_disagree']} "
+            f"Double-check: {d['recommended_check']} {score}"
+        )
     cause = final["cause"]
     conf = final["confidence"]
-    sure = "fairly sure" if conf >= 0.6 else "moderately sure" if conf >= 0.4 else "not sure"
+    sure = "confident" if conf >= 0.8 else "likely" if conf >= 0.4 else "uncertain"
     objected = (
         f" A second check overturned the first guess ({LABEL[final['first_cause']].lower()})."
         if final.get("first_cause") and final["first_cause"] != cause
@@ -246,8 +330,6 @@ def narrate(facts: dict[str, Any], final: dict[str, Any] | None) -> Narration:
     if final.get("unresolved"):
         objected += " A reviewer still disputes it, so treat the cause as unconfirmed."
     return Narration(
-        text=f"{name}: recent field measurements{since} show {abs(med):.0f} % "
-        f"{'less' if med < 0 else 'more'} water than the rating, so published flows are about "
-        f"that much {hi_lo}. Most likely cause: {LABEL[cause].lower()} — we are {sure} "
+        text=f"{what} Most likely cause: {LABEL[cause].lower()} — {sure} "
         f"({conf * 100:.0f} %).{objected} Next: {NEXT_STEP[cause]} {score}"
     )

@@ -41,13 +41,40 @@ class Ranking(BaseModel):
         return self.hypotheses[0]
 
 
+class BestGuess(BaseModel):
+    cause: CauseKey
+    confidence: float = Field(ge=0.0, le=1.0)
+
+
+class FieldNoteRef(BaseModel):
+    note: str = Field(description="the control note, verbatim")
+    date: str = Field(description="YYYY-MM-DD of the visit")
+
+
+class Disagreement(BaseModel):
+    """The skeptic's answer when it is under 0.6 sure and a hydrographer's control note says
+    something else: show both sides and what to check, instead of a plain accept."""
+
+    best_guess: BestGuess
+    field_note: FieldNoteRef
+    why_they_disagree: str = Field(
+        description="one or two sentences: what the note implies vs what the drift sign and "
+        "channel numbers show"
+    )
+    recommended_check: str = Field(description="one concrete thing for the next site visit")
+
+
 class SkepticVerdict(BaseModel):
-    verdict: Literal["accept", "object"]
+    verdict: Literal["accept", "object", "disagree"]
     objection: (
         Literal["sign_mismatch", "channel_evidence", "insufficient_evidence", "other"] | None
     ) = None
     argument: str = Field(description="one or two sentences citing the numbers")
     suggested_cause: CauseKey | None = None
+    confidence: float | None = Field(
+        default=None, ge=0.0, le=1.0, description="your own confidence (0-1) in the top cause"
+    )
+    disagreement: Disagreement | None = None
 
 
 class Narration(BaseModel):

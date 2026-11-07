@@ -82,6 +82,10 @@ def triage_facts(site: str) -> dict[str, Any]:
         "recent_median_residual_pct": round(med, 1),
         "normal_scatter_pct": round(inputs.normal_scatter_pct, 1),
         "direction": "positive" if med > 0 else "negative",
+        # direction words are computed here, never inferred by the narrator from a signed number
+        "direction_phrase": "above the rating" if med > 0 else "below the rating",
+        "published_flows": "too low" if med > 0 else "too high",
+        "off_by_pct": round(abs(med), 1),
         "recent_rated": list(inputs.recent_rated),
         "top_shift": top.model_dump(mode="json") if top else None,
         "reference_window": [
@@ -131,7 +135,36 @@ def clean_ranking(r: Ranking, facts: dict[str, Any], objections: list[dict]) -> 
     return Ranking(hypotheses=hyps, reasoning=r.reasoning)
 
 
-def narration_ok(text: str, facts: dict[str, Any]) -> str | None:
+NARRATOR_FIELDS = (
+    "site_name",
+    "band",
+    "score",
+    "score_display",
+    "direction_phrase",
+    "published_flows",
+    "off_by_pct",
+    "normal_scatter_pct",
+    "recent_rated",
+)
+
+
+def narrator_view(facts: dict[str, Any]) -> dict[str, Any]:
+    """What the narrator sees: direction as words, size unsigned. Signed residuals and signed
+    shift sizes are left out so the model cannot infer (and flip) the direction from a number."""
+    t = facts["triage"]
+    v = {k: t[k] for k in NARRATOR_FIELDS if k in t}
+    if t.get("top_shift"):
+        v["shift_began"] = t["top_shift"]["time"][:10]
+        v["measurements_since_shift"] = t["top_shift"]["n_after"]
+    v["score_deductions"] = [
+        {"name": d["name"], "points": d["points"], "reason": d["reason"]}
+        for d in t.get("deductions", [])
+        if d["name"] != "residual"  # its reason text carries the sign; direction_phrase covers it
+    ]
+    return v
+
+
+def narration_ok(text: str, facts: dict[str, Any], final: dict | None = None) -> str | None:
     """None if fine, else why it was rejected."""
     n = len(text.split())
     if n > MAX_WORDS:
@@ -139,7 +172,35 @@ def narration_ok(text: str, facts: dict[str, Any]) -> str | None:
     s = facts["triage"]["score"]
     if not re.search(rf"\b({round(s)}|{s:.1f})\b", text):
         return "the trust score is missing"
+    if final and final.get("disagreement") and "double-check" not in text.lower():
+        return "a Disagreement must end with 'Double-check: ...'"
     return None
+
+
+def settle_disagreement(
+    v: SkepticVerdict, facts: dict[str, Any], ranking: Ranking, final_pass: bool, meta: dict
+) -> SkepticVerdict:
+    """On the skeptic's final pass: under 0.6 sure + a contradicting control note -> 'disagree'
+    with a Disagreement. The note and date are filled from the field notes (verbatim), never
+    taken from the model. Not on a final pass, or no grounds -> no Disagreement."""
+    conf = (
+        v.confidence if v.confidence is not None else fallbacks.skeptic_confidence(facts, ranking)
+    )
+    rules = fallbacks.disagreement(facts, ranking, conf)
+    if not final_pass or rules is None:
+        if v.verdict == "disagree" or v.disagreement:
+            meta["guard"] = "disagreement dropped: not the final pass, or no contradicting note"
+            v = v.model_copy(update={"verdict": "accept", "disagreement": None})
+        return v.model_copy(update={"confidence": conf})
+    d = rules
+    if v.disagreement:  # keep the model's words, but the facts come from the data
+        d = rules.model_copy(
+            update={
+                "why_they_disagree": v.disagreement.why_they_disagree or rules.why_they_disagree,
+                "recommended_check": v.disagreement.recommended_check or rules.recommended_check,
+            }
+        )
+    return v.model_copy(update={"verdict": "disagree", "confidence": conf, "disagreement": d})
 
 
 # --------------------------------------------------------------------------- graph
@@ -185,7 +246,10 @@ def build_graph(rec: TraceRecorder):
                     Ranking,
                     llm.prompt("ranker"),
                     llm.prompt(
-                        "ranker_input", facts=_dump(_ranker_view(facts)), objections=_dump(objs)
+                        "ranker_input",
+                        # first round blind to channel geometry; after an objection it may see it
+                        facts=_dump(_ranker_view(facts, channel=bool(objs))),
+                        objections=_dump(objs),
                     ),
                 )
                 r = clean_ranking(r, facts, objs)
@@ -235,6 +299,9 @@ def build_graph(rec: TraceRecorder):
             except Exception as e:  # noqa: BLE001
                 meta = {"model": "fallback", "llm_error": f"{type(e).__name__}: {e}"[:300]}
                 v = rules
+        n_obj = len(state["objections"]) + (v.verdict == "object")
+        final_pass = not (v.verdict == "object" and n_obj <= MAX_LOOPS)
+        v = settle_disagreement(v, facts, ranking, final_pass, meta)
         out = {
             **v.model_dump(),
             "objected_cause": ranking.top.cause if v.verdict == "object" else None,
@@ -264,6 +331,8 @@ def build_graph(rec: TraceRecorder):
                 "objections": len(state["objections"]),
                 "unresolved": verdict.get("verdict") == "object",
                 "skeptic_argument": verdict.get("argument"),
+                "skeptic_confidence": verdict.get("confidence"),
+                "disagreement": verdict.get("disagreement"),
             }
         meta: dict[str, Any] = {"model": "fallback"}
         text = fallbacks.narrate(facts, final).text
@@ -274,9 +343,11 @@ def build_graph(rec: TraceRecorder):
                     state["llm"],
                     Narration,
                     llm.prompt("narrator"),
-                    llm.prompt("narrator_input", facts=_dump(facts["triage"]), final=_dump(final)),
+                    llm.prompt(
+                        "narrator_input", facts=_dump(narrator_view(facts)), final=_dump(final)
+                    ),
                 )
-                bad = narration_ok(n.text, facts)
+                bad = narration_ok(n.text, facts, final)
                 if bad:
                     meta["rejected"] = bad
                     meta["rejected_text"] = n.text

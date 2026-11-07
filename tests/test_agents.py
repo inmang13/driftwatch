@@ -152,6 +152,8 @@ def test_skeptic_loop_is_bounded(monkeypatch, tmp_path):
         verdict="object", objection="other", argument="no", suggested_cause="inconclusive"
     )
     monkeypatch.setattr(fallbacks, "critique", lambda facts, ranking: always)
+    # a Disagreement would replace the last objection; switch it off to test the bound alone
+    monkeypatch.setattr(fallbacks, "disagreement", lambda facts, ranking, conf: None)
     out = graph.run_sync(HEPCO, "fallback", tmp_path)
     assert len(out["objections"]) == graph.MAX_LOOPS + 1
     assert len(out["rankings"]) == graph.MAX_LOOPS + 1
@@ -196,3 +198,61 @@ def test_queue_receives_the_same_events_as_the_trace(tmp_path):
     out, got = asyncio.run(go())
     assert got == list(replay(out["trace_path"]))
     assert [e.seq for e in got] == list(range(len(got)))
+
+
+# --- direction words, Disagreement, replay default ------------------------------------------
+
+
+def test_direction_phrase_reaches_fallback_and_llm_input(runs):
+    for s, phrase in ((HEPCO, "below the rating"), (ASHEVILLE, "above the rating")):
+        facts = runs[s]["facts"]
+        assert facts["triage"]["direction_phrase"] == phrase
+        assert phrase in runs[s]["narration"]  # fallback narrator used it
+        view = graph.narrator_view(facts)
+        assert view["direction_phrase"] == phrase
+        assert "recent_median_residual_pct" not in view and "direction" not in view
+        rendered = llm.prompt("narrator_input", facts=graph._dump(view), final="null")
+        assert phrase in rendered
+    assert "above the rating" in runs[SWANNANOA]["narration"]
+
+
+def test_hepco_fallback_disagrees_and_newport_does_not(runs):
+    h = runs[HEPCO]
+    assert h["verdict"]["verdict"] == "disagree"
+    d = h["final"]["disagreement"]
+    assert d["field_note"] == {"note": "Scour control changed", "date": "2024-12-17"}
+    assert d["best_guess"]["confidence"] < fallbacks.DISAGREE_BELOW
+    assert d["recommended_check"] and d["why_they_disagree"]
+    assert "Double-check:" in h["narration"]
+    ev = [e for e in replay(h["trace_path"]) if e.node == "skeptic" and e.status == "completed"]
+    assert ev[-1].payload["disagreement"]["field_note"]["note"] == "Scour control changed"
+    n = runs[NEWPORT]
+    assert n["verdict"]["verdict"] == "accept" and n["final"]["disagreement"] is None
+    assert "Double-check" not in n["narration"]
+
+
+def test_narration_guard_requires_double_check_for_disagreement():
+    facts = {"triage": {"score": 24.0}}
+    final = {"disagreement": {"x": 1}}
+    assert graph.narration_ok("Trust score 24/100.", facts, final)
+    assert graph.narration_ok("Double-check: levels. Trust score 24/100.", facts, final) is None
+
+
+def test_ranker_sees_channel_only_after_an_objection():
+    facts = {"triage": {}, "channel_geometry": {"a": 1}, "field_notes": {"visits": []}}
+    assert "channel_geometry" not in graph._ranker_view(facts)
+    assert "channel_geometry" in graph._ranker_view(facts, channel=True)
+
+
+def test_replay_default_file_wins_over_newest(tmp_path):
+    import json
+
+    from driftwatch.agents.trace import latest_trace
+
+    (tmp_path / "03459500-20260101T000000000000Z.json").write_text("{}")
+    (tmp_path / "03459500-20270101T000000000000Z.json").write_text("{}")
+    assert latest_trace(HEPCO, tmp_path).name.startswith("03459500-2027")
+    (tmp_path / "replay_defaults.json").write_text(
+        json.dumps({HEPCO: "03459500-20260101T000000000000Z.json"})
+    )
+    assert latest_trace(HEPCO, tmp_path).name.startswith("03459500-2026")

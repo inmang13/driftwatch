@@ -90,6 +90,16 @@ def replay(path: str | Path) -> Iterator[TraceEvent]:
         yield TraceEvent.model_validate(e)
 
 
+DEFAULTS_FILE = "replay_defaults.json"  # {"<site>": "<trace file name>"}: Grace's pick per gauge
+
+
 def latest_trace(site: str, out_dir: Path | None = None) -> Path | None:
-    files = sorted((out_dir or trace_dir()).glob(f"{site}-*.json"))
+    """The trace Replay uses: the one named in traces/replay_defaults.json, else the newest."""
+    d = out_dir or trace_dir()
+    defaults = d / DEFAULTS_FILE
+    if defaults.exists():
+        pick = json.loads(defaults.read_text(encoding="utf-8")).get(site)
+        if pick and (d / pick).exists():
+            return d / pick
+    files = sorted(d.glob(f"{site}-*.json"))
     return files[-1] if files else None

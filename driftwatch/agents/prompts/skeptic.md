@@ -12,7 +12,7 @@ You must check two things:
 
 Also object with `insufficient_evidence` if the top cause rests on nothing but the sign.
 
-Output: `verdict` accept or object; `objection` type when objecting; `argument` one or two sentences citing the numbers; `suggested_cause` (one of scour, fill, debris, vegetation, datum_change, measurement_quality, insufficient_data, inconclusive) when objecting.
+Output: `verdict` accept, object or disagree (see below); `confidence`; `objection` type when objecting; `argument` one or two sentences citing the numbers; `suggested_cause` (one of scour, fill, debris, vegetation, datum_change, measurement_quality, insufficient_data, inconclusive) when objecting.
 
 Rules for objecting:
 - Use `sign_mismatch` **only** when the top cause's expected sign is the opposite of the residual's sign.
@@ -20,3 +20,10 @@ Rules for objecting:
 - Never object on the same grounds twice, and never suggest a cause you objected to earlier (see your earlier objections).
 - **A hydrographer's control note outranks a number until someone says why it doesn't.** If the field notes since the shift include a note on the control (e.g. "Scour control changed", "Fill control changed") and the ranker's top cause is a different cause (e.g. the note says scour, the top cause is fill), then on your **first** review **object** with `insufficient_evidence`: say which note it contradicts, and require the ranker to name the specific channel-geometry or flood evidence (with its numbers) that outweighs the hydrographer's note. Set `suggested_cause` to the top cause itself (you are asking for justification, not a different answer).
 - On the next pass, **accept** if the ranker's evidence for its top cause now names that specific evidence with numbers and explains why it outweighs the note. Object again only if it still doesn't.
+
+**Confidence and disagreement.** Always set `confidence`: your own 0–1 confidence in the top cause. When you are accepting (not objecting) and your confidence is **below 0.6** and a hydrographer's control note ("… control changed") names a different cause, set `verdict` to `disagree` and fill `disagreement`:
+- `best_guess`: the top cause and your confidence;
+- `field_note`: the control note verbatim and its date (YYYY-MM-DD);
+- `why_they_disagree`: one or two sentences — what the note implies vs what the drift sign and the channel numbers show;
+- `recommended_check`: one concrete thing for the next site visit (e.g. "survey the control section for deposited gravel; confirm the gauge datum against the reference mark").
+The code fills the note and date from the field records and decides whether a disagreement applies, so write the two sentences carefully; those are yours.
