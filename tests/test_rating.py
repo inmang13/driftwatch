@@ -55,3 +55,16 @@ def test_eno_reference_mdape_under_10_pct():
     assert rel.n == len(ref) > 50
     assert rel.e < min(m.stage_ft for m in ref)
     assert rating.mdape(rel, ref) < 10.0
+
+
+def test_stage_at_or_below_e_is_nan_never_zero_or_complex():
+    rel = _rel(e=0.5)
+    h = np.array([0.2, 0.5, 2.0])
+    q = np.array([5.0, 5.0, 100.0])
+    assert list(rating.in_domain(rel, h)) == [False, False, True]
+    qhat = rating.predict_q(rel, h)
+    assert np.isnan(qhat[:2]).all() and qhat[2] > 0
+    assert np.isnan(rating.residual_pct(rel, h, q)[:2]).all()
+    assert np.isnan(rating.stage_shift_ft(rel, h, q)[:2]).all()
+    assert np.isnan(rel.discharge(0.2)) and isinstance(rel.discharge(0.2), float)
+    assert rel.discharge(2.0) == pytest.approx(50.0 * 1.5**1.8)

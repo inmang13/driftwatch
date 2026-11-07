@@ -65,9 +65,9 @@ docs/           plan.md · agent_playbook.md · decision_log.md · pitch.md · d
 
 **DriftModule** = `fetch(target, source) → Dataset`, `expected(ds, reference) → Relationship`, `drift_test(ds, rel) → DriftResult`, `causes: list[Cause]`.
 
-**drift_test (H4):** fit baseline on the reference window (weighted log-space power law, weights from `measurement_rated`); residuals r_k = (Q_k − Q̂(H_k))/Q̂(H_k) and the equivalent stage shift Δh_k = H_k − Ĥ(Q_k); change-point search on r (ruptures PELT, cost = l2, penalty tuned so Eno stays quiet); recurse into segments ≥ 6 points; output `stable_periods[]`, `shifts[] {time, size_pct, size_ft, direction, n_after, confidence}`.
+**drift_test (H4):** fit baseline on the reference window (weighted log-space power law, weights from `measurement_rated`); residuals r_k = (Q_k − Q̂(H_k))/Q̂(H_k) and the equivalent stage shift Δh_k = Ĥ(Q_k) − H_k (USGS gage-height shift convention, same sign as r_k: scour → positive in both % and ft); change-point search on r (ruptures PELT, cost = l2, penalty tuned so Eno stays quiet); recurse into segments ≥ 6 points; output `stable_periods[]`, `shifts[] {time, size_pct, size_ft, direction, n_after, confidence}`.
 
-**TrustScore** (glass-box, print the arithmetic): 100 − |recent median residual| term (0–40) − staleness since last measurement (0–20) − measurement quality (0–15) − unresolved field-note flags (0–15) − insufficient data (0–10). Bands: Trusted ≥ 80 · Watch 50–79 · Stale < 50.
+**TrustScore** (glass-box, print the arithmetic): 100 − |recent median residual| term (0–50; was 0–40 until 2026-11-07) − staleness since last measurement (0–20) − measurement quality (0–15) − unresolved field-note flags (0–15) − insufficient data (0–10). Bands: Trusted ≥ 80 · Watch 50–79 · Stale < 50.
 
 **Agents (LangGraph):** `triage` (no LLM) → `evidence_collector` (tools: channel geometry trend, field notes, flood context between last good and first drifted visit, site metadata, ≤1 web search) → `hypothesis_ranker` (Gemini, structured JSON, always includes *datum/rebuild* and *inconclusive*) → `skeptic` (OpenRouter, different family; checks sign vs cause, evidence sufficiency; accept or typed objection, ≤2 loops) → `narrator` (120 words for a utility manager + what to do next + score card). Each node emits `{node, status, payload}` → SSE; trace saved.
 

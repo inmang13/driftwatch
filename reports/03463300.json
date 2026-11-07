@@ -1,17 +1,17 @@
 {
   "site": "03463300",
   "site_name": "SOUTH TOE RIVER NEAR CELO, NC",
-  "generated_at": "2026-11-07T04:18:07.334733Z",
+  "generated_at": "2026-11-07T15:11:52.256357Z",
   "source": "snapshot",
   "relationship": {
     "kind": "power_law",
-    "a": 170.30705562404663,
-    "b": 2.182845335055661,
-    "e": 0.19629798615028446,
+    "a": 170.3070556229875,
+    "b": 2.182845335002051,
+    "e": 0.1962979861502876,
     "reference_start": "2012-01-01",
     "reference_end": "2024-09-25",
     "n": 113,
-    "rmse_log": 0.06781438219116702
+    "rmse_log": 0.06781438218964003
   },
   "drift": {
     "site": "03463300",
@@ -26,6 +26,7 @@
     "shifts": [],
     "n_tested": 123,
     "n_excluded": 1,
+    "n_invalid_domain": 0,
     "penalty": 50.0
   },
   "trust": {
@@ -35,7 +36,7 @@
       {
         "name": "residual",
         "points": 0.0,
-        "reason": "Recent measurements carry 1.2 % more water than the rating predicts (median of 8); this gauge's normal scatter is 4.0 %, so 0.0 % is excess at 2 points per % (cap 40)."
+        "reason": "Recent measurements carry 1.2 % more water than the rating predicts (median of 8); this gauge's normal scatter is 4.0 %, so 0.0 % is excess at 2 points per % (cap 50)."
       },
       {
         "name": "staleness",
@@ -55,7 +56,7 @@
       {
         "name": "insufficient_data",
         "points": 0.0,
-        "reason": "6 usable measurements in the last 12 months; 4 or more costs nothing, each one short costs 2.5."
+        "reason": "6 field measurements in the last 12 months; 4 or more costs nothing, each one short costs 2.5."
       }
     ]
   },

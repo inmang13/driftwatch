@@ -1,7 +1,7 @@
 """Darienzo-style recursive segmentation of the rating residual series.
 
 Series: every non-excluded measurement from the start of the reference window onward, in time
-order. The change-point search runs on ln(Q_meas / Q_hat), standardized by the robust spread
+order, minus invalid_domain ones (stage <= e, where the rating has no flow; see rating.py). The change-point search runs on ln(Q_meas / Q_hat), standardized by the robust spread
 (1.4826 x MAD) of the reference-window residuals, so one penalty means the same thing at a
 quiet gauge and a noisy one. PELT (l2 cost, min_size 6) splits the series; each piece is searched
 again until no piece splits. Sizes are reported in plain % flow and ft (see rating.py signs).
@@ -34,8 +34,18 @@ PENALTY = 50.0
 MIN_SIZE = 6
 
 
-def tested_measurements(ds: Dataset) -> list[Measurement]:
+def candidate_measurements(ds: Dataset) -> list[Measurement]:
+    """Non-excluded measurements from the reference start on (before the domain check)."""
     return [m for m in ds.measurements if not m.excluded and m.time.date() >= ds.reference_start]
+
+
+def tested_measurements(ds: Dataset, rel: Relationship) -> list[Measurement]:
+    """The drift-test series: candidates whose stage is inside the rating's domain (H > e)."""
+    return [m for m in candidate_measurements(ds) if m.stage_ft > rel.e]
+
+
+def n_invalid_domain(ds: Dataset, rel: Relationship) -> int:
+    return sum(1 for m in candidate_measurements(ds) if m.stage_ft <= rel.e)
 
 
 def change_points(z: np.ndarray, penalty: float = PENALTY, min_size: int = MIN_SIZE) -> list[int]:
@@ -60,10 +70,13 @@ def _robust_sigma(x: np.ndarray) -> float:
 
 
 def drift_test(ds: Dataset, rel: Relationship, penalty: float = PENALTY) -> DriftResult:
-    ms = tested_measurements(ds)
+    ms = tested_measurements(ds, rel)
     n_excluded = sum(1 for m in ds.measurements if m.excluded)
+    n_invalid = n_invalid_domain(ds, rel)
     if not ms:
-        return DriftResult(site=ds.site, n_excluded=n_excluded, penalty=penalty)
+        return DriftResult(
+            site=ds.site, n_excluded=n_excluded, n_invalid_domain=n_invalid, penalty=penalty
+        )
 
     h = np.array([m.stage_ft for m in ms])
     q = np.array([m.discharge_cfs for m in ms])
@@ -99,7 +112,7 @@ def drift_test(ds: Dataset, rel: Relationship, penalty: float = PENALTY) -> Drif
                 size_pct=round(size_pct, 2),
                 size_ft=round(size_ft, 3),
                 direction="positive" if size_pct > 0 else "negative",
-                n_after=hi - mid,
+                n_after=len(ms) - mid,  # everything since the shift, not just the next segment
                 confidence=round(float(np.clip(1.0 - p, 0.0, 1.0)), 4),
             )
         )
@@ -109,5 +122,6 @@ def drift_test(ds: Dataset, rel: Relationship, penalty: float = PENALTY) -> Drif
         shifts=shifts,
         n_tested=len(ms),
         n_excluded=n_excluded,
+        n_invalid_domain=n_invalid,
         penalty=penalty,
     )
