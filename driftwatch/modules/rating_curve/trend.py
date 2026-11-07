@@ -54,7 +54,7 @@ def _weighted_median_rows(x: np.ndarray, w: np.ndarray) -> np.ndarray:
     """Row-wise lower weighted median of x (NaN entries ignored by giving them zero weight)."""
     w = np.where(np.isnan(x), 0.0, w)
     x = np.where(np.isnan(x), np.inf, x)
-    order = np.argsort(x, axis=1, kind="stable")
+    order = np.argsort(x, axis=1)
     xs = np.take_along_axis(x, order, axis=1)
     cw = np.cumsum(np.take_along_axis(w, order, axis=1), axis=1)
     half = cw[:, -1:] / 2.0
@@ -115,7 +115,7 @@ def fit_trend(
     n = len(y)
     if n < min_n:
         return None
-    order = np.argsort(np.array(times, dtype="datetime64[us]"), kind="stable")
+    order = np.argsort([tm.timestamp() for tm in times], kind="stable")
     times = [times[i] for i in order]
     y, w = y[order], w[order]
     t0 = times[0]
