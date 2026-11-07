@@ -1,21 +1,25 @@
 # M2 results: what the agent team says about the 8 gauges
 
-*Branch `m2-agents`, 2026-11-07. Gemini traces in `traces/` are from 12:12–12:55 pm. Ranker and
+*Branch `m2-agents`, 2026-11-07. Gemini traces in `traces/` are from 12:12 pm–1:04 pm. Ranker and
 narrator ran on Vertex `gemini-3.8-flash`; the skeptic ran on OpenRouter `openai/gpt-5.4-mini`.
 No node fell back to the rules in any committed trace. `make test` and `make demo` use
 `LLM=fallback`.*
 
-## Decisions waiting on Grace
+## Replay default and the first-review rule (1:04 pm)
 
-1. **Replay default for Hepco.** There are three Gemini Hepco traces (table below). Replay uses the
-   file named in `traces/replay_defaults.json` and falls back to the newest file, which is run 3.
-   To pick one, create `traces/replay_defaults.json` with
-   `{"03459500": "03459500-20261107T171258320517Z.json"}` (run 2, for example). **Grace's pick: not
-   made yet.**
-2. **The skeptic skipped its one objection in run 3.** It went straight to `disagree` instead of
-   objecting first, as the control-note rule asks. The prompt doesn't say which rule wins. If the
-   objection should come first, add one line to `prompts/skeptic.md`: "On your first review, the
-   control-note objection comes before any disagreement." I haven't tested that line.
+- **Replay default for Hepco: run 4** (`03459500-20261107T180218430129Z.json`), set in
+  `traces/replay_defaults.json`. It shows the full sequence Grace asked for: one objection, a
+  revised ranking, then a Disagreement.
+- **`prompts/skeptic.md` now fixes the order.** On the first review, a top cause that contradicts
+  a "… control changed" note gets exactly one `insufficient_evidence` objection. A Disagreement
+  comes only on the second or later review. Run 4 followed this. Run 3 had gone straight to
+  Disagreement.
+- **Gemini is live from `.env`.** No WARNING in the run 4 or Newport traces, and no shell override
+  this time.
+- **The revision went the "wrong" way.** In round 2 the ranker could see the channel numbers
+  (speed −22 %, area −11 %, a pattern that favours fill). It still moved *from* fill 0.42 *to*
+  datum change 0.45. The skeptic's Disagreement then says why the numbers point elsewhere. So the
+  demo is honest: the team ends uncertain and names the check that would settle it.
 
 ## What changed since the morning run
 
@@ -53,21 +57,21 @@ Key: each round is the ranker's top cause and confidence, followed by what the s
 | 1 (12:12) | control-note rule | datum change 0.46 | objects (note says scour) | datum change 0.45 | accepts | — | — | **datum change 0.45** | 5 | 58 s |
 | 2 (12:13) | control-note rule | datum change 0.45 | objects (note + backwater) | fill 0.45 | objects | inconclusive 0.45 | accepts | **inconclusive 0.45** | 7 | 263 s |
 | 3 (12:47) | + Disagreement, + channel after objection | datum change 0.50 | **disagrees** (confidence 0.5) | — | — | — | — | **datum change 0.50, Disagreement** | 3 | 29 s |
+| **4 (1:02, replay default)** | + first-review order, + structured narrator | fill 0.42 | objects (insufficient evidence: the note says scour) | datum change 0.45 | **disagrees** (confidence 0.45) | — | — | **datum change 0.45, Disagreement** | 5 | 80 s |
 
-**Run 3's Disagreement, as the narrator wrote it:** "Our best guess is a datum change, but
-confidence is uncertain. A field note on 2024-12-17 noted 'Scour control changed'. They disagree
-because scour would increase readings rather than create a negative shift, while channel velocity
-dropped significantly, pointing to downstream backwater or fill rather than a simple datum change.
-Double-check: Resurvey the control section and reference marks…"
+**Run 4's narration (replay default):** "Recent field measurements sit 33.1 % below the rating, so
+published flows are about that much too high since 2024-12-17. The best guess is an uncertain datum
+change. The field note from 2024-12-17 reads "Scour control changed", but they disagree because
+scour normally pushes residuals positive, while measurements are below the rating and velocity
+dropped more than area. Double-check: Run a level survey from the bench mark to the gage and
+inspect the control for scour/fill displacement and any shifted reference marks. Trust score
+24/100 (Stale)."
 
-**Run 3's narration predates the structured narrator and the facts-only rule (12:54).** I didn't
-re-run Hepco or Newport after that, because the item only asked for the Trusted gauges and Asheville.
-
-Gemini picks datum change first on every run since 12:12, though it picked fill this morning. It is
+Gemini's first pick moves between fill (this morning, run 4) and datum change (runs 1–3). It is
 not deterministic at temperature 0. The final cause is never plain scour.
 
 **Eval case (M5):** use "Hepco final cause is not scour". "Hepco → fill" fails with Gemini, and
-"Hepco → skeptic objects" passed on runs 1 and 2 but not on run 3.
+"Hepco → skeptic objects" passes on runs 1, 2 and 4.
 
 ## Gemini run, per gauge (latest trace each)
 
@@ -78,8 +82,8 @@ engine. The **trace time** shows which prompt version produced it: before or aft
 
 | Site | Gauge | Band (score) | Final cause | Conf. | Objections | Tokens | Wall | Trace time |
 |---|---|---|---|---|---|---|---|---|
-| 03459500 | Pigeon R near Hepco (run 3) | Stale (24) | datum change + Disagreement | 0.50 | 0 | 6,462 + 921 | 29 s | 12:47 |
-| 03455000 | French Broad near Newport | Stale (30) | fill | 0.78 | 0 | 6,934 + 767 | 88 s | 12:46 |
+| 03459500 | Pigeon R near Hepco (run 4) | Stale (24) | datum change + Disagreement | 0.45 | 1 | 12,643 + 1,696 | 80 s | 1:02 |
+| 03455000 | French Broad near Newport | Stale (30) | fill | 0.75 | 0 | 7,291 + 843 | 29 s | 1:03 |
 | 03446000 | Mills R | Watch (73) | debris | 0.55 | 0 | 5,930 + 708 | 24 s | 12:20 |
 | 03451500 | French Broad at Asheville | Stale (46) | scour | 0.78 | 0 | 6,704 + 760 | 24 s | 12:55 |
 | 03451000 | Swannanoa at Biltmore | Trusted (94) | none (straight to narrator) | — | — | 1,096 + 170 | 13 s | 12:55 |
@@ -87,7 +91,7 @@ engine. The **trace time** shows which prompt version produced it: before or aft
 | 03479000 | Watauga near Sugar Grove | Trusted (95) | none | — | — | 1,097 + 179 | 11 s | 12:55 |
 | 02085000 | Eno at Hillsborough | Trusted (91) | none | — | — | 1,096 + 171 | 13 s | 12:55 |
 
-Gemini latency swings a lot. Newport took 88 s on this pass and 22 s on the one before.
+Gemini latency swings a lot: Newport took 88 s on one pass and 22–29 s on others. Mills' trace (12:20) predates the structured narrator; every other gauge's latest trace uses it.
 
 ## Fallback run (`LLM=fallback`), for comparison
 
