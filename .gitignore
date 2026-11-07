@@ -16,3 +16,7 @@ venv/
 # ============================================================
 .vscode/
 **/.claude/settings.local.json
+
+# Pi job logs
+logs/
+reports/*.tmp
