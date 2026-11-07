@@ -274,7 +274,22 @@ const conf = (c) => (c == null ? "[none]" : `${Math.round(c * 100)} %`);
 const roundPct = (s) => String(s ?? "").replace(/([+\-−]?)(\d+)\.\d+\s?%/g,
   (m, sg, n) => `${sg}${Math.round(Number(m.replace(/[^\d.]/g, "")))} %`);
 // interface copy carries no em dashes; model text gets a comma in their place
-const plain = (s) => roundPct(s).replace(/\s*—\s*/g, ", ");
+// C11.1 for model-written text: same words as the rest of the page (display only; traces untouched)
+const PLAIN_SWAPS = [
+  [/\b(?:a |the )?positive residual\b/gi, "readings above the curve"],
+  [/\b(?:a |the )?negative residual\b/gi, "readings below the curve"],
+  [/\bresiduals? (?:are |is )?positive\b/gi, "readings above the curve"],
+  [/\bresiduals? (?:are |is )?negative\b/gi, "readings below the curve"],
+  [/\b(?:recent |observed )?median residual\b/gi, "middle reading"],
+  [/\bresiduals\b/gi, "readings"],
+  [/\bresidual\b/gi, "reading"],
+  [/\bthe rating\b(?! curve)/gi, "the curve"],
+  [/\b(below|above) rating\b/gi, "$1 the curve"],
+  [/\bvelocity\b/gi, "water speed"],
+  [/[+−-](\d+ %) (below|above)\b/g, "$1 $2"],  // "-33 % below" says the sign twice
+];
+const plain = (s) => PLAIN_SWAPS.reduce((t, [re, to]) => t.replace(re, to),
+  roundPct(s).replace(/\s*—\s*/g, ", "));
 const shortName = (n) => (n || "").replace(/, (NC|TN)$/i, "").toLowerCase()
   .replace(/\b\w/g, (c) => c.toUpperCase()).replace(/\bNr\b/, "near");
 
