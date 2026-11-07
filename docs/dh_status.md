@@ -27,7 +27,7 @@ Built in a separate worktree (`/srv/arx/work/dw-dh`), so the shared checkout at 
 **Outside the list:** `reports/*.json`, regenerated for all 8 gauges. `make demo` rewrites two of them in any case. They are in their own commit (971d6c2) and can be dropped.
 
 ## For Grace
-1. **Auto mode is one gauging from flipping Newport.** Its post-Helene period is 14 gaugings over 1.97 years, against a requirement of 15 over 2. After the next visit, auto would take the new channel as the reference and stop seeing the shift. Should auto be capped at the fixed reference end, or at the Helene date?
-2. Change 2 makes the Eno null fire a little more often at long series: 40 % at 40 visits, up from 34 %. Not retuned.
+1. ~~Auto mode is one gauging from flipping Newport.~~ Resolved in round 2: the holdout rule never picks the period that runs to the latest gauging. It created the new problem listed under "Round 2" above.
+2. Change 2 made the Eno null fire a little more often at long series. The round 2 gate brings it down to 12 % at 80 visits.
 3. `reference_mode` can be set only through `build_report(...)`. The CLI and the API were outside this job's files.
 4. The pre-existing ruff error in `driftwatch/modules/registry.py` (TRY004) was left alone.
