@@ -42,6 +42,7 @@ load_dotenv()  # LLM / credentials from .env; never overrides the shell
 
 HERE = Path(__file__).resolve().parent
 CONSOLE = HERE / "console.html"
+REPORTS = HERE.parents[1] / "reports"  # committed reports/<site>.json (make report)
 STATIC = HERE / "static"  # vendored plotly.min.js: the console works with no internet
 HELENE = "2024-09-27"
 REPLAY_PACE_S = float(os.environ.get("REPLAY_PACE", "0.6"))
@@ -197,6 +198,16 @@ def high_flow_misfit(points: list[dict[str, Any]], newest_n: int = NEWEST_N) -> 
     return out
 
 
+def stored_trend(site: str) -> dict[str, Any]:
+    """trend and trend_note from the committed reports/<site>.json. Read, never recomputed:
+    site_trend takes ~25 s at Mills, too slow per page load. Missing file or field -> None."""
+    try:
+        doc = json.loads((REPORTS / f"{site}.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {"trend": None, "trend_note": None}
+    return {"trend": doc.get("trend"), "trend_note": doc.get("trend_note")}
+
+
 @cache
 def _report_payload(site: str) -> dict[str, Any]:
     """Report + everything the two plots need. Built from the snapshot, cached (it is static)."""
@@ -234,6 +245,7 @@ def _report_payload(site: str) -> dict[str, Any]:
                 "median_pct": float(np.median(recent)) if recent else None,
                 "n": len(recent),
             },
+            **stored_trend(site),
             "high_flow_misfit": high_flow_misfit(points, len(recent) or NEWEST_N),
             "points": points,
             "curve": curve,

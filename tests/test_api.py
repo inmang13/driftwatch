@@ -176,3 +176,12 @@ def test_console_has_education_tab_and_local_fonts(client):
         assert client.get(f"/static/fonts/{f}.woff2").status_code == 200
     edu = client.get("/static/education.json").json()
     assert len(edu) == 8 and all("—" not in json.dumps(e, ensure_ascii=False) for e in edu)
+
+
+def test_report_carries_stored_trend(client):
+    mills = client.get("/report/03446000").json()
+    assert mills["trend"]["significant"] is True
+    assert mills["trend"]["text"].startswith("Readings have drifted about 0.8 % lower")
+    assert mills["trend_note"]
+    hepco = client.get("/report/03459500").json()
+    assert hepco["trend"] is None and hepco["trend_note"] is None
