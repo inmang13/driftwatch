@@ -162,3 +162,31 @@ def test_n_after_counts_every_measurement_since_the_shift():
     assert [s.time for s in drift.shifts] == [ms[60].time, ms[90].time]
     assert [s.direction for s in drift.shifts] == ["negative", "positive"]
     assert [s.n_after for s in drift.shifts] == [60, 30]
+
+
+def test_null_eno_resampled_residuals_give_no_shift_after_reference():
+    """Synthetic null: 20 visits after Eno's reference window, each a reference stage with a
+    reference-window residual drawn at random (seed fixed at 0, chosen before running). No step
+    is injected, so nothing should fire after the window. Known limit (decision log 2026-11-07):
+    across seeds this null fires about 4-34 % of the time as the post-window series grows from
+    10 to 40 visits, so a single seed passing is a smoke test, not a false-alarm rate."""
+    ds = pairing.load_dataset("02085000")
+    rel = rating.fit_rating(ds)
+    ref = [
+        m for m in segmentation.tested_measurements(ds, rel) if m.time.date() <= ds.reference_end
+    ]
+    h_ref = np.array([m.stage_ft for m in ref])
+    log_r = np.log(np.array([m.discharge_cfs for m in ref]) / rating.predict_q(rel, h_ref))
+    rng = np.random.default_rng(0)
+    t = ref[-1].time
+    post = []
+    for i in range(20):
+        j, k = rng.integers(len(ref), size=2)
+        t += timedelta(days=45)
+        q = float(rating.predict_q(rel, h_ref[j]) * np.exp(log_r[k]))
+        post.append(
+            ref[j].model_copy(update={"time": t, "discharge_cfs": q, "field_visit_id": f"null{i}"})
+        )
+    pre = [m for m in ds.measurements if m.time.date() <= ds.reference_end]
+    drift = segmentation.drift_test(ds.model_copy(update={"measurements": pre + post}), rel)
+    assert [s for s in drift.shifts if s.time.date() > ds.reference_end] == []
