@@ -169,11 +169,13 @@ def test_null_eno_resampled_residuals_give_no_shift_after_reference():
     reference-window residual drawn at random (seed fixed at 0, chosen before running). No step
     is injected, so nothing should fire after the window. Known limit (decision log 2026-11-07):
     across seeds this null fires about 4-34 % of the time as the post-window series grows from
-    10 to 40 visits, so a single seed passing is a smoke test, not a false-alarm rate."""
+    10 to 40 visits, so a single seed passing is a smoke test, not a false-alarm rate.
+    Resampled from the search series (Poor left out, dh step 2), the population the search sees;
+    rates then 4 / 18 / 40 % at 10 / 20 / 40 visits (decision log, dh 2)."""
     ds = pairing.load_dataset("02085000")
     rel = rating.fit_rating(ds)
     ref = [
-        m for m in segmentation.tested_measurements(ds, rel) if m.time.date() <= ds.reference_end
+        m for m in segmentation.search_measurements(ds, rel) if m.time.date() <= ds.reference_end
     ]
     h_ref = np.array([m.stage_ft for m in ref])
     log_r = np.log(np.array([m.discharge_cfs for m in ref]) / rating.predict_q(rel, h_ref))
@@ -264,3 +266,71 @@ def test_newport_step_is_larger_in_ft_and_at_low_flows():
     d = segmentation.drift_test(ds, rating.fit_rating(ds))
     assert d.larger_step_series == "ft"
     assert d.low_flow_concentrated is True
+
+
+# --- dh step 2: quality weighting ---------------------------------------------------------
+
+
+def test_weighted_median():
+    assert segmentation.weighted_median([1, 2, 3], [1, 1, 1]) == 2
+    assert segmentation.weighted_median([1, 2, 3, 4], [1, 1, 1, 1]) == 2.5
+    assert segmentation.weighted_median([0, 10], [4, 1]) == 0  # Excellent outweighs Poor
+    assert segmentation.weighted_median([0, 10, 11], [1, 1, 3]) == 11
+    assert np.isnan(segmentation.weighted_median([], []))
+
+
+def test_poor_gaugings_are_left_out_of_the_search_but_counted():
+    # The last 10 visits read 40 % low, but every one is rated Poor: no shift, still counted.
+    ds, _ = _shift_ds(
+        lambda h: 0.5 + (h - 0.5) * 0.6 ** (1 / 1.7),
+        n_post=10,
+        rated=lambda i: "Poor" if i >= 80 else "Good",
+    )
+    drift = segmentation.drift_test(ds, rating.fit_rating(ds))
+    assert drift.shifts == [] and drift.shifts_ft == []
+    assert drift.n_tested == 90
+    assert drift.n_poor_unsearched == 10
+    # The same visits rated Good do make a shift.
+    ds2, _ = _shift_ds(lambda h: 0.5 + (h - 0.5) * 0.6 ** (1 / 1.7), n_post=10)
+    assert segmentation.drift_test(ds2, rating.fit_rating(ds2)).shifts
+
+
+def test_shift_size_is_quality_weighted():
+    # After the shift: Excellent visits read 30 % low, Fair ones 10 % low (half and half).
+    # The weighted median (4 vs 2) lands on the Excellent value; a plain median would not.
+    t0 = datetime(2012, 1, 1, tzinfo=UTC)
+    rng = np.random.default_rng(7)
+    ms = []
+    for i in range(110):
+        h = float(rng.uniform(1.5, 8.0))
+        rated, factor = "Good", 1.0
+        if i >= 80:
+            rated = "Fair" if i % 2 else "Excellent"
+            factor = 0.9 if i % 2 else 0.7
+        q = 40.0 * (h - 0.5) ** 1.7 * factor * float(np.exp(rng.normal(0, 0.03)))
+        ms.append(
+            Measurement(
+                site="x",
+                field_visit_id=str(i),
+                time=t0 + timedelta(days=45 * i),
+                stage_ft=h,
+                discharge_cfs=q,
+                rated=rated,
+                weight=pairing.quality_weight(rated),
+            )
+        )
+    ds = Dataset(
+        site="x",
+        source="snapshot",
+        reference_start=t0.date(),
+        reference_end=ms[79].time.date(),
+        measurements=ms,
+    )
+    rel = rating.fit_rating(ds)
+    pct = rating.residual_pct(
+        rel, [m.stage_ft for m in ms[80:]], [m.discharge_cfs for m in ms[80:]]
+    )
+    assert float(np.median(pct)) == pytest.approx(-20, abs=3)  # what a plain median says
+    shifts = segmentation.drift_test(ds, rel).shifts
+    assert [s.time for s in shifts] == [ms[80].time]
+    assert shifts[0].size_pct == pytest.approx(-30, abs=4)

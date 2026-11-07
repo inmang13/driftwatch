@@ -11,8 +11,9 @@ The search runs twice: on the % flow residual above, and on the stage-shift resi
 zero-flow height, so a step that shows mainly in ft, and mostly at low flows, is a clue for the
 agents (`larger_step_series`, `low_flow_concentrated`).
 
-A shift's size is the step between the median residual of the segment before and the segment
-after it. confidence = 1 - Mann-Whitney p-value between those two segments.
+Poor-rated gaugings are left out of the search (they stay in plots and counts). A shift's size
+is the step between the quality-weighted median residual (Measurement.weight) of the segment
+before and the segment after it. confidence = 1 - Mann-Whitney p-value between those two segments.
 """
 
 from __future__ import annotations
@@ -49,6 +50,28 @@ def tested_measurements(ds: Dataset, rel: Relationship) -> list[Measurement]:
     return [m for m in candidate_measurements(ds) if m.stage_ft > rel.e]
 
 
+def search_measurements(ds: Dataset, rel: Relationship) -> list[Measurement]:
+    """The change-point search series: tested measurements minus every Poor-rated one. Poor
+    gaugings stay in `tested_measurements` (plots, counts, the recent quality grade)."""
+    return [m for m in tested_measurements(ds, rel) if m.rated != "Poor"]
+
+
+def weighted_median(x, w) -> float:
+    """Median of x with weights w (lower weighted median; the two middle values are averaged
+    when the cumulative weight lands exactly on half). Equal weights give the plain median."""
+    x, w = np.asarray(x, dtype=float), np.asarray(w, dtype=float)
+    if not len(x):
+        return float("nan")
+    order = np.argsort(x, kind="stable")
+    x, w = x[order], w[order]
+    cw = np.cumsum(w)
+    half = cw[-1] / 2.0
+    i = int(np.searchsorted(cw, half))
+    if np.isclose(cw[i], half) and i + 1 < len(x):
+        return float((x[i] + x[i + 1]) / 2.0)
+    return float(x[i])
+
+
 def n_invalid_domain(ds: Dataset, rel: Relationship) -> int:
     return sum(1 for m in candidate_measurements(ds) if m.stage_ft <= rel.e)
 
@@ -75,12 +98,19 @@ def _robust_sigma(x: np.ndarray) -> float:
 
 
 def drift_test(ds: Dataset, rel: Relationship, penalty: float = PENALTY) -> DriftResult:
-    ms = tested_measurements(ds, rel)
+    tested = tested_measurements(ds, rel)
+    ms = search_measurements(ds, rel)
     n_excluded = sum(1 for m in ds.measurements if m.excluded)
     n_invalid = n_invalid_domain(ds, rel)
+    n_poor = len(tested) - len(ms)
     if not ms:
         return DriftResult(
-            site=ds.site, n_excluded=n_excluded, n_invalid_domain=n_invalid, penalty=penalty
+            site=ds.site,
+            n_tested=len(tested),
+            n_excluded=n_excluded,
+            n_invalid_domain=n_invalid,
+            n_poor_unsearched=n_poor,
+            penalty=penalty,
         )
 
     h = np.array([m.stage_ft for m in ms])
@@ -88,6 +118,7 @@ def drift_test(ds: Dataset, rel: Relationship, penalty: float = PENALTY) -> Drif
     log_r = np.log(q / rating.predict_q(rel, h))
     pct = rating.residual_pct(rel, h, q)
     ft = rating.stage_shift_ft(rel, h, q)
+    w = np.array([m.weight for m in ms])
 
     in_ref = np.array([m.time.date() <= ds.reference_end for m in ms])
 
@@ -97,8 +128,8 @@ def drift_test(ds: Dataset, rel: Relationship, penalty: float = PENALTY) -> Drif
     # Series 1 (% flow): searched on ln(Q/Q_hat). Series 2 (ft): searched on the stage shift.
     z_pct = (log_r - np.median(_ref(log_r))) / _robust_sigma(_ref(log_r))
     z_ft = (ft - np.median(_ref(ft))) / _robust_sigma(_ref(ft))
-    stable, shifts = _segment(ms, z_pct, log_r, pct, ft, penalty)
-    stable_ft, shifts_ft = _segment(ms, z_ft, ft, pct, ft, penalty)
+    stable, shifts = _segment(ms, z_pct, log_r, pct, ft, w, penalty)
+    stable_ft, shifts_ft = _segment(ms, z_ft, ft, pct, ft, w, penalty)
 
     # Which series shows the bigger step after the reference window, in units of its own
     # reference scatter (robust sigma of the % residual / of the ft residual).
@@ -127,9 +158,10 @@ def drift_test(ds: Dataset, rel: Relationship, penalty: float = PENALTY) -> Drif
         step_ft_sigma=round(step_ft, 2) if step_ft is not None else None,
         larger_step_series=larger,
         low_flow_concentrated=low_flow,
-        n_tested=len(ms),
+        n_tested=len(tested),
         n_excluded=n_excluded,
         n_invalid_domain=n_invalid,
+        n_poor_unsearched=n_poor,
         penalty=penalty,
     )
 
@@ -148,9 +180,10 @@ def low_flow_concentrated(ms: list[Measurement], q: np.ndarray, ft: np.ndarray, 
     return bool(np.median(low) > np.median(high))
 
 
-def _segment(ms, z, test_series, pct, ft, penalty):
-    """Change points on z -> (stable periods, shifts). Sizes in % and ft; confidence from a
-    Mann-Whitney test on test_series (the unstandardized searched series)."""
+def _segment(ms, z, test_series, pct, ft, w, penalty):
+    """Change points on z -> (stable periods, shifts). Sizes in % and ft are quality-weighted
+    medians (weights w) after minus before; confidence from an unweighted Mann-Whitney test on
+    test_series (the unstandardized searched series)."""
     cps = change_points(z, penalty)
     edges = [0, *cps, len(ms)]
     segments = list(pairwise(edges))
@@ -166,8 +199,8 @@ def _segment(ms, z, test_series, pct, ft, penalty):
     ]
     shifts = []
     for (lo, mid), (_, hi) in pairwise(segments):
-        size_pct = float(np.median(pct[mid:hi]) - np.median(pct[lo:mid]))
-        size_ft = float(np.median(ft[mid:hi]) - np.median(ft[lo:mid]))
+        size_pct = weighted_median(pct[mid:hi], w[mid:hi]) - weighted_median(pct[lo:mid], w[lo:mid])
+        size_ft = weighted_median(ft[mid:hi], w[mid:hi]) - weighted_median(ft[lo:mid], w[lo:mid])
         p = mannwhitneyu(test_series[lo:mid], test_series[mid:hi]).pvalue
         shifts.append(
             Shift(

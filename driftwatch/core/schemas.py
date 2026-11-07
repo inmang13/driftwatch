@@ -124,6 +124,7 @@ class DriftResult(BaseModel):
     n_tested: int = Field(ge=0, default=0)
     n_excluded: int = Field(ge=0, default=0)
     n_invalid_domain: int = Field(ge=0, default=0)  # stage <= e: no rated flow, left out of test
+    n_poor_unsearched: int = Field(ge=0, default=0)  # Poor-rated tested gaugings kept out of search
     penalty: float | None = None
 
 
