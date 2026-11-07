@@ -1,6 +1,6 @@
 """Glass-box trust score (plan §4). Module-agnostic: callers pass plain numbers, every rule is here.
 
-score = 100 - residual (0-40) - staleness (0-20) - quality (0-15) - field notes (0-15)
+score = 100 - residual (0-50) - staleness (0-20) - quality (0-15) - field notes (0-15)
             - insufficient data (0-10)
 Bands: Trusted >= 80 · Watch 50-79 · Stale < 50. All five deductions are always listed, with the
 number that drove them, even when they cost 0 points.
@@ -15,7 +15,7 @@ import numpy as np
 
 from driftwatch.core.schemas import Deduction, TrustScore
 
-RESIDUAL_MAX = 40.0
+RESIDUAL_MAX = 50.0  # Grace 2026-11-07: "score cap is 50" (was 40)
 RESIDUAL_POINTS_PER_PCT = 2.0  # per % of median error beyond the gauge's normal scatter
 STALE_MAX = 20.0
 STALE_GRACE_DAYS = 90  # a visit every ~6-8 weeks is normal
