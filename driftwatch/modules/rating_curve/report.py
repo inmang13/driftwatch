@@ -19,11 +19,15 @@ import numpy as np
 
 from driftwatch.core import trust
 from driftwatch.core.schemas import Dataset, DriftResult, Relationship, Report, Shift
-from driftwatch.modules.rating_curve import causes, pairing, rating, segmentation
+from driftwatch.modules.rating_curve import causes, pairing, rating, segmentation, trend
 
 RECENT_N = 8
 NOTE_SEVERITY_POINTS = {"light": 3.0, "moderate": 8.0, "heavy": 12.0}
 CONTROL_CHANGED_POINTS = 15.0
+TREND_IN_REFERENCE_NOTE = (
+    "Most of this window is the period the curve was fitted on, so this is a slow slide worth "
+    "watching, not a test on new data."
+)
 
 
 def visits_since_reference(ds: Dataset):
@@ -198,7 +202,11 @@ def build_report(
     source: str = "snapshot",
     ds: Dataset | None = None,
     reference_mode: str = pairing.DEFAULT_REFERENCE_MODE,
+    with_trend: bool = False,
 ) -> Report:
+    """with_trend runs the slow-drift trend (trend.site_trend, a 2,000-resample bootstrap) and
+    fills Report.trend / trend_note. Off by default so the API and the agents stay fast; the CLI
+    report turns it on. It never feeds the trust score."""
     if reference_mode not in pairing.REFERENCE_MODES:
         raise ValueError(f"reference_mode must be one of {pairing.REFERENCE_MODES}")
     ds = ds or pairing.load_dataset(site, source)
@@ -213,6 +221,12 @@ def build_report(
     cause, why = likely_cause(ds, inputs, ts.band)
     shift_ft, shift_n = suggested_shift(ds, rel, drift)
     hold_n, hold_start, hold_end = holdout(ds, rel)
+    tr = trend.site_trend(ds, rel, drift) if with_trend else None
+    trend_note = (
+        TREND_IN_REFERENCE_NOTE
+        if tr is not None and tr.window_start.date() < ds.reference_end
+        else None
+    )
     return Report(
         site=ds.site,
         site_name=ds.site_name,
@@ -233,6 +247,8 @@ def build_report(
         holdout_n=hold_n,
         holdout_start=hold_start,
         holdout_end=hold_end,
+        trend=tr,
+        trend_note=trend_note,
     )
 
 
