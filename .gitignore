@@ -20,3 +20,4 @@ venv/
 # Pi job logs
 logs/
 reports/*.tmp
+traces/*.tmp

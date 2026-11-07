@@ -11,6 +11,7 @@ endif
 
 SOURCE ?= snapshot
 SITE ?= 03459500
+LLM ?=
 
 .PHONY: install snapshot report run serve test evals demo
 
@@ -28,8 +29,9 @@ snapshot:
 report:
 	$(PY) -m driftwatch.cli report --site $(SITE) --source $(SOURCE)
 
+# LLM empty -> the CLI reads LLM from .env / the shell. make run SITE=03455000 LLM=fallback
 run:
-	@echo not yet: make run SITE=$(SITE)
+	$(PY) -m driftwatch.cli run --site $(SITE) --llm "$(LLM)"
 
 serve:
 	@echo not yet: make serve
@@ -40,7 +42,9 @@ test:
 evals:
 	@echo not yet: make evals
 
-# Demo must pass offline. M2 adds the agent runs here: make run SITE=... with LLM=fallback for both sites.
+# Demo must pass offline: the agent runs are pinned to the deterministic fallback.
 demo:
 	$(PY) -m driftwatch.cli report --site 03459500 --source snapshot
 	$(PY) -m driftwatch.cli report --site 03451000 --source snapshot
+	$(PY) -m driftwatch.cli run --site 03459500 --llm fallback
+	$(PY) -m driftwatch.cli run --site 03451000 --llm fallback

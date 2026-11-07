@@ -26,6 +26,26 @@ def write_report(rep, reports_dir: Path | None = None) -> Path:
     return out
 
 
+def run_cmd(args) -> int:
+    from dotenv import load_dotenv
+
+    load_dotenv()  # never override: an explicit LLM=... in the shell wins
+    from driftwatch.agents.graph import run_sync
+
+    for site in args.site or SITES:
+        out = run_sync(site, args.llm or None, args.trace_dir)
+        fin = out.get("final")
+        cause = f"{fin['cause']} ({fin['confidence']:.2f})" if fin else "no cause (Trusted)"
+        t = out["totals"]
+        print(
+            f"== {site}: {cause} · objections {len(out.get('objections', []))} · "
+            f"{t['input_tokens']}+{t['output_tokens']} tokens · {t['wall_seconds']} s"
+        )
+        print(out["narration"])
+        print(f"trace: {out['trace_path']}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="driftwatch")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -33,10 +53,18 @@ def main(argv: list[str] | None = None) -> int:
     rp.add_argument("--site", nargs="+", default=None, help="site id(s); default: all 8")
     rp.add_argument("--source", choices=("snapshot", "live"), default="snapshot")
     rp.add_argument("--out", type=Path, default=None)
+    rn = sub.add_parser("run", help="run the agent team on a gauge; prints the narration")
+    rn.add_argument("--site", nargs="+", default=None, help="site id(s); default: all 8")
+    rn.add_argument("--llm", default=None, help="fallback | gemini | openrouter (default: $LLM)")
+    rn.add_argument("--trace-dir", type=Path, default=None)
     args = ap.parse_args(argv)
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")  # the middle dot and em dash on a Windows console
     # Pairing drop counts etc. go to stderr; the summary lines stay alone on stdout.
     logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stderr)
 
+    if args.cmd == "run":
+        return run_cmd(args)
     if args.source != "snapshot":
         print(
             "reports read the snapshot only; run make snapshot SOURCE=live first", file=sys.stderr
