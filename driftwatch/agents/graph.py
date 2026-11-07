@@ -58,6 +58,12 @@ class AgentState(TypedDict, total=False):
     usage: list[dict[str, Any]]
 
 
+def _llm_failed(e: Exception) -> dict[str, Any]:
+    """Trace meta for a node whose model call (or model construction) failed: rules used."""
+    msg = f"{type(e).__name__}: {e}"[:300]
+    return {"model": "fallback", "llm_error": msg, "warning": f"LLM unavailable, used rules: {msg}"}
+
+
 def _dump(x: Any) -> str:
     return json.dumps(x, indent=1, default=str)
 
@@ -236,7 +242,7 @@ def build_graph(rec: TraceRecorder):
         rnd = len(state["rankings"]) + 1
         rec.emit("hypothesis_ranker", "started", {"round": rnd, "objections_so_far": len(objs)})
         meta: dict[str, Any] = {"model": "fallback"}
-        if llm.backend("ranker", state["llm"]) is None:
+        if state["llm"] == "fallback":  # backend is built inside the try below
             r = fallbacks.rank(facts, objs)
         else:
             try:
@@ -254,7 +260,7 @@ def build_graph(rec: TraceRecorder):
                 )
                 r = clean_ranking(r, facts, objs)
             except Exception as e:  # noqa: BLE001 - any model failure -> rules
-                meta = {"model": "fallback", "llm_error": f"{type(e).__name__}: {e}"[:300]}
+                meta = _llm_failed(e)
                 r = fallbacks.rank(facts, objs)
         out = r.model_dump()
         rec.emit("hypothesis_ranker", "completed", {"round": rnd, **out, **meta})
@@ -270,7 +276,7 @@ def build_graph(rec: TraceRecorder):
         rec.emit("skeptic", "started", {"reviewing": ranking.top.cause})
         meta: dict[str, Any] = {"model": "fallback"}
         rules = fallbacks.critique(facts, ranking)
-        if llm.backend("skeptic", state["llm"]) is None:
+        if state["llm"] == "fallback":  # backend is built inside the try below
             v = rules
         else:
             try:
@@ -297,7 +303,7 @@ def build_graph(rec: TraceRecorder):
                     meta["guard"] = "objection relabelled: the top cause's sign does match"
                     v = v.model_copy(update={"objection": "other"})
             except Exception as e:  # noqa: BLE001
-                meta = {"model": "fallback", "llm_error": f"{type(e).__name__}: {e}"[:300]}
+                meta = _llm_failed(e)
                 v = rules
         n_obj = len(state["objections"]) + (v.verdict == "object")
         final_pass = not (v.verdict == "object" and n_obj <= MAX_LOOPS)
@@ -336,7 +342,7 @@ def build_graph(rec: TraceRecorder):
             }
         meta: dict[str, Any] = {"model": "fallback"}
         text = fallbacks.narrate(facts, final).text
-        if llm.backend("narrator", state["llm"]) is not None:
+        if state["llm"] != "fallback":  # backend is built inside the try below
             try:
                 n, meta = await llm.structured(
                     "narrator",
@@ -354,7 +360,7 @@ def build_graph(rec: TraceRecorder):
                 else:
                     text = n.text.strip()
             except Exception as e:  # noqa: BLE001
-                meta = {"model": "fallback", "llm_error": f"{type(e).__name__}: {e}"[:300]}
+                meta = _llm_failed(e)
         rec.emit("narrator", "completed", {"narration": text, "final": final, **meta})
         return {
             "narration": text,

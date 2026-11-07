@@ -26,6 +26,9 @@ PROMPTS = Path(__file__).resolve().parent / "prompts"
 OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 MODES = ("fallback", "gemini", "openrouter")
 MAX_TOKENS = 2000
+# the models the 2026-11-07 runs used (docs/m2_results.md); .env overrides
+DEFAULT_GEMINI_MODEL = "gemini-3.8-flash"
+DEFAULT_SKEPTIC_MODEL = "openai/gpt-5.4-mini"
 T = TypeVar("T", bound=BaseModel)
 
 
@@ -53,7 +56,10 @@ def _env(name: str, default: str | None = None) -> str | None:
 def _gemini():
     from langchain_google_vertexai import ChatVertexAI
 
-    model = _env("GEMINI_MODEL", "gemini-2.5-flash")
+    model = _env("GEMINI_MODEL", DEFAULT_GEMINI_MODEL)
+    if not _env("GOOGLE_CLOUD_PROJECT"):
+        # fail fast and offline instead of letting the SDK guess a project from the machine
+        raise RuntimeError("GOOGLE_CLOUD_PROJECT is not set")
     chat = ChatVertexAI(
         model=model,
         project=_env("GOOGLE_CLOUD_PROJECT"),
@@ -67,6 +73,8 @@ def _gemini():
 def _openrouter(model: str | None):
     from langchain_openai import ChatOpenAI
 
+    if not _env("OPENROUTER_API_KEY"):
+        raise RuntimeError("OPENROUTER_API_KEY is not set")
     if model and "/" not in model and model.startswith("gpt"):
         model = f"openai/{model}"  # OpenRouter slugs carry the vendor: openai/gpt-5.4-mini
 
@@ -87,12 +95,12 @@ def backend(role: str, llm_mode: str):
     fallback."""
     if llm_mode == "fallback":
         return None
-    skeptic_model = _env("SKEPTIC_MODEL")
+    skeptic_model = _env("SKEPTIC_MODEL", DEFAULT_SKEPTIC_MODEL)
     if llm_mode == "openrouter":
         return _openrouter(
             _env("OPENROUTER_MODEL") or skeptic_model if role != "skeptic" else skeptic_model
         )
-    if role == "skeptic" and _env("OPENROUTER_API_KEY") and skeptic_model:
+    if role == "skeptic" and _env("OPENROUTER_API_KEY"):
         return _openrouter(skeptic_model)
     return _gemini()
 

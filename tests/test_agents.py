@@ -256,3 +256,13 @@ def test_replay_default_file_wins_over_newest(tmp_path):
         json.dumps({HEPCO: "03459500-20260101T000000000000Z.json"})
     )
     assert latest_trace(HEPCO, tmp_path).name.startswith("03459500-2026")
+
+
+def test_missing_credentials_degrade_to_rules_with_a_warning(monkeypatch, tmp_path):
+    monkeypatch.delenv("GOOGLE_CLOUD_PROJECT", raising=False)
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    out = graph.run_sync(HEPCO, "gemini", tmp_path)  # must not raise
+    assert out["totals"]["fallbacks_used"] >= 3 and out["totals"]["llm_calls"] == 0
+    warns = [e.payload.get("warning") for e in replay(out["trace_path"]) if e.status == "completed"]
+    assert any(w and "GOOGLE_CLOUD_PROJECT is not set" in w for w in warns)
+    assert out["final"]["cause"] != "scour"
