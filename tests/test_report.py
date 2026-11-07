@@ -173,3 +173,200 @@ def test_helene_excluded_visit_counts_for_staleness_data_and_notes_only():
     # Recent residual and quality still come from tested measurements only.
     assert "Poor" not in inp_w.recent_rated
     assert inp_w.recent_residual_pct == inp_wo.recent_residual_pct
+
+
+# --- dh steps 3-4: suggested shift and reference mode -----------------------------------
+
+
+def _stepped_ds(n_ref=80, n_post=24, step_ft=-0.4, poor_every=6, seed=11):
+    """Clean gauge on Q = 40 (H - 0.5)^1.7, one visit every 45 days from 2012. After the
+    reference window the channel reads `step_ft` ft of stage shift (USGS sign: fill negative);
+    every `poor_every`-th post visit is a wild Poor gauging (+60 % flow)."""
+    from datetime import UTC, datetime, timedelta
+
+    import numpy as np
+
+    from driftwatch.core.schemas import Dataset, Measurement
+    from driftwatch.modules.rating_curve import pairing
+
+    rng = np.random.default_rng(seed)
+    t0 = datetime(2012, 1, 1, tzinfo=UTC)
+    ms = []
+    for i in range(n_ref + n_post):
+        h = float(rng.uniform(1.5, 8.0))
+        post = i >= n_ref
+        poor = post and (i - n_ref) % poor_every == poor_every - 1
+        h_eff = h + step_ft if post else h
+        q = 40.0 * (h_eff - 0.5) ** 1.7 * float(np.exp(rng.normal(0, 0.03)))
+        rated = "Poor" if poor else "Good"
+        ms.append(
+            Measurement(
+                site="x",
+                field_visit_id=str(i),
+                time=t0 + timedelta(days=45 * i),
+                stage_ft=h,
+                discharge_cfs=q * (1.6 if poor else 1.0),
+                rated=rated,
+                weight=pairing.quality_weight(rated),
+                control_condition="Clear",
+            )
+        )
+    return (
+        Dataset(
+            site="x",
+            source="snapshot",
+            fetched_at=ms[-1].time + timedelta(days=30),
+            reference_start=t0.date(),
+            reference_end=ms[n_ref - 1].time.date(),
+            measurements=ms,
+        ),
+        ms,
+    )
+
+
+def test_suggested_shift_is_the_weighted_median_over_the_latest_stable_period():
+    ds, ms = _stepped_ds()
+    rep = report.build_report("x", ds=ds)
+    # A constant ft step is a big % error at low stage and a small one at high stage, so the
+    # % series may split the post-step record more than once; the latest period is after it.
+    start = rep.drift.stable_periods[-1].start
+    assert start >= ms[80].time
+    since = [m for m in ms if m.time >= start]
+    assert rep.suggested_shift_n == sum(1 for m in since if m.rated != "Poor") >= 6
+    assert rep.suggested_shift_ft == pytest.approx(-0.4, abs=0.05)
+    assert "hydrographer confirms" in rep.suggested_shift_label
+    assert "provisional" in rep.suggested_shift_label
+
+
+def test_suggested_shift_on_a_quiet_gauge_is_near_zero(reports):
+    rep = reports["03451000"]
+    assert abs(rep.suggested_shift_ft) < 0.05
+    assert rep.suggested_shift_n > 15
+
+
+def test_suggested_shift_has_the_sign_of_the_newport_fill(reports):
+    rep = reports["03455000"]
+    assert rep.suggested_shift_ft < 0
+    assert rep.suggested_shift_n >= 6
+
+
+def _period(start, end, n):
+    from datetime import UTC, datetime
+
+    from driftwatch.core.schemas import StablePeriod
+
+    return StablePeriod(
+        start=datetime.fromisoformat(start).replace(tzinfo=UTC),
+        end=datetime.fromisoformat(end).replace(tzinfo=UTC),
+        n=n,
+    )
+
+
+def test_auto_cuts_a_long_latest_period_before_the_newest_8():
+    from datetime import UTC, date, datetime, timedelta
+
+    from driftwatch.modules.rating_curve import pairing
+
+    periods = [_period("2005-01-01", "2011-12-31", 40), _period("2012-01-10", "2026-10-01", 90)]
+    times = [datetime(2012, 1, 10, tzinfo=UTC) + timedelta(days=58 * i) for i in range(90)]
+    start, end, which = pairing.auto_reference_window(periods, times)
+    assert which == "latest" and start == date(2012, 1, 10)
+    assert end == times[-8].date() - timedelta(days=1)
+    assert sum(1 for t in times if t.date() > end) == 8
+
+
+def test_auto_keeps_same_day_gaugings_together_in_the_test_set():
+    from datetime import UTC, datetime, timedelta
+
+    from driftwatch.modules.rating_curve import pairing
+
+    times = [datetime(2012, 1, 10, 12, tzinfo=UTC) + timedelta(days=58 * i) for i in range(90)]
+    times[-9] = times[-8] - timedelta(minutes=40)  # two discharges on one visit
+    periods = [_period("2012-01-10", times[-1].isoformat()[:19], 90)]
+    _, end, _ = pairing.auto_reference_window(periods, times)
+    assert sum(1 for t in times if t.date() > end) == 9
+
+
+def test_auto_falls_back_to_the_previous_period_when_the_latest_is_short():
+    from datetime import UTC, date, datetime, timedelta
+
+    from driftwatch.modules.rating_curve import pairing
+
+    times = [datetime(2024, 10, 28, tzinfo=UTC) + timedelta(days=50 * i) for i in range(30)]
+    previous = _period("2004-09-09", "2024-08-19", 80)
+    few = _period("2024-10-28", "2026-10-19", 19)  # 19 measurements: < 20
+    brief = _period("2025-01-01", "2026-10-19", 30)  # 30 measurements over 1.8 years: < 2
+    for latest in (few, brief):
+        assert pairing.auto_reference_window([previous, latest], times) == (
+            date(2004, 9, 9),
+            date(2024, 8, 19),
+            "previous",
+        )
+    assert pairing.auto_reference_window([few], times) is None  # nothing to fall back to
+    enough = _period("2024-10-28", "2026-11-01", 20)
+    assert pairing.auto_reference_window([previous, enough], times)[2] == "latest"
+
+
+def test_fixed_is_the_default_and_recorded(reports):
+    from driftwatch.modules.rating_curve import pairing
+
+    rep = reports["03459500"]
+    assert rep.reference_mode == "fixed"
+    assert (rep.reference_start, rep.reference_end) == pairing.reference_window("03459500")
+    assert rep.reference_note is None
+
+
+def test_unknown_reference_mode_is_refused():
+    with pytest.raises(ValueError, match="reference_mode"):
+        report.build_report("03459500", reference_mode="latest")
+
+
+def test_auto_short_post_step_period_tests_everything_after_the_previous_one():
+    ds, ms = _stepped_ds(n_post=12)  # 10 searched visits, 1.4 years after the step: too short
+    rep = report.build_report("x", ds=ds, reference_mode="auto")
+    assert rep.reference_mode == "auto"
+    assert "previous stable period" in rep.reference_note
+    assert rep.reference_end <= ms[79].time.date()
+    assert rep.relationship.reference_end == rep.reference_end
+    assert rep.holdout_n == 10
+    assert report.top_shift(rep.reference_end, rep.drift).time >= ms[80].time
+
+
+def test_auto_on_a_quiet_gauge_holds_out_the_newest_8():
+    ds, ms = _stepped_ds(n_post=0)  # one long stable period, nothing changes
+    rep = report.build_report("x", ds=ds, reference_mode="auto")
+    assert "latest stable period, cut off" in rep.reference_note
+    assert rep.holdout_n == 8
+    assert rep.holdout_start == ms[-8].time
+    assert rep.trust.band == "Trusted"
+
+
+def test_holdout_is_recorded_in_both_modes():
+    ds, ms = _stepped_ds(n_post=24)  # 4 of the 24 post visits are Poor
+    for mode in ("fixed", "auto"):
+        rep = report.build_report("x", ds=ds, reference_mode=mode)
+        held = [m for m in ms if m.time.date() > rep.reference_end and m.rated != "Poor"]
+        assert rep.holdout_n == len(held)
+        assert (rep.holdout_start, rep.holdout_end) == (held[0].time, held[-1].time)
+    assert report.build_report("x", ds=ds).holdout_n == 20
+
+
+@pytest.mark.parametrize(
+    "site, band",
+    [
+        ("03459500", "Stale"),
+        ("03455000", "Stale"),
+        ("03451500", "Stale"),
+        ("03451000", "Trusted"),
+        ("03463300", "Trusted"),
+        ("03479000", "Trusted"),
+        ("02085000", "Trusted"),
+    ],
+)
+def test_auto_and_fixed_agree_on_band_and_shift_date(site, band):
+    fixed = report.build_report(site)
+    auto = report.build_report(site, reference_mode="auto")
+    assert fixed.trust.band == auto.trust.band == band
+    top_f = report.top_shift(fixed.reference_end, fixed.drift)
+    top_a = report.top_shift(auto.reference_end, auto.drift)
+    assert (top_f and top_f.time) == (top_a and top_a.time)

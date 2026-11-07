@@ -82,6 +82,23 @@ def trust_inputs(ds: Dataset, rel: Relationship, drift: DriftResult, as_of: date
     )
 
 
+SUGGESTED_SHIFT_LABEL = "provisional: a hydrographer confirms"
+
+
+def suggested_shift(ds: Dataset, rel: Relationship, drift: DriftResult) -> tuple[float | None, int]:
+    """Quality-weighted median stage shift (ft, USGS sign: add it to the gage reading) over the
+    latest stable period of the % series, from the search series (Poor left out)."""
+    ms = segmentation.search_measurements(ds, rel)
+    if drift.stable_periods:
+        start = drift.stable_periods[-1].start
+        ms = [m for m in ms if m.time >= start]
+    if not ms:
+        return None, 0
+    ft = rating.stage_shift_ft(rel, [m.stage_ft for m in ms], [m.discharge_cfs for m in ms])
+    value = segmentation.weighted_median(ft, [m.weight for m in ms])
+    return round(value, 3) + 0.0, len(ms)  # + 0.0 turns -0.0 into 0.0
+
+
 def top_shift(reference_end: date, drift: DriftResult) -> Shift | None:
     """Largest shift after the reference window (older ones are already in the base rating)."""
     post = [s for s in drift.shifts if s.time.date() > reference_end]
@@ -137,14 +154,65 @@ def likely_cause(
     )
 
 
-def build_report(site: str, source: str = "snapshot", ds: Dataset | None = None) -> Report:
+def auto_reference(ds: Dataset) -> tuple[Dataset, str]:
+    """reference_mode='auto': fit the fixed-window rating, run the change-point search on the
+    full history (every non-excluded gauging, any date), then pairing.auto_reference_window:
+    the latest stable period cut off before the newest 8 measurements (the test set) when it
+    has >= 20 measurements over >= 2 years, else the previous stable period with everything
+    after it tested. Returns the dataset with that window and a note; falls back to the fixed
+    window (said in the note) when there is no previous period or the window cannot be fitted."""
+    fixed = (ds.reference_start, ds.reference_end)
+    rel = rating.fit_rating(ds)
+    full = segmentation.drift_test(ds, rel, series_start=date.min)
+    times = [m.time for m in segmentation.search_measurements(ds, rel, date.min)]
+    picked = pairing.auto_reference_window(full.stable_periods, times)
+    if picked is None:
+        return ds, "auto: only one stable period and it is too short to cut; fixed window kept"
+    start, end, which = picked
+    moved = ds.model_copy(update={"reference_start": start, "reference_end": end})
+    try:
+        rating.fit_rating(moved)
+    except rating.FitError as exc:
+        return ds, f"auto: window {start}..{end} could not be fitted ({exc}); fixed window kept"
+    if which == "latest":
+        how = (
+            f"latest stable period, cut off before the newest {pairing.AUTO_TEST_N} "
+            f"measurements (the test set)"
+        )
+    else:
+        how = (
+            f"previous stable period (the latest has < {pairing.AUTO_MIN_N} measurements or "
+            f"spans < {pairing.AUTO_MIN_YEARS:g} years); everything after it is tested"
+        )
+    return moved, f"auto: {how}; fixed window was {fixed[0]}..{fixed[1]}"
+
+
+def holdout(ds: Dataset, rel: Relationship) -> tuple[int, datetime | None, datetime | None]:
+    """The test set: searched measurements (Poor left out) after the reference window."""
+    ms = [m for m in segmentation.search_measurements(ds, rel) if m.time.date() > ds.reference_end]
+    return len(ms), (ms[0].time if ms else None), (ms[-1].time if ms else None)
+
+
+def build_report(
+    site: str,
+    source: str = "snapshot",
+    ds: Dataset | None = None,
+    reference_mode: str = pairing.DEFAULT_REFERENCE_MODE,
+) -> Report:
+    if reference_mode not in pairing.REFERENCE_MODES:
+        raise ValueError(f"reference_mode must be one of {pairing.REFERENCE_MODES}")
     ds = ds or pairing.load_dataset(site, source)
+    note = None
+    if reference_mode == "auto":
+        ds, note = auto_reference(ds)
     rel = rating.fit_rating(ds)
     drift = segmentation.drift_test(ds, rel)
     as_of = ds.fetched_at or datetime.now(UTC)
     inputs = trust_inputs(ds, rel, drift, as_of)
     ts = trust.score(inputs)
     cause, why = likely_cause(ds, inputs, ts.band)
+    shift_ft, shift_n = suggested_shift(ds, rel, drift)
+    hold_n, hold_start, hold_end = holdout(ds, rel)
     return Report(
         site=ds.site,
         site_name=ds.site_name,
@@ -155,6 +223,16 @@ def build_report(site: str, source: str = "snapshot", ds: Dataset | None = None)
         trust=ts,
         likely_cause=cause,
         narrative=why,
+        suggested_shift_ft=shift_ft,
+        suggested_shift_n=shift_n,
+        suggested_shift_label=SUGGESTED_SHIFT_LABEL,
+        reference_mode=reference_mode,
+        reference_start=ds.reference_start,
+        reference_end=ds.reference_end,
+        reference_note=note,
+        holdout_n=hold_n,
+        holdout_start=hold_start,
+        holdout_end=hold_end,
     )
 
 
