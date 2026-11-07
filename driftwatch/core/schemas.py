@@ -174,6 +174,11 @@ class Report(BaseModel):
     trust: TrustScore
     likely_cause: str | None = None
     narrative: str | None = None
+    # Weighted median stage shift over the latest stable period (report.suggested_shift).
+    # Provisional: a hydrographer confirms before it is applied.
+    suggested_shift_ft: float | None = None
+    suggested_shift_n: int = Field(ge=0, default=0)
+    suggested_shift_label: str = "provisional: a hydrographer confirms"
 
     _tz = field_validator("generated_at")(_require_tz)
 

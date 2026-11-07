@@ -173,3 +173,78 @@ def test_helene_excluded_visit_counts_for_staleness_data_and_notes_only():
     # Recent residual and quality still come from tested measurements only.
     assert "Poor" not in inp_w.recent_rated
     assert inp_w.recent_residual_pct == inp_wo.recent_residual_pct
+
+
+# --- dh steps 3-4: suggested shift and reference mode -----------------------------------
+
+
+def _stepped_ds(n_ref=80, n_post=24, step_ft=-0.4, poor_every=6, seed=11):
+    """Clean gauge on Q = 40 (H - 0.5)^1.7, one visit every 45 days from 2012. After the
+    reference window the channel reads `step_ft` ft of stage shift (USGS sign: fill negative);
+    every `poor_every`-th post visit is a wild Poor gauging (+60 % flow)."""
+    from datetime import UTC, datetime, timedelta
+
+    import numpy as np
+
+    from driftwatch.core.schemas import Dataset, Measurement
+    from driftwatch.modules.rating_curve import pairing
+
+    rng = np.random.default_rng(seed)
+    t0 = datetime(2012, 1, 1, tzinfo=UTC)
+    ms = []
+    for i in range(n_ref + n_post):
+        h = float(rng.uniform(1.5, 8.0))
+        post = i >= n_ref
+        poor = post and (i - n_ref) % poor_every == poor_every - 1
+        h_eff = h + step_ft if post else h
+        q = 40.0 * (h_eff - 0.5) ** 1.7 * float(np.exp(rng.normal(0, 0.03)))
+        rated = "Poor" if poor else "Good"
+        ms.append(
+            Measurement(
+                site="x",
+                field_visit_id=str(i),
+                time=t0 + timedelta(days=45 * i),
+                stage_ft=h,
+                discharge_cfs=q * (1.6 if poor else 1.0),
+                rated=rated,
+                weight=pairing.quality_weight(rated),
+                control_condition="Clear",
+            )
+        )
+    return (
+        Dataset(
+            site="x",
+            source="snapshot",
+            fetched_at=ms[-1].time + timedelta(days=30),
+            reference_start=t0.date(),
+            reference_end=ms[n_ref - 1].time.date(),
+            measurements=ms,
+        ),
+        ms,
+    )
+
+
+def test_suggested_shift_is_the_weighted_median_over_the_latest_stable_period():
+    ds, ms = _stepped_ds()
+    rep = report.build_report("x", ds=ds)
+    # A constant ft step is a big % error at low stage and a small one at high stage, so the
+    # % series may split the post-step record more than once; the latest period is after it.
+    start = rep.drift.stable_periods[-1].start
+    assert start >= ms[80].time
+    since = [m for m in ms if m.time >= start]
+    assert rep.suggested_shift_n == sum(1 for m in since if m.rated != "Poor") >= 6
+    assert rep.suggested_shift_ft == pytest.approx(-0.4, abs=0.05)
+    assert "hydrographer confirms" in rep.suggested_shift_label
+    assert "provisional" in rep.suggested_shift_label
+
+
+def test_suggested_shift_on_a_quiet_gauge_is_near_zero(reports):
+    rep = reports["03451000"]
+    assert abs(rep.suggested_shift_ft) < 0.05
+    assert rep.suggested_shift_n > 15
+
+
+def test_suggested_shift_has_the_sign_of_the_newport_fill(reports):
+    rep = reports["03455000"]
+    assert rep.suggested_shift_ft < 0
+    assert rep.suggested_shift_n >= 6

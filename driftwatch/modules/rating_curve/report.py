@@ -82,6 +82,23 @@ def trust_inputs(ds: Dataset, rel: Relationship, drift: DriftResult, as_of: date
     )
 
 
+SUGGESTED_SHIFT_LABEL = "provisional: a hydrographer confirms"
+
+
+def suggested_shift(ds: Dataset, rel: Relationship, drift: DriftResult) -> tuple[float | None, int]:
+    """Quality-weighted median stage shift (ft, USGS sign: add it to the gage reading) over the
+    latest stable period of the % series, from the search series (Poor left out)."""
+    ms = segmentation.search_measurements(ds, rel)
+    if drift.stable_periods:
+        start = drift.stable_periods[-1].start
+        ms = [m for m in ms if m.time >= start]
+    if not ms:
+        return None, 0
+    ft = rating.stage_shift_ft(rel, [m.stage_ft for m in ms], [m.discharge_cfs for m in ms])
+    value = segmentation.weighted_median(ft, [m.weight for m in ms])
+    return round(value, 3) + 0.0, len(ms)  # + 0.0 turns -0.0 into 0.0
+
+
 def top_shift(reference_end: date, drift: DriftResult) -> Shift | None:
     """Largest shift after the reference window (older ones are already in the base rating)."""
     post = [s for s in drift.shifts if s.time.date() > reference_end]
@@ -145,6 +162,7 @@ def build_report(site: str, source: str = "snapshot", ds: Dataset | None = None)
     inputs = trust_inputs(ds, rel, drift, as_of)
     ts = trust.score(inputs)
     cause, why = likely_cause(ds, inputs, ts.band)
+    shift_ft, shift_n = suggested_shift(ds, rel, drift)
     return Report(
         site=ds.site,
         site_name=ds.site_name,
@@ -155,6 +173,9 @@ def build_report(site: str, source: str = "snapshot", ds: Dataset | None = None)
         trust=ts,
         likely_cause=cause,
         narrative=why,
+        suggested_shift_ft=shift_ft,
+        suggested_shift_n=shift_n,
+        suggested_shift_label=SUGGESTED_SHIFT_LABEL,
     )
 
 
