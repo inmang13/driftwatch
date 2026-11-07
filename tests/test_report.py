@@ -54,3 +54,29 @@ def test_cli_writes_report_json_and_prints_station_name(tmp_path, capsys):
 
 def test_cli_refuses_live_source(capsys):
     assert cli.main(["report", "--site", "03451000", "--source", "live"]) == 2
+
+
+def test_report_counts_invalid_domain_and_stays_finite():
+    from datetime import timedelta
+
+    from driftwatch.core.schemas import Measurement
+    from driftwatch.modules.rating_curve import rating
+    from tests.test_segmentation import _synthetic_ds
+
+    ds = _synthetic_ds()
+    e = rating.fit_rating(ds).e
+    last = ds.measurements[-1].time
+    low = Measurement(
+        site="x",
+        field_visit_id="low",
+        time=last + timedelta(days=5),
+        stage_ft=e - 0.05,
+        discharge_cfs=3.0,
+        rated="Good",
+        weight=3.0,
+    )
+    ds = ds.model_copy(update={"measurements": [*ds.measurements, low]})
+    rep = report.build_report("x", ds=ds)
+    assert rep.drift.n_invalid_domain == 1
+    assert "1 at or below rating zero" in report.summary_line(rep)
+    assert all(d.points == d.points for d in rep.trust.deductions)  # no NaN points

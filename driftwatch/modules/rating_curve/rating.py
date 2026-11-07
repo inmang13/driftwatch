@@ -7,6 +7,10 @@ is expressed as a sliding a, i.e. a % flow residual or an equivalent stage shift
 Signs (CLAUDE.md): residual_pct = (Q_meas - Q_hat) / Q_hat * 100, so scour (more flow than the
 rating at the same stage) is positive. stage_shift_ft = H_hat(Q_meas) - H_meas, the USGS
 gage-height shift you would add to the stage reading; it carries the same sign as residual_pct.
+
+Domain: the power law only exists for H > e. A measurement at or below e is `invalid_domain`:
+predictions, residuals and shifts for it are NaN (never clipped to 0, never log of 0), it stays
+out of the drift test, and the drift result counts it.
 """
 
 from __future__ import annotations
@@ -88,10 +92,17 @@ def fit_rating(ds: Dataset) -> Relationship:
     )
 
 
+def in_domain(rel: Relationship, h):
+    """True where the stage sits above the rating's zero-flow offset e."""
+    return np.asarray(h, dtype=float) > rel.e
+
+
 def predict_q(rel: Relationship, h):
-    """Rated discharge at stage h. Stages at or below e give 0."""
-    d = np.clip(np.asarray(h, dtype=float) - rel.e, 0.0, None)
-    return rel.a * d**rel.b
+    """Rated discharge at stage h. NaN at or below e (outside the rating's domain)."""
+    h = np.asarray(h, dtype=float)
+    ok = in_domain(rel, h)
+    d = np.where(ok, h - rel.e, 1.0)  # placeholder keeps the power off non-positive bases
+    return np.where(ok, rel.a * d**rel.b, np.nan)
 
 
 def predict_h(rel: Relationship, q):
@@ -101,13 +112,14 @@ def predict_h(rel: Relationship, q):
 
 def residual_pct(rel: Relationship, h, q):
     qhat = predict_q(rel, h)
-    with np.errstate(divide="ignore", invalid="ignore"):
-        return np.where(qhat > 0, (np.asarray(q, dtype=float) - qhat) / qhat * 100.0, np.nan)
+    return (np.asarray(q, dtype=float) - qhat) / qhat * 100.0  # NaN outside the domain
 
 
 def stage_shift_ft(rel: Relationship, h, q):
-    """USGS-style gage-height shift: positive when the channel carries more flow (scour)."""
-    return predict_h(rel, q) - np.asarray(h, dtype=float)
+    """USGS-style gage-height shift: positive when the channel carries more flow (scour).
+    NaN where the measured stage is outside the domain, like the % residual."""
+    h = np.asarray(h, dtype=float)
+    return np.where(in_domain(rel, h), predict_h(rel, q) - h, np.nan)
 
 
 def residual_table(rel: Relationship, ms: list[Measurement]) -> list[dict]:
@@ -129,6 +141,7 @@ def residual_table(rel: Relationship, ms: list[Measurement]) -> list[dict]:
                 "weight": m.weight,
                 "control_condition": m.control_condition,
                 "excluded": m.excluded,
+                "invalid_domain": bool(m.stage_ft <= rel.e),
             }
         )
     return rows

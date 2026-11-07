@@ -18,9 +18,9 @@ NOTE_SEVERITY_POINTS = {"light": 3.0, "moderate": 8.0, "heavy": 12.0}
 CONTROL_CHANGED_POINTS = 15.0
 
 
-def recent_measurements(ds: Dataset, drift: DriftResult):
+def recent_measurements(ds: Dataset, rel: Relationship, drift: DriftResult):
     """Newest RECENT_N tested measurements inside the latest stable period."""
-    ms = segmentation.tested_measurements(ds)
+    ms = segmentation.tested_measurements(ds, rel)
     if drift.stable_periods:
         start = drift.stable_periods[-1].start
         ms = [m for m in ms if m.time >= start]
@@ -30,7 +30,7 @@ def recent_measurements(ds: Dataset, drift: DriftResult):
 def field_flags(ds: Dataset) -> list[tuple[str, float]]:
     """Open field-note flags: control changes since the reference window, transients only if on
     the latest visit (a later visit without them means they cleared)."""
-    tested = segmentation.tested_measurements(ds)
+    tested = segmentation.candidate_measurements(ds)
     flags: dict[str, float] = {}
     for m in tested:
         note = m.control_condition or ""
@@ -46,8 +46,8 @@ def field_flags(ds: Dataset) -> list[tuple[str, float]]:
 
 
 def trust_inputs(ds: Dataset, rel: Relationship, drift: DriftResult, as_of: datetime):
-    recent = recent_measurements(ds, drift)
-    tested = segmentation.tested_measurements(ds)
+    recent = recent_measurements(ds, rel, drift)
+    tested = segmentation.candidate_measurements(ds)
     h = [m.stage_ft for m in recent]
     q = [m.discharge_cfs for m in recent]
     return trust.TrustInputs(
@@ -86,7 +86,7 @@ def likely_cause(
         return "insufficient_data", "Too few recent measurements to name a cause."
     direction = "positive" if med > 0 else "negative"
     noted = []
-    for m in segmentation.tested_measurements(ds):
+    for m in segmentation.candidate_measurements(ds):
         c = causes.cause_for_note(m.control_condition)
         if c and m.time.date() > ds.reference_end and c not in noted:
             noted.append(c)
@@ -146,4 +146,9 @@ def summary_line(report: Report) -> str:
     )
     name = report.site_name or report.site
     cause = f" · likely {report.likely_cause}" if report.likely_cause else ""
-    return f"{name} ({report.site}): {report.trust.band} {report.trust.score:.0f} · {shift}{cause}"
+    n_bad = report.drift.n_invalid_domain
+    bad = f" · {n_bad} at or below rating zero (not tested)" if n_bad else ""
+    return (
+        f"{name} ({report.site}): {report.trust.band} {report.trust.score:.0f} · {shift}"
+        f"{cause}{bad}"
+    )

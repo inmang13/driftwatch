@@ -73,3 +73,59 @@ def test_newport_shifts_negative_after_helene():
     assert len(post) == 1
     assert post[0].direction == "negative" and post[0].size_pct < -20
     assert drift.n_excluded >= 1  # the Sept 27-28 Poor flood gaugings are held out
+
+
+def _synthetic_ds(n_ref=80, n_post=20, factor=1.0, seed=3):
+    rng = np.random.default_rng(seed)
+    t0 = datetime(2012, 1, 1, tzinfo=UTC)
+    ms = []
+    for i in range(n_ref + n_post):
+        h = float(rng.uniform(1.5, 8.0))
+        f = factor if i >= n_ref else 1.0
+        q = 40.0 * (h - 0.5) ** 1.7 * f * float(np.exp(rng.normal(0, 0.03)))
+        ms.append(
+            Measurement(
+                site="x",
+                field_visit_id=str(i),
+                time=t0 + timedelta(days=60 * i),
+                stage_ft=h,
+                discharge_cfs=q,
+                rated="Good",
+                weight=3.0,
+            )
+        )
+    return Dataset(
+        site="x",
+        source="snapshot",
+        fetched_at=ms[-1].time + timedelta(days=30),
+        reference_start=t0.date(),
+        reference_end=ms[n_ref - 1].time.date(),
+        measurements=ms,
+    )
+
+
+def test_stage_at_or_below_e_is_invalid_domain_left_out_and_counted():
+    ds = _synthetic_ds()
+    rel = rating.fit_rating(ds)
+    last = ds.measurements[-1].time
+    low = [
+        Measurement(
+            site="x",
+            field_visit_id=f"low{k}",
+            time=last + timedelta(days=10 * (k + 1)),
+            stage_ft=rel.e - 0.1 * k,  # at e, then below it
+            discharge_cfs=3.0,
+            rated="Good",
+            weight=3.0,
+        )
+        for k in range(3)
+    ]
+    ds = ds.model_copy(update={"measurements": ds.measurements + low})
+    drift = segmentation.drift_test(ds, rel)
+    assert drift.n_invalid_domain == 3
+    assert drift.n_tested == 100
+    assert all(np.isfinite(s.size_pct) and np.isfinite(s.size_ft) for s in drift.shifts)
+    assert all(np.isfinite(p.median_residual_pct) for p in drift.stable_periods)
+    rows = rating.residual_table(rel, ds.measurements)
+    assert [r["invalid_domain"] for r in rows[-3:]] == [True, True, True]
+    assert not any(r["invalid_domain"] for r in rows[:-3])
