@@ -15,8 +15,9 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, date, datetime
+from typing import Literal
 
-from driftwatch.core.schemas import Dataset, Measurement
+from driftwatch.core.schemas import Dataset, Measurement, StablePeriod
 from driftwatch.modules.rating_curve.usgs import load_snapshot
 
 log = logging.getLogger(__name__)
@@ -37,8 +38,29 @@ DEFAULT_REFERENCE = (date(2012, 1, 1), date(2024, 9, 25))
 REFERENCE_WINDOWS = {"02085000": (date(2015, 1, 1), date(2025, 7, 6))}
 
 
+ReferenceMode = Literal["fixed", "auto"]
+REFERENCE_MODES: tuple[str, ...] = ("fixed", "auto")
+DEFAULT_REFERENCE_MODE: ReferenceMode = "fixed"
+AUTO_MIN_N = 15  # auto window: at least this many measurements in the stable period
+AUTO_MIN_YEARS = 2.0  # ... spanning at least this many years
+
+
 def reference_window(site: str) -> tuple[date, date]:
+    """The fixed reference window (reference_mode='fixed', the default)."""
     return REFERENCE_WINDOWS.get(site, DEFAULT_REFERENCE)
+
+
+def auto_reference_window(
+    periods: list[StablePeriod], min_n: int = AUTO_MIN_N, min_years: float = AUTO_MIN_YEARS
+) -> tuple[date, date] | None:
+    """reference_mode='auto': the most recent stable period with >= min_n measurements spanning
+    >= min_years, as (first date, last date). `periods` come from the change-point search on the
+    full history (report.auto_reference). None when no period qualifies."""
+    for p in sorted(periods, key=lambda p: p.start, reverse=True):
+        span_years = (p.end - p.start).total_seconds() / (365.25 * 86400)
+        if p.n >= min_n and span_years >= min_years:
+            return p.start.date(), p.end.date()
+    return None
 
 
 def quality_weight(rated: str | None) -> float:

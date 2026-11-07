@@ -248,3 +248,72 @@ def test_suggested_shift_has_the_sign_of_the_newport_fill(reports):
     rep = reports["03455000"]
     assert rep.suggested_shift_ft < 0
     assert rep.suggested_shift_n >= 6
+
+
+def _period(start, end, n):
+    from datetime import UTC, datetime
+
+    from driftwatch.core.schemas import StablePeriod
+
+    return StablePeriod(
+        start=datetime.fromisoformat(start).replace(tzinfo=UTC),
+        end=datetime.fromisoformat(end).replace(tzinfo=UTC),
+        n=n,
+    )
+
+
+def test_auto_window_is_the_latest_period_with_15_over_2_years():
+    from datetime import date
+
+    from driftwatch.modules.rating_curve import pairing
+
+    periods = [
+        _period("2005-01-01", "2011-12-31", 40),
+        _period("2012-01-10", "2024-08-20", 90),
+        _period("2024-10-28", "2026-10-19", 14),  # Newport today: 14 over 1.97 years
+    ]
+    assert pairing.auto_reference_window(periods) == (date(2012, 1, 10), date(2024, 8, 20))
+    periods[-1] = _period("2024-10-28", "2026-11-01", 15)  # one more gauging -> it qualifies
+    assert pairing.auto_reference_window(periods) == (date(2024, 10, 28), date(2026, 11, 1))
+    assert pairing.auto_reference_window([_period("2020-01-01", "2021-06-01", 30)]) is None
+
+
+def test_fixed_is_the_default_and_recorded(reports):
+    from driftwatch.modules.rating_curve import pairing
+
+    rep = reports["03459500"]
+    assert rep.reference_mode == "fixed"
+    assert (rep.reference_start, rep.reference_end) == pairing.reference_window("03459500")
+    assert rep.reference_note is None
+
+
+def test_unknown_reference_mode_is_refused():
+    with pytest.raises(ValueError, match="reference_mode"):
+        report.build_report("03459500", reference_mode="latest")
+
+
+def test_auto_keeps_a_short_post_step_period_out_of_the_reference():
+    ds, ms = _stepped_ds(n_post=12)  # 12 visits, 1.4 years after the step: too short
+    rep = report.build_report("x", ds=ds, reference_mode="auto")
+    assert rep.reference_mode == "auto"
+    assert rep.reference_end <= ms[79].time.date()
+    assert rep.relationship.reference_end == rep.reference_end
+    assert "auto:" in rep.reference_note
+    assert report.top_shift(rep.reference_end, rep.drift).time >= ms[80].time
+
+
+def test_auto_adopts_a_long_post_step_period_and_says_nothing_is_left_to_test():
+    ds, ms = _stepped_ds(n_post=60, poor_every=1000)  # 7.4 years of the new channel
+    rep = report.build_report("x", ds=ds, reference_mode="auto")
+    assert rep.reference_start >= ms[80].time.date()
+    assert rep.reference_end == ms[-1].time.date()
+    assert "nothing after it is tested" in rep.reference_note
+    assert report.top_shift(rep.reference_end, rep.drift) is None
+
+
+def test_auto_on_newport_still_ends_before_helene():
+    from datetime import date
+
+    rep = report.build_report("03455000", reference_mode="auto")
+    assert rep.reference_end < date(2024, 9, 26)
+    assert rep.trust.band == "Stale"

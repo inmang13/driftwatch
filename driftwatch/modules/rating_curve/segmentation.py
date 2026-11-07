@@ -18,6 +18,7 @@ before and the segment after it. confidence = 1 - Mann-Whitney p-value between t
 
 from __future__ import annotations
 
+from datetime import date
 from itertools import pairwise
 
 import numpy as np
@@ -40,20 +41,26 @@ PENALTY = 50.0
 MIN_SIZE = 6
 
 
-def candidate_measurements(ds: Dataset) -> list[Measurement]:
-    """Non-excluded measurements from the reference start on (before the domain check)."""
-    return [m for m in ds.measurements if not m.excluded and m.time.date() >= ds.reference_start]
+def candidate_measurements(ds: Dataset, start: date | None = None) -> list[Measurement]:
+    """Non-excluded measurements from the reference start (or `start`) on, before the domain
+    check. `start=date.min` gives the full history (used to derive the auto reference window)."""
+    start = ds.reference_start if start is None else start
+    return [m for m in ds.measurements if not m.excluded and m.time.date() >= start]
 
 
-def tested_measurements(ds: Dataset, rel: Relationship) -> list[Measurement]:
+def tested_measurements(
+    ds: Dataset, rel: Relationship, start: date | None = None
+) -> list[Measurement]:
     """The drift-test series: candidates whose stage is inside the rating's domain (H > e)."""
-    return [m for m in candidate_measurements(ds) if m.stage_ft > rel.e]
+    return [m for m in candidate_measurements(ds, start) if m.stage_ft > rel.e]
 
 
-def search_measurements(ds: Dataset, rel: Relationship) -> list[Measurement]:
+def search_measurements(
+    ds: Dataset, rel: Relationship, start: date | None = None
+) -> list[Measurement]:
     """The change-point search series: tested measurements minus every Poor-rated one. Poor
     gaugings stay in `tested_measurements` (plots, counts, the recent quality grade)."""
-    return [m for m in tested_measurements(ds, rel) if m.rated != "Poor"]
+    return [m for m in tested_measurements(ds, rel, start) if m.rated != "Poor"]
 
 
 def weighted_median(x, w) -> float:
@@ -97,9 +104,13 @@ def _robust_sigma(x: np.ndarray) -> float:
     return s if s > 0 else (float(np.std(x)) or 1.0)
 
 
-def drift_test(ds: Dataset, rel: Relationship, penalty: float = PENALTY) -> DriftResult:
-    tested = tested_measurements(ds, rel)
-    ms = search_measurements(ds, rel)
+def drift_test(
+    ds: Dataset, rel: Relationship, penalty: float = PENALTY, series_start: date | None = None
+) -> DriftResult:
+    """series_start: search from this date instead of the reference start (date.min = the full
+    history). The standardization always uses the reference window only."""
+    tested = tested_measurements(ds, rel, series_start)
+    ms = search_measurements(ds, rel, series_start)
     n_excluded = sum(1 for m in ds.measurements if m.excluded)
     n_invalid = n_invalid_domain(ds, rel)
     n_poor = len(tested) - len(ms)
@@ -120,7 +131,7 @@ def drift_test(ds: Dataset, rel: Relationship, penalty: float = PENALTY) -> Drif
     ft = rating.stage_shift_ft(rel, h, q)
     w = np.array([m.weight for m in ms])
 
-    in_ref = np.array([m.time.date() <= ds.reference_end for m in ms])
+    in_ref = np.array([ds.reference_start <= m.time.date() <= ds.reference_end for m in ms])
 
     def _ref(x: np.ndarray) -> np.ndarray:
         return x[in_ref] if in_ref.any() else x

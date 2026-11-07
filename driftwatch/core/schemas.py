@@ -179,6 +179,12 @@ class Report(BaseModel):
     suggested_shift_ft: float | None = None
     suggested_shift_n: int = Field(ge=0, default=0)
     suggested_shift_label: str = "provisional: a hydrographer confirms"
+    # Which reference window the base rating used: "fixed" (pairing.reference_window, default) or
+    # "auto" (latest long stable period from the full-history search; report.auto_reference).
+    reference_mode: Literal["fixed", "auto"] = "fixed"
+    reference_start: date | None = None
+    reference_end: date | None = None
+    reference_note: str | None = None
 
     _tz = field_validator("generated_at")(_require_tz)
 

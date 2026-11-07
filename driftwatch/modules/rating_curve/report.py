@@ -154,8 +154,47 @@ def likely_cause(
     )
 
 
-def build_report(site: str, source: str = "snapshot", ds: Dataset | None = None) -> Report:
+def auto_reference(ds: Dataset) -> tuple[Dataset, str]:
+    """reference_mode='auto': fit the fixed-window rating, run the change-point search on the
+    full history (every non-excluded gauging, any date), and move the reference window to the
+    most recent stable period with >= 15 measurements spanning >= 2 years. Returns the dataset
+    with that window and a note; falls back to the fixed window (said in the note) when no
+    period qualifies or the new window cannot be fitted."""
+    fixed = (ds.reference_start, ds.reference_end)
+    full = segmentation.drift_test(ds, rating.fit_rating(ds), series_start=date.min)
+    window = pairing.auto_reference_window(full.stable_periods)
+    if window is None:
+        return ds, (
+            f"auto: no stable period with >= {pairing.AUTO_MIN_N} measurements over "
+            f">= {pairing.AUTO_MIN_YEARS:g} years; fixed window kept"
+        )
+    moved = ds.model_copy(update={"reference_start": window[0], "reference_end": window[1]})
+    try:
+        rating.fit_rating(moved)
+    except rating.FitError as exc:
+        return ds, f"auto: window {window[0]}..{window[1]} could not be fitted ({exc}); fixed kept"
+    note = (
+        f"auto: most recent stable period with >= {pairing.AUTO_MIN_N} measurements over "
+        f">= {pairing.AUTO_MIN_YEARS:g} years, from the full-history search "
+        f"(fixed window was {fixed[0]}..{fixed[1]})"
+    )
+    if not any(m.time.date() > window[1] for m in segmentation.candidate_measurements(moved)):
+        note += "; it runs to the latest gauging, so nothing after it is tested"
+    return moved, note
+
+
+def build_report(
+    site: str,
+    source: str = "snapshot",
+    ds: Dataset | None = None,
+    reference_mode: str = pairing.DEFAULT_REFERENCE_MODE,
+) -> Report:
+    if reference_mode not in pairing.REFERENCE_MODES:
+        raise ValueError(f"reference_mode must be one of {pairing.REFERENCE_MODES}")
     ds = ds or pairing.load_dataset(site, source)
+    note = None
+    if reference_mode == "auto":
+        ds, note = auto_reference(ds)
     rel = rating.fit_rating(ds)
     drift = segmentation.drift_test(ds, rel)
     as_of = ds.fetched_at or datetime.now(UTC)
@@ -176,6 +215,10 @@ def build_report(site: str, source: str = "snapshot", ds: Dataset | None = None)
         suggested_shift_ft=shift_ft,
         suggested_shift_n=shift_n,
         suggested_shift_label=SUGGESTED_SHIFT_LABEL,
+        reference_mode=reference_mode,
+        reference_start=ds.reference_start,
+        reference_end=ds.reference_end,
+        reference_note=note,
     )
 
 
