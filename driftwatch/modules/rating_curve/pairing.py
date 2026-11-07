@@ -46,8 +46,11 @@ def quality_weight(rated: str | None) -> float:
 
 
 def _parse_time(s: str) -> datetime:
+    """ISO timestamp -> aware UTC datetime. Naive timestamps are refused, not assumed UTC."""
     t = datetime.fromisoformat(s)  # 3.11+ accepts a trailing Z
-    return t if t.tzinfo else t.replace(tzinfo=UTC)
+    if t.tzinfo is None or t.utcoffset() is None:
+        raise ValueError(f"timestamp without a UTC offset: {s!r}")
+    return t.astimezone(UTC)
 
 
 def _parse_value(s: str | None) -> float | None:

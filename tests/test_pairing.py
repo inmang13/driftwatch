@@ -1,6 +1,8 @@
 """Pairing rules on a hand-built snapshot (no network, no real data needed)."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+
+import pytest
 
 from driftwatch.modules.rating_curve import pairing
 
@@ -127,3 +129,21 @@ def test_real_snapshot_pairs_every_discharge():
     assert ds.site_name.startswith("ENO RIVER")
     assert len(ds.measurements) > 700
     assert all(m.stage_ft > 0 and m.discharge_cfs > 0 for m in ds.measurements)
+
+
+def test_parse_time_converts_offsets_to_utc_and_refuses_naive():
+    t = pairing._parse_time("2020-05-01T10:00:00-04:00")
+    assert t == datetime(2020, 5, 1, 14, tzinfo=UTC)
+    assert t.utcoffset() == timedelta(0) and t.tzinfo is UTC
+    assert pairing._parse_time("2020-05-01T14:00:00Z") == t
+    with pytest.raises(ValueError, match="UTC offset"):
+        pairing._parse_time("2020-05-01T14:00:00")
+
+
+def test_offset_spelling_does_not_break_exact_pairing():
+    rows = [
+        _stage("v1", "2020-05-01T10:00:00-04:00", "2.0"),
+        _q("v1", "2020-05-01T14:00:00+00:00", "100"),
+    ]
+    ms = pairing.pair_measurements(_snapshot(rows))
+    assert len(ms) == 1 and ms[0].time.tzinfo is UTC
