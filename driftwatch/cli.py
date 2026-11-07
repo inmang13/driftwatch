@@ -30,10 +30,19 @@ def run_cmd(args) -> int:
     from dotenv import load_dotenv
 
     load_dotenv()  # never override: an explicit LLM=... in the shell wins
-    from driftwatch.agents.graph import run_sync
+    import asyncio
 
-    for site in args.site or SITES:
-        out = run_sync(site, args.llm or None, args.trace_dir)
+    asyncio.run(_run_sites(args.site or SITES, args.llm or None, args.trace_dir))
+    return 0
+
+
+async def _run_sites(sites, llm_mode, trace_dir) -> None:
+    """One event loop for every site: langchain-openai caches its async HTTP client, and a
+    fresh asyncio.run per site leaves it bound to a closed loop ('Event loop is closed')."""
+    from driftwatch.agents.graph import run_agents
+
+    for site in sites:
+        out = await run_agents(site, llm_mode, None, trace_dir)
         fin = out.get("final")
         cause = f"{fin['cause']} ({fin['confidence']:.2f})" if fin else "no cause (Trusted)"
         t = out["totals"]

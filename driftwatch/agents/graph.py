@@ -214,12 +214,17 @@ def build_graph(rec: TraceRecorder):
                         channel=_dump(facts.get("channel_geometry")),
                         ranking=_dump(ranking.model_dump()),
                         signature=fallbacks.channel_signature(facts.get("channel_geometry")),
+                        objections=_dump(state["objections"]),
                     ),
                 )
                 # hard guard: a sign contradiction is never accepted
                 if v.verdict == "accept" and rules.objection == "sign_mismatch":
                     meta["guard"] = "sign_mismatch overrides the model's accept"
                     v = rules
+                # the sign check is arithmetic, not opinion: relabel a wrong 'sign_mismatch'
+                elif v.objection == "sign_mismatch" and ranking.top.sign_matches:
+                    meta["guard"] = "objection relabelled: the top cause's sign does match"
+                    v = v.model_copy(update={"objection": "other"})
             except Exception as e:  # noqa: BLE001
                 meta = {"model": "fallback", "llm_error": f"{type(e).__name__}: {e}"[:300]}
                 v = rules

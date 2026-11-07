@@ -10,4 +10,8 @@ The ranking you are reviewing (top cause first):
 
 {{ranking}}
 
+Your earlier objections on this gauge (empty list = first review):
+
+{{objections}}
+
 Accept or object.

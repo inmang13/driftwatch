@@ -161,3 +161,22 @@ def test_skeptic_loop_is_bounded(monkeypatch, tmp_path):
 def test_llm_mode_rejects_unknown():
     with pytest.raises(ValueError):
         llm.mode("gpt")
+
+
+def test_wrong_sign_mismatch_label_is_relabelled(monkeypatch, tmp_path):
+    monkeypatch.setattr(llm, "backend", lambda role, mode: (object(), "fake"))
+
+    async def fake(role, mode, schema, system, user):
+        if schema is SkepticVerdict:
+            v = SkepticVerdict(
+                verdict="object", objection="sign_mismatch", argument="x", suggested_cause="fill"
+            )
+            return v, {"model": "fake"}
+        raise RuntimeError("use the rules")
+
+    monkeypatch.setattr(llm, "structured", fake)
+    out = graph.run_sync(HEPCO, "gemini", tmp_path)
+    first = out["objections"][0]
+    assert first["objection"] == "other"  # datum_change fits either sign
+    guards = [e.payload.get("guard") for e in replay(out["trace_path"]) if e.node == "skeptic"]
+    assert any(g and "relabelled" in g for g in guards)

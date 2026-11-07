@@ -7,3 +7,4 @@ Write at most **120 words**, plain English, no jargon, no bullet points, no head
 4. **The score** — end with the `score_display` sentence exactly as given (e.g. "Trust score 24/100 (Stale).").
 
 Tone: calm, direct, like a good engineer briefing a manager. Never claim more certainty than the confidence given. Do not invent numbers.
+Use "confident" only when the confidence is 0.8 or more. For a Trusted gauge whose recent measurements sit outside its normal scatter, say it is worth watching rather than that nothing is wrong.

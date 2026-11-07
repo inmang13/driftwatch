@@ -13,3 +13,8 @@ You must check two things:
 Also object with `insufficient_evidence` if the top cause rests on nothing but the sign.
 
 Output: `verdict` accept or object; `objection` type when objecting; `argument` one or two sentences citing the numbers; `suggested_cause` (one of scour, fill, debris, vegetation, datum_change, measurement_quality, insufficient_data, inconclusive) when objecting.
+
+Rules for objecting:
+- Use `sign_mismatch` **only** when the top cause's expected sign is the opposite of the residual's sign.
+- Fill, debris and vegetation all push the residual negative and all slow the water at the control. Choosing between them is a judgement call, not an error: if the top cause is one of them and the evidence fits, **accept** and mention the alternative in your argument.
+- Never object on the same grounds twice, and never suggest a cause you objected to earlier (see your earlier objections).
