@@ -4,7 +4,7 @@
 
 ## Verdict
 
-**It works and hits every target in CLAUDE.md's "Done means."** The two hero gauges come out
+**M1 complete.** The two hero gauges come out
 **Stale**, each with a cause. The three controls come out **Trusted** and no cause gets named for
 them. Mills River lands on **Watch**, which is what the plan expected.
 
@@ -51,7 +51,9 @@ Scour deepens the channel, so the same water level should carry *more* water (a 
 number). Hepco shows **28 % less**. That is what fill or something backing the water up does,
 not scour.
 
-The channel measurements give a hint (evidence only, not used in the score). At the same water
+The channel measurements give a hint (evidence only, not used in the score). *These channel
+figures were computed by hand from the snapshot; they are pending the M2 evidence tool
+(`channel_geometry_trend`), which will recompute them.* At the same water
 level, the flow area after Helene is about the same as before (−5 %), but the water moves
 **about 24 % slower**. So the measuring section did not shrink. Something downstream is likely
 holding the water back, such as gravel piled on the control or debris. A gauge datum change would
@@ -60,8 +62,8 @@ section, which was wider on the Dec 2024 visit (136 ft vs about 120 ft before), 
 control. **Pitch Hepco as "the note says scour, the numbers say something is backing the water
 up." That is a good story for the skeptic agent. Don't pitch it as a clean scour example.**
 
-For comparison, Newport's channel data shows area **+35 %** and speed **−51 %** at the same
-water level: a deeper, slower pool behind a raised control. That fits "Fill control changed"
+For comparison, Newport's channel data (also hand-computed, pending the M2 evidence tool) shows
+area **+35 %** and speed **−51 %** at the same water level: a deeper, slower pool behind a raised control. That fits "Fill control changed"
 well.
 
 ## Surprises

@@ -23,4 +23,4 @@ make install · make snapshot (SOURCE=live, only on request) · make report SITE
 - Sites: 03459500 03455000 03446000 03451500 03451000 03463300 03479000 02085000. Reference window for the base rating: 2012-01-01 .. 2024-09-25 (Eno: 2015-01-01 .. 2025-07-06).
 
 ## Done means
-make test green · make demo green offline · Canton (03459500) and Newport (03455000) come out Stale with a documented cause · Swannanoa (03451000), North Toe (03463300), Eno (02085000) come out Trusted · README run instructions work from a clean clone.
+make test green · make demo green offline · Pigeon River near Hepco (03459500) and Newport (03455000) come out Stale with a documented cause · Swannanoa (03451000), South Toe River near Celo (03463300), Eno (02085000) come out Trusted · README run instructions work from a clean clone.
