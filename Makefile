@@ -40,8 +40,9 @@ serve:
 test:
 	$(PY) -m pytest -q
 
+# Writes docs/eval_report.md. Fallback always; make evals LLM=gemini adds the Gemini column.
 evals:
-	@echo not yet: make evals
+	$(PY) evals/run_evals.py $(LLM)
 
 # Demo must pass offline: agent runs pinned to the fallback; traces go to traces/demo (gitignored)
 # so they never shadow the committed Gemini traces that Replay uses.
