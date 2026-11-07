@@ -51,7 +51,10 @@ make test green · make demo green offline · Canton (03459500) and Newport (034
 **Claude Code session 1 — M0 (30 min). Paste:**
 > Read CLAUDE.md and docs/plan.md §3–§4. Build only this: (1) `pyproject.toml` + `Makefile` with the targets in CLAUDE.md (stub targets may print "not yet"); (2) `driftwatch/core/schemas.py` with pydantic models `Measurement`, `Dataset`, `Relationship`, `Shift`, `DriftResult`, `TrustScore` (with a `deductions: list[Deduction{name, points, reason}]` field), `Report`, `TraceEvent`; (3) `driftwatch/modules/rating_curve/usgs.py` that fetches `field-measurements`, `channel-measurements`, and `monitoring-locations` for one site from the OGC API, follows `next` links, and writes `data/snapshot/<site>.json` with the raw features; `load_snapshot(site)` reads it back; (4) `make snapshot SOURCE=live` runs it for the 8 sites in CLAUDE.md. Run it once now with SOURCE=live, commit the snapshot files, and print the row counts per site and collection. Do not build pairing, fitting, or anything else.
 
-**Human (30 min, in parallel):** set up the Orange Pi: Claude Code logged in, `git clone` of the repo with push rights to branches (not main — protect main on GitHub), Python 3.11 + `make install`, `.env` with `LLM=fallback`. Test: `claude -p "run make test and report"` returns.
+**Human (~10 min, in parallel):** prep the Orange Pi (thoth). It is aarch64 Armbian (Debian trixie) with **Python 3.13** (no 3.11; `pyproject` allows >=3.11), 4 GB RAM shared with its other services, and Claude Code and git already installed.
+- Clone with the push alias, not the https URL: `git clone github-grace:inmang13/driftwatch.git`. That SSH key pushes as Grace's GitHub account and can push to any repo she owns, so **protect `main` on GitHub** (Settings > Branches) before the job runs. The key cannot open PRs.
+- `python3 -m venv .venv && make install`, then `.env` with `LLM=fallback` and `SOURCE=snapshot` only (no cloud keys go on this box). Check that `ruptures` and `scipy` install on aarch64 now, not at 11 pm.
+- Test: `claude -p "run make test and report"` returns. Run it as the user that will run the job; if `grace` is not logged in, use `CLAUDE_CONFIG_DIR=/home/grace/.claude`.
 
 **Launch Pi job #1 at ~11 pm** (section D). Go to sleep.
 
@@ -60,7 +63,7 @@ make test green · make demo green offline · Canton (03459500) and Newport (034
 Run from the repo on the Pi, on a branch:
 ```
 git checkout -b pi/m1
-claude -p --permission-mode acceptEdits --max-turns 200 "$(cat docs/prompts/pi_job1.md)"
+claude -p --permission-mode acceptEdits --allowedTools "Bash(make:*) Bash(git:*) Bash(python:*) Bash(.venv/bin/*)" --max-turns 200 "$(cat docs/prompts/pi_job1.md)"
 ```
 `docs/prompts/pi_job1.md`:
 > You are building stage M1 of DriftWatch unattended overnight. Read CLAUDE.md, docs/plan.md §3–§4, and docs/agent_playbook.md section A. Nobody will answer questions: when the plan is silent, choose the simplest option, write one dated line in docs/decision_log.md, and continue.
@@ -73,12 +76,12 @@ claude -p --permission-mode acceptEdits --max-turns 200 "$(cat docs/prompts/pi_j
 > 6. `cli.py` + `make report SITE=…`: writes `reports/<site>.json` (Report schema) and prints a one-line summary: site name, band, score, top shift.
 > 7. `make test` green; `make demo` runs report for 03459500 and 03451000 offline.
 > 8. Write `docs/m1_results.md`: a table of all 8 sites (band, score, shifts found, median post-2024-09-26 residual) and anything that surprised you.
-> Stop when done or when any step fails twice; leave the branch pushed and a short `docs/m1_status.md` describing where you stopped. Never touch main.
+> Stop when done or when any step fails twice; push the branch (`git push origin pi/m1`; do not open a PR, you cannot) and leave a short `docs/m1_status.md` describing where you stopped. Never touch main.
 
 ## E. Saturday — session by session
 
 ### 8:00–9:30 · M1 review (human + Claude Code laptop + Codex)
-- Human: read `docs/m1_results.md` and `docs/m1_status.md` first (5 min). Pull the branch, `make test`, `make demo`.
+- Human: read `docs/m1_results.md` and `docs/m1_status.md` first (5 min). Open the PR for `pi/m1` from the link on GitHub, pull the branch, `make test`, `make demo`.
 - Codex review #1, paste: *"Review branch pi/m1 of this repo against CLAUDE.md non-negotiables. List, ranked, anything that will produce a wrong trust score or a wrong shift: pairing errors, leakage, sign errors, unit mix-ups, timezone, penalty overfitting. Do not rewrite code; produce a checklist."*
 - Claude Code session 2: fix the checklist, confirm Canton/Newport fire and controls stay quiet, merge to main.
 
@@ -111,7 +114,7 @@ Paste:
 
 ## F. Orange Pi job #2 — Sat night, unattended (docs only)
 Branch `pi/docs`. Prompt:
-> Read CLAUDE.md and docs/plan.md. Do not modify anything under driftwatch/core or driftwatch/agents. Tasks: (1) complete `modules/specs/*.yaml` so all 7 specified modules have the four slots filled in two sentences each plus a `why_it_drifts` line and a `who_cares` line; (2) run `make evals` and write `docs/eval_report.md` with the pass/fail table, tokens and wall time per case; (3) README: clean-clone instructions verified by actually running them in a fresh venv, architecture diagram as Mermaid, the differentiation table from plan §2, the IDS 706 relationship note; (4) `docs/pitch_script.md`: a 3-minute script with timings from docs/pitch.md. Commit after each task; open a PR; stop.
+> Read CLAUDE.md and docs/plan.md. Do not modify anything under driftwatch/core or driftwatch/agents. Tasks: (1) complete `modules/specs/*.yaml` so all 7 specified modules have the four slots filled in two sentences each plus a `why_it_drifts` line and a `who_cares` line; (2) run `make evals` and write `docs/eval_report.md` with the pass/fail table, tokens and wall time per case; (3) README: clean-clone instructions verified by actually running them in a fresh venv, architecture diagram as Mermaid, the differentiation table from plan §2, the IDS 706 relationship note; (4) `docs/pitch_script.md`: a 3-minute script with timings from docs/pitch.md. Commit after each task; push `pi/docs` (no PR, you cannot open one); stop. Grace opens the PR from GitHub.
 
 ## G. Sunday 8:00–8:30
 Merge `pi/docs` if `make test` and `make evals` are green; otherwise merge only the README. Final DevPost edits. Done by 8:30. Judging runs from snapshot mode with Cloud Run as the URL; keep `make serve` running locally as the backup.

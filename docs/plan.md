@@ -20,7 +20,7 @@
 | H6 | **Agent runtime: Gemini via Vertex AI** (GCP credits). **Skeptic node: a different model family via OpenRouter.** Inkling/Tinker only if a key appears; no fine-tuning. | Keys in hand tonight: Gemini + OpenRouter. |
 | H7 | Every LLM node has a deterministic fallback; every run saves a **replayable trace**. Snapshot data is the default; live USGS is a flag. | Demo insurance. |
 | H8 | **Course reuse:** hackathon engine + eval suite feed IDS 706 Part 3 directly. Still a separate repo (`driftwatch`), cross-referenced in both READMEs. No instructor email. | Grace's call. |
-| H9 | **Orange Pi runs two unattended jobs**: Fri night builds M1 from this spec; Sat night does docs/evals/registry. Both open PRs, never push to main. Tests are the gate. | 8-to-11 working hours make the overnight compute the difference between a demo and a finished product. |
+| H9 | **Orange Pi runs two unattended jobs**: Fri night builds M1 from this spec; Sat night does docs/evals/registry. Both push a branch (`pi/m1`, `pi/docs`) and stop; Grace opens the PR from the link GitHub prints (the Pi's SSH key can push but cannot file a PR). Never push to main. Tests are the gate. | 8-to-11 working hours make the overnight compute the difference between a demo and a finished product. |
 | H10 | **DevPost is submitted Saturday ~10:30 pm.** Sunday 8:00–8:30 is for edits only. Video recorded Saturday evening. | Hacking ends 8:30 am Sunday, 30 min into Grace's day. |
 
 ## 2. Pitch (unchanged from v1 except the method line)
@@ -78,7 +78,7 @@ docs/           plan.md · agent_playbook.md · decision_log.md · pitch.md · d
 | Resource | Role |
 |---|---|
 | Claude Code (Opus for architecture, Sonnet for routine) | Primary builder, max 2 worktrees (`backend`, `ui`). |
-| Orange Pi + Claude Code | Fri night: build M1 from §4 + playbook prompt, PR. Sat night: docs, evals, registry YAML, DevPost text, PR. |
+| Orange Pi (thoth: 4-core aarch64, 4 GB RAM shared with other services, Python 3.13) + Claude Code | Fri night: build M1 from §4 + playbook prompt, push branch. Sat night: docs, evals, registry YAML, DevPost text, push branch. Runs with `LLM=fallback` (no Gemini/OpenRouter keys on the box). |
 | Gemini on Vertex | Agent runtime (ranker, narrator, tool-calling collector). |
 | OpenRouter | Skeptic (different model family) and fallback runtime. |
 | Codex (free) | Independent reviewer at M1, M2, M3; writes `evals/` if Pi hasn't. |
@@ -92,8 +92,8 @@ docs/           plan.md · agent_playbook.md · decision_log.md · pitch.md · d
 
 | When | h | Build | Milestone |
 |---|---|---|---|
-| **Fri 10–11 pm** | 1 | Create repo (`driftwatch`, public), drop in `CLAUDE.md` + this plan + playbook; Claude Code: scaffold + `usgs.py` fetch + commit `data/snapshot/` for the 8 sites; set up Orange Pi (30 min); launch Pi job #1 at ~11 pm. | **M0:** snapshot committed, Pi running. |
-| Fri night (Pi) | — | Job #1: pairing, rating fit, segmentation, trust score, CLI, tests, `report.json` for 8 sites. Opens PR. | — |
+| **Fri 10–11 pm** | 1 | Create repo (`driftwatch`, public), drop in `CLAUDE.md` + this plan + playbook; Claude Code: scaffold + `usgs.py` fetch + commit `data/snapshot/` for the 8 sites; Orange Pi prep (~10 min: clone, venv, `make install`; Claude Code and the push key are already on the box); launch Pi job #1 at ~11 pm. | **M0:** snapshot committed, Pi running. |
+| Fri night (Pi) | — | Job #1: pairing, rating fit, segmentation, trust score, CLI, tests, `report.json` for 8 sites. Pushes `pi/m1` (no PR; Grace opens it). | — |
 | **Sat 8–9:30** | 1.5 | Review Pi PR: run tests, check Canton/Newport fire and controls stay quiet, fix with Claude Code. Codex review #1. | **M1** |
 | **Sat 9:30–1:00** | 3.5 | Agents: graph, tools, prompts, fallbacks, trace. Gemini + OpenRouter wired. Run all 8 sites. (If the Informer tenant lands during this block, do the 30-min spike at the next natural break.) | **M2:** 8 traces, Canton/Newport fire, controls quiet. |
 | **Sat 1:00–3:30** | 2.5 | FastAPI SSE + `console.html` (scatter, residual timeline, glowing graph, log, finding card). | **M3:** full live demo locally. |
@@ -102,7 +102,7 @@ docs/           plan.md · agent_playbook.md · decision_log.md · pitch.md · d
 | **Sat 6:30–8:00** | 1.5 | Cloud Run deploy of the Python service; CORS for Informer; evals run; Codex review #3. | **M5:** public demo end to end. |
 | **Sat 8:00–9:00** | 1 | **Code freeze on core/agents.** README, DevPost text, 6 slides (title, problem+numbers, demo, engine+registry, evals, next). | — |
 | **Sat 9:00–10:30** | 1.5 | Record 2-min video (screen + voice, one take), screenshots, **submit DevPost**. Launch Pi job #2. | **M6: submitted.** |
-| Sat night (Pi) | — | Job #2: README polish, registry YAML completeness, eval report, pitch script draft. PR only. | — |
+| Sat night (Pi) | — | Job #2: README polish, registry YAML completeness, eval report, pitch script draft. Push `pi/docs` only. | — |
 | **Sun 8:00–8:30** | 0.5 | Merge job #2 if green; edit DevPost; final push before 8:30. | — |
 | Sun 10:00 / 11:30 | — | Judging from snapshot mode; finalist pitch. | — |
 
@@ -116,7 +116,7 @@ docs/           plan.md · agent_playbook.md · decision_log.md · pitch.md · d
 | Gemini/OpenRouter outage in judging | Replay traces; deterministic fallbacks. |
 | Canton puzzle is an artifact | Newport is the hero; Canton becomes a second example. |
 | Hydrology judge | Lead with the Virginia lag stat; name Darienzo/ShiftHappens as the lineage; never say USGS flows are wrong — say latency and everything that isn't a gauge. |
-| Rate limits on Claude Code during the Pi job | Job runs at low intensity (one task at a time, tests between); if quota hits, it stops cleanly with the PR open. |
+| Rate limits on Claude Code during the Pi job | Job runs at low intensity (one task at a time, tests between); if quota hits, it stops cleanly with the branch pushed. |
 
 ## 9. DevPost checklist
 Name · tagline ("Drift monitoring for the relationships water systems run on") · public repo · live URL (Informer and/or Cloud Run) · video · built-with (Python, LangGraph, Gemini/Vertex AI, OpenRouter, Google Cloud Run, FastAPI, Plotly, Informer Apps, USGS Water Data API) · track Finance/Enterprise/Tech · 3 screenshots · "What's next" · note on the IDS 706 relationship.
