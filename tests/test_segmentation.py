@@ -129,3 +129,36 @@ def test_stage_at_or_below_e_is_invalid_domain_left_out_and_counted():
     rows = rating.residual_table(rel, ds.measurements)
     assert [r["invalid_domain"] for r in rows[-3:]] == [True, True, True]
     assert not any(r["invalid_domain"] for r in rows[:-3])
+
+
+def test_n_after_counts_every_measurement_since_the_shift():
+    """Two steps (down 30 %, then back up): the first shift's n_after spans both later segments."""
+    rng = np.random.default_rng(4)
+    t0 = datetime(2012, 1, 1, tzinfo=UTC)
+    ms = []
+    for i in range(120):
+        h = float(rng.uniform(1.5, 8.0))
+        factor = 0.7 if 60 <= i < 90 else 1.0
+        q = 40.0 * (h - 0.5) ** 1.7 * factor * float(np.exp(rng.normal(0, 0.03)))
+        ms.append(
+            Measurement(
+                site="x",
+                field_visit_id=str(i),
+                time=t0 + timedelta(days=60 * i),
+                stage_ft=h,
+                discharge_cfs=q,
+                rated="Good",
+                weight=3.0,
+            )
+        )
+    ds = Dataset(
+        site="x",
+        source="snapshot",
+        reference_start=t0.date(),
+        reference_end=ms[59].time.date(),
+        measurements=ms,
+    )
+    drift = segmentation.drift_test(ds, rating.fit_rating(ds))
+    assert [s.time for s in drift.shifts] == [ms[60].time, ms[90].time]
+    assert [s.direction for s in drift.shifts] == ["negative", "positive"]
+    assert [s.n_after for s in drift.shifts] == [60, 30]

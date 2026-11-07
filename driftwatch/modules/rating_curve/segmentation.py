@@ -112,7 +112,7 @@ def drift_test(ds: Dataset, rel: Relationship, penalty: float = PENALTY) -> Drif
                 size_pct=round(size_pct, 2),
                 size_ft=round(size_ft, 3),
                 direction="positive" if size_pct > 0 else "negative",
-                n_after=hi - mid,
+                n_after=len(ms) - mid,  # everything since the shift, not just the next segment
                 confidence=round(float(np.clip(1.0 - p, 0.0, 1.0)), 4),
             )
         )
