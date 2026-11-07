@@ -157,30 +157,36 @@ def likely_cause(
 def auto_reference(ds: Dataset) -> tuple[Dataset, str]:
     """reference_mode='auto': fit the fixed-window rating, run the change-point search on the
     full history (every non-excluded gauging, any date), and move the reference window to the
-    most recent stable period with >= 15 measurements spanning >= 2 years. Returns the dataset
-    with that window and a note; falls back to the fixed window (said in the note) when no
-    period qualifies or the new window cannot be fitted."""
+    most recent stable period that ends at least 8 measurements before the latest one and has
+    >= 15 measurements over >= 2 years (pairing.auto_reference_window). The measurements after
+    it are the held-out test set. Returns the dataset with that window and a note; falls back to
+    the fixed window (said in the note) when no period qualifies or the window cannot be fitted."""
     fixed = (ds.reference_start, ds.reference_end)
-    full = segmentation.drift_test(ds, rating.fit_rating(ds), series_start=date.min)
-    window = pairing.auto_reference_window(full.stable_periods)
+    rel = rating.fit_rating(ds)
+    full = segmentation.drift_test(ds, rel, series_start=date.min)
+    times = [m.time for m in segmentation.search_measurements(ds, rel, date.min)]
+    window = pairing.auto_reference_window(full.stable_periods, times)
+    rule = (
+        f"stable period ending >= {pairing.AUTO_MIN_HOLDOUT} measurements before the latest, "
+        f"with >= {pairing.AUTO_MIN_N} measurements over >= {pairing.AUTO_MIN_YEARS:g} years"
+    )
     if window is None:
-        return ds, (
-            f"auto: no stable period with >= {pairing.AUTO_MIN_N} measurements over "
-            f">= {pairing.AUTO_MIN_YEARS:g} years; fixed window kept"
-        )
+        return ds, f"auto: no {rule}; fixed window kept"
     moved = ds.model_copy(update={"reference_start": window[0], "reference_end": window[1]})
     try:
         rating.fit_rating(moved)
     except rating.FitError as exc:
         return ds, f"auto: window {window[0]}..{window[1]} could not be fitted ({exc}); fixed kept"
-    note = (
-        f"auto: most recent stable period with >= {pairing.AUTO_MIN_N} measurements over "
-        f">= {pairing.AUTO_MIN_YEARS:g} years, from the full-history search "
+    return moved, (
+        f"auto: most recent {rule}, from the full-history search "
         f"(fixed window was {fixed[0]}..{fixed[1]})"
     )
-    if not any(m.time.date() > window[1] for m in segmentation.candidate_measurements(moved)):
-        note += "; it runs to the latest gauging, so nothing after it is tested"
-    return moved, note
+
+
+def holdout(ds: Dataset, rel: Relationship) -> tuple[int, datetime | None, datetime | None]:
+    """The test set: searched measurements (Poor left out) after the reference window."""
+    ms = [m for m in segmentation.search_measurements(ds, rel) if m.time.date() > ds.reference_end]
+    return len(ms), (ms[0].time if ms else None), (ms[-1].time if ms else None)
 
 
 def build_report(
@@ -202,6 +208,7 @@ def build_report(
     ts = trust.score(inputs)
     cause, why = likely_cause(ds, inputs, ts.band)
     shift_ft, shift_n = suggested_shift(ds, rel, drift)
+    hold_n, hold_start, hold_end = holdout(ds, rel)
     return Report(
         site=ds.site,
         site_name=ds.site_name,
@@ -219,6 +226,9 @@ def build_report(
         reference_start=ds.reference_start,
         reference_end=ds.reference_end,
         reference_note=note,
+        holdout_n=hold_n,
+        holdout_start=hold_start,
+        holdout_end=hold_end,
     )
 
 

@@ -262,20 +262,28 @@ def _period(start, end, n):
     )
 
 
-def test_auto_window_is_the_latest_period_with_15_over_2_years():
-    from datetime import date
+def test_auto_window_ends_at_least_8_measurements_before_the_latest():
+    from datetime import UTC, date, datetime, timedelta
 
     from driftwatch.modules.rating_curve import pairing
 
     periods = [
         _period("2005-01-01", "2011-12-31", 40),
         _period("2012-01-10", "2024-08-20", 90),
-        _period("2024-10-28", "2026-10-19", 14),  # Newport today: 14 over 1.97 years
+        _period("2024-10-28", "2026-10-19", 14),  # runs to the latest gauging: no holdout
     ]
-    assert pairing.auto_reference_window(periods) == (date(2012, 1, 10), date(2024, 8, 20))
-    periods[-1] = _period("2024-10-28", "2026-11-01", 15)  # one more gauging -> it qualifies
-    assert pairing.auto_reference_window(periods) == (date(2024, 10, 28), date(2026, 11, 1))
-    assert pairing.auto_reference_window([_period("2020-01-01", "2021-06-01", 30)]) is None
+    after = [datetime(2024, 10, 28, tzinfo=UTC) + timedelta(days=50 * i) for i in range(14)]
+    assert pairing.auto_reference_window(periods, after) == (date(2012, 1, 10), date(2024, 8, 20))
+    # Only 7 measurements after the 2012..2024 period: not enough holdout, go one further back
+    # (the 2005..2011 period has those 7 plus 5 inside the 2012..2024 period after it).
+    inside = [datetime(2015, 1, 1, tzinfo=UTC) + timedelta(days=90 * i) for i in range(5)]
+    assert pairing.auto_reference_window(periods, inside + after[:7]) == (
+        date(2005, 1, 1),
+        date(2011, 12, 31),
+    )
+    # Still needs >= 15 measurements over >= 2 years to fit a rating.
+    short = [_period("2020-01-01", "2021-06-01", 30)]
+    assert pairing.auto_reference_window(short, after) is None
 
 
 def test_fixed_is_the_default_and_recorded(reports):
@@ -302,13 +310,22 @@ def test_auto_keeps_a_short_post_step_period_out_of_the_reference():
     assert report.top_shift(rep.reference_end, rep.drift).time >= ms[80].time
 
 
-def test_auto_adopts_a_long_post_step_period_and_says_nothing_is_left_to_test():
+def test_auto_never_takes_the_period_that_runs_to_the_latest_gauging():
     ds, ms = _stepped_ds(n_post=60, poor_every=1000)  # 7.4 years of the new channel
     rep = report.build_report("x", ds=ds, reference_mode="auto")
-    assert rep.reference_start >= ms[80].time.date()
-    assert rep.reference_end == ms[-1].time.date()
-    assert "nothing after it is tested" in rep.reference_note
-    assert report.top_shift(rep.reference_end, rep.drift) is None
+    assert rep.reference_end < ms[-1].time.date()
+    assert rep.holdout_n >= 8
+    assert rep.holdout_end == ms[-1].time
+
+
+def test_holdout_is_recorded_in_both_modes():
+    ds, ms = _stepped_ds(n_post=24)  # 4 of the 24 post visits are Poor
+    for mode in ("fixed", "auto"):
+        rep = report.build_report("x", ds=ds, reference_mode=mode)
+        held = [m for m in ms if m.time.date() > rep.reference_end and m.rated != "Poor"]
+        assert rep.holdout_n == len(held)
+        assert (rep.holdout_start, rep.holdout_end) == (held[0].time, held[-1].time)
+    assert report.build_report("x", ds=ds).holdout_n == 20
 
 
 def test_auto_on_newport_still_ends_before_helene():

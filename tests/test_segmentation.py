@@ -334,3 +334,43 @@ def test_shift_size_is_quality_weighted():
     shifts = segmentation.drift_test(ds, rel).shifts
     assert [s.time for s in shifts] == [ms[80].time]
     assert shifts[0].size_pct == pytest.approx(-30, abs=4)
+
+
+# --- dh round 2: magnitude gate -------------------------------------------------------------
+
+
+def test_gate_is_max_of_10_and_1p5_reference_mdape():
+    ds = pairing.load_dataset("02085000")
+    rel = rating.fit_rating(ds)
+    mdape = rating.mdape(rel, rating.reference_measurements(ds))
+    assert segmentation.shift_gate_pct(ds, rel) == pytest.approx(max(10.0, 1.5 * mdape))
+    assert segmentation.shift_gate_pct(ds, rel) > 10  # Eno's MdAPE is about 8 %
+    ds2 = pairing.load_dataset("03451000")
+    assert segmentation.shift_gate_pct(ds2, rating.fit_rating(ds2)) == 10.0
+
+
+def test_small_step_is_found_but_gated_out():
+    # A 6 % step (3 % noise): PELT finds it, the 10 % gate drops it.
+    ds, ms = _shift_ds(lambda h: 0.5 + (h - 0.5) * 0.94 ** (1 / 1.7), seed=8)
+    ds = ds.model_copy(
+        update={
+            "measurements": [
+                m.model_copy(update={"discharge_cfs": m.discharge_cfs**1.0}) for m in ms
+            ]
+        }
+    )
+    rel = rating.fit_rating(ds)
+    ungated = segmentation.drift_test(ds, rel, min_shift_pct=0)
+    gated = segmentation.drift_test(ds, rel)
+    assert gated.min_shift_pct == 10.0
+    assert [round(s.size_pct) for s in ungated.shifts] == [-6]
+    assert gated.shifts == [] and gated.n_gated == 1
+    assert all(abs(s.size_pct) > 10 for s in gated.shifts_ft)
+
+
+def test_gate_merges_and_recomputes_neighbours():
+    pct = np.array([0.0] * 10 + [5.0] * 10 + [40.0] * 10)
+    w = np.ones(30)
+    assert segmentation.gate_change_points([10, 20], 30, pct, w, 10.0) == [20]
+    assert segmentation.gate_change_points([10, 20], 30, pct, w, 50.0) == []
+    assert segmentation.gate_change_points([10, 20], 30, pct, w, 0.0) == [10, 20]

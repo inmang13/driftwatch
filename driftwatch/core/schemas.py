@@ -126,6 +126,10 @@ class DriftResult(BaseModel):
     n_invalid_domain: int = Field(ge=0, default=0)  # stage <= e: no rated flow, left out of test
     n_poor_unsearched: int = Field(ge=0, default=0)  # Poor-rated tested gaugings kept out of search
     penalty: float | None = None
+    # Magnitude gate: change points with |size_pct| <= this are merged away, not reported.
+    min_shift_pct: float | None = None
+    n_gated: int = Field(ge=0, default=0)  # % series change points dropped by the gate
+    n_gated_ft: int = Field(ge=0, default=0)  # ft series change points dropped by the gate
 
 
 class Deduction(BaseModel):
@@ -185,8 +189,12 @@ class Report(BaseModel):
     reference_start: date | None = None
     reference_end: date | None = None
     reference_note: str | None = None
+    # Held-out test set: searched measurements (Poor left out) after reference_end.
+    holdout_n: int = Field(ge=0, default=0)
+    holdout_start: datetime | None = None
+    holdout_end: datetime | None = None
 
-    _tz = field_validator("generated_at")(_require_tz)
+    _tz = field_validator("generated_at", "holdout_start", "holdout_end")(_require_tz)
 
 
 class TraceEvent(BaseModel):

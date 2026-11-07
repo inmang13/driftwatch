@@ -18,6 +18,7 @@ before and the segment after it. confidence = 1 - Mann-Whitney p-value between t
 
 from __future__ import annotations
 
+import logging
 from datetime import date
 from itertools import pairwise
 
@@ -35,10 +36,24 @@ from driftwatch.core.schemas import (
 )
 from driftwatch.modules.rating_curve import rating
 
+log = logging.getLogger(__name__)
+
 # Chosen from a fixed list (decision log 2026-11-06): any value in 25..150 keeps Eno and
 # Swannanoa quiet after Helene and fires on Newport; 50 sits well inside that window.
 PENALTY = 50.0
 MIN_SIZE = 6
+
+# Magnitude gate (dh 2b): a change point is reported as a shift only if
+# |size_pct| > max(GATE_MIN_PCT, GATE_MDAPE_FACTOR x the gauge's reference MdAPE).
+GATE_MIN_PCT = 10.0
+GATE_MDAPE_FACTOR = 1.5
+
+
+def shift_gate_pct(ds: Dataset, rel: Relationship) -> float:
+    """The smallest |size_pct| a change point needs to count as a shift at this gauge."""
+    return max(
+        GATE_MIN_PCT, GATE_MDAPE_FACTOR * rating.mdape(rel, rating.reference_measurements(ds))
+    )
 
 
 def candidate_measurements(ds: Dataset, start: date | None = None) -> list[Measurement]:
@@ -105,10 +120,16 @@ def _robust_sigma(x: np.ndarray) -> float:
 
 
 def drift_test(
-    ds: Dataset, rel: Relationship, penalty: float = PENALTY, series_start: date | None = None
+    ds: Dataset,
+    rel: Relationship,
+    penalty: float = PENALTY,
+    series_start: date | None = None,
+    min_shift_pct: float | None = None,
 ) -> DriftResult:
     """series_start: search from this date instead of the reference start (date.min = the full
-    history). The standardization always uses the reference window only."""
+    history). The standardization always uses the reference window only.
+    min_shift_pct: the magnitude gate; None = `shift_gate_pct` (the default), 0 = no gate."""
+    gate = shift_gate_pct(ds, rel) if min_shift_pct is None else float(min_shift_pct)
     tested = tested_measurements(ds, rel, series_start)
     ms = search_measurements(ds, rel, series_start)
     n_excluded = sum(1 for m in ds.measurements if m.excluded)
@@ -122,6 +143,7 @@ def drift_test(
             n_invalid_domain=n_invalid,
             n_poor_unsearched=n_poor,
             penalty=penalty,
+            min_shift_pct=round(gate, 2),
         )
 
     h = np.array([m.stage_ft for m in ms])
@@ -139,8 +161,18 @@ def drift_test(
     # Series 1 (% flow): searched on ln(Q/Q_hat). Series 2 (ft): searched on the stage shift.
     z_pct = (log_r - np.median(_ref(log_r))) / _robust_sigma(_ref(log_r))
     z_ft = (ft - np.median(_ref(ft))) / _robust_sigma(_ref(ft))
-    stable, shifts = _segment(ms, z_pct, log_r, pct, ft, w, penalty)
-    stable_ft, shifts_ft = _segment(ms, z_ft, ft, pct, ft, w, penalty)
+    stable, shifts, gated = _segment(ms, z_pct, log_r, pct, ft, w, penalty, gate)
+    stable_ft, shifts_ft, gated_ft = _segment(ms, z_ft, ft, pct, ft, w, penalty, gate)
+    log.info(
+        "%s: shift gate |size_pct| > %.1f %% (max(%g, %g x reference MdAPE)); "
+        "dropped %d %% change points, %d ft change points",
+        ds.site,
+        gate,
+        GATE_MIN_PCT,
+        GATE_MDAPE_FACTOR,
+        gated,
+        gated_ft,
+    )
 
     # Which series shows the bigger step after the reference window, in units of its own
     # reference scatter (robust sigma of the % residual / of the ft residual).
@@ -174,6 +206,9 @@ def drift_test(
         n_invalid_domain=n_invalid,
         n_poor_unsearched=n_poor,
         penalty=penalty,
+        min_shift_pct=round(gate, 2),
+        n_gated=gated,
+        n_gated_ft=gated_ft,
     )
 
 
@@ -191,11 +226,33 @@ def low_flow_concentrated(ms: list[Measurement], q: np.ndarray, ft: np.ndarray, 
     return bool(np.median(low) > np.median(high))
 
 
-def _segment(ms, z, test_series, pct, ft, w, penalty):
-    """Change points on z -> (stable periods, shifts). Sizes in % and ft are quality-weighted
+def _step_pct(pct, w, lo, mid, hi) -> float:
+    return weighted_median(pct[mid:hi], w[mid:hi]) - weighted_median(pct[lo:mid], w[lo:mid])
+
+
+def gate_change_points(cps: list[int], n: int, pct, w, gate: float) -> list[int]:
+    """Drop change points whose % step is not above the gate, smallest first, recomputing the
+    neighbours' steps after each drop (the two segments merge). Returns the survivors."""
+    cps = list(cps)
+    while cps:
+        edges = [0, *cps, n]
+        sizes = [
+            abs(_step_pct(pct, w, edges[i], edges[i + 1], edges[i + 2])) for i in range(len(cps))
+        ]
+        i = int(np.argmin(sizes))
+        if sizes[i] > gate:
+            break
+        cps.pop(i)
+    return cps
+
+
+def _segment(ms, z, test_series, pct, ft, w, penalty, gate=0.0):
+    """Change points on z -> (stable periods, shifts, n dropped by the gate). Change points with
+    a % step not above `gate` are merged away first. Sizes in % and ft are quality-weighted
     medians (weights w) after minus before; confidence from an unweighted Mann-Whitney test on
     test_series (the unstandardized searched series)."""
-    cps = change_points(z, penalty)
+    raw = change_points(z, penalty)
+    cps = gate_change_points(raw, len(ms), pct, w, gate) if gate > 0 else raw
     edges = [0, *cps, len(ms)]
     segments = list(pairwise(edges))
 
@@ -223,4 +280,4 @@ def _segment(ms, z, test_series, pct, ft, w, penalty):
                 confidence=round(float(np.clip(1.0 - p, 0.0, 1.0)), 4),
             )
         )
-    return stable, shifts
+    return stable, shifts, len(raw) - len(cps)

@@ -43,6 +43,7 @@ REFERENCE_MODES: tuple[str, ...] = ("fixed", "auto")
 DEFAULT_REFERENCE_MODE: ReferenceMode = "fixed"
 AUTO_MIN_N = 15  # auto window: at least this many measurements in the stable period
 AUTO_MIN_YEARS = 2.0  # ... spanning at least this many years
+AUTO_MIN_HOLDOUT = 8  # ... and ending at least this many measurements before the latest one
 
 
 def reference_window(site: str) -> tuple[date, date]:
@@ -51,14 +52,22 @@ def reference_window(site: str) -> tuple[date, date]:
 
 
 def auto_reference_window(
-    periods: list[StablePeriod], min_n: int = AUTO_MIN_N, min_years: float = AUTO_MIN_YEARS
+    periods: list[StablePeriod],
+    times: list[datetime],
+    min_holdout: int = AUTO_MIN_HOLDOUT,
+    min_n: int = AUTO_MIN_N,
+    min_years: float = AUTO_MIN_YEARS,
 ) -> tuple[date, date] | None:
-    """reference_mode='auto': the most recent stable period with >= min_n measurements spanning
-    >= min_years, as (first date, last date). `periods` come from the change-point search on the
-    full history (report.auto_reference). None when no period qualifies."""
+    """reference_mode='auto': the most recent stable period that ends at least `min_holdout`
+    measurements before the latest one (those later measurements are the held-out test set),
+    and that still has >= min_n measurements spanning >= min_years so the base rating can be
+    fitted. `periods` and `times` (the searched measurement times) come from the change-point
+    search on the full history (report.auto_reference). Returns (first date, last date), or
+    None when no period qualifies."""
     for p in sorted(periods, key=lambda p: p.start, reverse=True):
+        held_out = sum(1 for t in times if t > p.end)
         span_years = (p.end - p.start).total_seconds() / (365.25 * 86400)
-        if p.n >= min_n and span_years >= min_years:
+        if held_out >= min_holdout and p.n >= min_n and span_years >= min_years:
             return p.start.date(), p.end.date()
     return None
 
