@@ -120,7 +120,14 @@ def clean_ranking(r: Ranking, facts: dict[str, Any], objections: list[dict]) -> 
         fb = {h.cause: h for h in fallbacks.rank(facts, objections).hypotheses}
         for k in REQUIRED_CAUSES:
             seen.setdefault(k, fb[k])
-    hyps = sorted(seen.values(), key=lambda h: -h.confidence)
+    total = sum(h.confidence for h in seen.values()) or 1.0  # padding can break the sum-to-1
+    hyps = sorted(
+        (
+            h.model_copy(update={"confidence": round(h.confidence / total, 3)})
+            for h in seen.values()
+        ),
+        key=lambda h: -h.confidence,
+    )
     return Ranking(hypotheses=hyps, reasoning=r.reasoning)
 
 

@@ -98,7 +98,10 @@ def channel_rows(site: str) -> list[dict[str, Any]]:
     """
     ds = _dataset(site)
     rel = _relationship(site)
-    by_key = {(m.field_visit_id, m.time): m for m in ds.measurements}
+    by_key: dict[tuple[str, datetime], object] = {}
+    for m in ds.measurements:  # two discharges on one (visit, time): ambiguous, drop the key
+        k = (m.field_visit_id, m.time)
+        by_key[k] = None if k in by_key else m
     raw: dict[tuple[str, datetime], list[dict]] = {}
     for f in _snapshot(site)["collections"].get("channel-measurements", []):
         p = f.get("properties", {})
