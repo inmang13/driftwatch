@@ -52,3 +52,4 @@ target-version = "py311"
 
 [tool.setuptools.package-data]
 "driftwatch.modules" = ["specs/*.yaml"]
+"driftwatch.api" = ["console.html", "static/*.js"]

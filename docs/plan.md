@@ -56,7 +56,7 @@ driftwatch/
   modules/rating_curve/   usgs.py (fetch+snapshot) · pairing.py · rating.py · segmentation.py · causes.py
   modules/specs/*.yaml    7 specified modules (four slots each) → registry
   agents/      graph.py · tools.py · prompts/ · fallbacks.py · trace.py
-  api/         FastAPI: GET /gauges · GET /report/{site} · POST /run/{site} (SSE) · GET /trace/{id} · static console.html
+  api/         FastAPI: GET /gauges · GET /report/{site} · POST /run/{site} (SSE) · GET /trace/{id} · GET /replay/{id} (SSE, 0.6 s pace) · GET /registry · console at / · static console.html
 data/snapshot/  committed JSON per site
 evals/          cases.yaml · run_evals.py
 informer-app/   (Sat) front end + server/ + migrations/ + informer.yaml

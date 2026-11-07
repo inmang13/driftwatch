@@ -1,7 +1,7 @@
 # DriftWatch — agent playbook (v3)
 
 > How and where each agent is used, with paste-ready prompts, and what the human does at the same time. Pair with `docs/plan.md`.
-> v1 Fri 10 pm · v2 Fri 11 pm (thoth edits) · v3 Sat 10:30 am · **v3.1 Sat 12:45: Informer GO, C4 done, C5 pulled forward.** Grace works 8 am – 11 pm.
+> v1 Fri 10 pm · v2 Fri 11 pm (thoth edits) · v3 Sat 10:30 am · v3.1 Sat 12:45 · **v3.2 Sat 1:20: M2 done, C8 thoth job added, Boot Camp reference in C5, reference-mode answer in F.** Grace works 8 am – 11 pm.
 
 ## A. Rules for every agent session
 
@@ -23,14 +23,15 @@
 | M0 scaffold + 8-site snapshot | ✅ merged | main |
 | M1 engine: pairing, rating fit, shift detection, causes, trust score, CLI, 8 reports | ✅ merged (overnight on thoth) | main |
 | M1 fixes: cap 50, exact pairing, UTC, below-zero-flow guard, dashes, n_after, Helene visits counted for staleness, null test, docs | ✅ reviewed, **merge now** | PR `m1-fixes` |
-| M2 agents | ✅ built 11:56; skeptic rule + Disagreement schema + narrator direction fix in progress | PR `m2-agents` |
+| M2 agents | ✅ done 1:05 (90 tests; Disagreement schema; structured narrator; Hepco run 4 = replay default) | PR `m2-agents` — **merge now** |
 | Registry specs (thoth) | ✅ merged (11:50) | main |
 | Informer spike | ✅ GO at 12:13 | `C:\Users\Grace\informer-spike\` |
+| Thoth afternoon job: Δh test, quality weighting, suggested shift, auto reference | ▶ 2:00 – 4:00 (C8) | `pi/dh-test` |
 | M3 console · M4 Informer · M5 deploy + evals · DevPost | later today | — |
 
 **Current results (after fixes):** Pigeon R near Hepco Stale 24 (−28 % since Dec 2024) · French Broad at Newport Stale 30 (−43 % since Oct 2024, "Fill control changed") · French Broad at Asheville Stale 46 (+36 % since Jul 2025, delayed) · Mills Watch 73 · Swannanoa 94, South Toe 95, Watauga 95, Eno 91 Trusted.
 
-**Demo roles (recommended; Grace confirms):** Newport = main demo (clean fill story). Hepco = the skeptic demo (note says scour, numbers don't). Asheville = "the storm passed, the gauge looked fine for 10 months, then it wasn't." Swannanoa = record flood, rating held, engine stays quiet.
+**Demo roles:** Newport = main demo, run live (fill 0.75, ~30 s). Hepco = the skeptic demo, **replay of run 4** (objection → revised → Disagreement → "uncertain, here is what to check"). Narrate Hepco as *the system refused to overrule the hydrographer without proof*, not as *the evidence proved a cause* — the ranker's final pick (datum change) is not what the channel numbers favour, and the Disagreement says so. Asheville = "the storm passed, the gauge looked fine for 10 months, then it wasn't." Swannanoa = record flood, rating held, engine stays quiet.
 
 **Not in the pitch yet:** any channel area/speed percentages. They come from the M2 evidence tool or not at all.
 
@@ -41,7 +42,7 @@
 | **10:30 – 10:45** | — | Merge `m1-fixes`. Put Gemini credentials path + OpenRouter key in the **laptop** `.env` (never on thoth). Start thoth's registry job (C2). |
 | **10:45 – 2:00** | **Claude Code (laptop): M2 agents** (C1). **Thoth: registry specs** (C2). | Draft `docs/pitch.md`. From ~12:00 read the first Gemini narrations; edit tone in `driftwatch/agents/prompts/`. Eat lunch while tests run. |
 | **~1:15** | **Codex review #2** (C1, end). | Paste Codex's list into the M2 session; it fixes before the 2:00 stop. |
-| **2:00 – 4:30** | **Claude Code (laptop): M3 console** (C3). Merge `pi/registry` first. | Watch the first live run on the page; write down every moment a judge would be confused → prompt edits. |
+| **2:00 – 4:30** | **Claude Code (laptop): M3 console** (C3). **Thoth: C8** (Δh test, weighting, suggested shift, auto reference) on `pi/dh-test`. | Watch the first live run on the page; write down every moment a judge would be confused → prompt edits. |
 | **after M3 merge – 6:30** | **Claude Code + Informer plugin: M4 product UI** (C5). Informer spike passed 12:13 (C4). | Test on your phone as it deploys; confirm viewers need no sign-in. |
 | **6:30 – 8:00** | **Claude Code: M5 Cloud Run deploy + evals** (C6). **Codex review #3** at ~7:30. | Open the live URL on your phone; fix order = what Codex and you both hit. |
 | **8:00** | **Freeze `core/`, `agents/`, `modules/rating_curve/`.** | — |
@@ -74,8 +75,7 @@ Save as `docs/prompts/pi_registry.md` on main, then on thoth: `git pull && git c
 Merge `m2-agents` and `pi/registry` into main first. Paste:
 > Read CLAUDE.md, plan §4 "UI", docs/m2_results.md. Branch `m3-console`. Build `driftwatch/api/app.py` (FastAPI): GET /gauges (site, name, band, score), GET /report/{site}, POST /run/{site} streaming TraceEvents as SSE (LLM from env), GET /trace/{id}, GET /replay/{id} (SSE at human pace, ~0.6 s between events), GET /registry (from `driftwatch.modules.registry.load_registry()`), static `console.html` at `/`. CORS configurable via `CORS_ORIGINS`.
 > The page (one file, vanilla JS + Plotly from a CDN, works on a phone): left, gauge list with band colours, Newport first; center, stage–discharge scatter (reference-window points vs post-shift points in two colours, base curve drawn, Helene-excluded points hollow) above a residual timeline with Helene (2024-09-27) and detected shift dates as vertical lines; right, a 5-box agent graph that highlights the running node, plus a streaming log showing each node's key output in one line; bottom, the finding card: narration, cause + confidence, and the score arithmetic (every deduction with its reason). A "Replay" button uses /replay on the latest saved trace so the demo works with no LLM. Registry tab: 8 cards from /registry, live first, each showing the four slots.
-> `make serve`. Then run Newport, Hepco, Swannanoa end to end with LLM=gemini, save the traces, and take screenshots into docs/images/. Commit, push, PR. Stop 4:30 pm.
-Replay reads traces/replay_defaults.json first; the finding card renders a Disagreement as four labelled rows: best guess, field note, why they disagree, double-check.
+> Replay reads `traces/replay_defaults.json` first, then the newest trace. A Disagreement renders on the finding card as four labelled rows: best guess · field note · why they disagree · double-check. Asheville's card says the cause is open. Each replayed run shows a "replay of <time>" label. `make serve`. Then run Newport live and replay Hepco (run 4) and Swannanoa; take screenshots into docs/images/. Also re-run Mills once with LLM=gemini so its trace uses the structured narrator. Commit, push, PR. Stop 4:30 pm.
 
 ### C4 · Informer spike — DONE 12:13, result GO
 A minimal app is live on `inman.go.informer.cloud`; its server route reaches the USGS API and renders a station name. Deploy works; routes can reach an outside API. Spike code moved to `C:\Users\Grace\informer-spike\` (never commit it onto a code branch).
@@ -91,11 +91,20 @@ Not yet verified: phone layout; whether viewers need a sign-in; whether the inte
 
 ### C5 · M4 Informer product UI — can start as soon as M3 is merged (was 5:00)
 Folder `informer-app/` at the repo root on branch `m4-informer`, Informer plugin loaded. Paste:
-> Read docs/agent_playbook.md C4 findings first. Build an Informer App called DriftWatch for a utility manager. Declare an app-owned integration in `informer.yaml` for `<cloud-run-url>` (`authType: none`) and make every server-side call to it through that slot's `request()`; never use bare fetch for outside URLs. First 20 minutes: a page that lists `/gauges` through the integration, deployed, opened on a phone, and confirmed whether a viewer needs to sign in; report before building more. Then pages: (1) Gauges: cards with name, trust band colour, score, one-line finding; (2) Gauge detail: finding card with the score arithmetic, the evidence, and for a Disagreement the four fields (best guess, field note, why they disagree, double-check); a "Run investigation" button that opens `<console-url>/?site=<site>` in a new tab; a server route that fetches `/trace/<id>` through the integration after a run and stores it; (3) Run history from Postgres (migration: runs(site, started_at, band, score, cause, trace_json)); (4) Registry from `/registry`. Phone-first, fast. Windows: build script named `build:web`; deploy with `npm run deploy`. Print the URL.
+> Read docs/agent_playbook.md C4 findings first. The App Builder Boot Camp app on this tenant is the reference: follow its stations "Give Desk a database" (migrations), "Show the queue" (list page from a server route), "Open a way in" (inbound route), "See changes live" (live updates), "Let anyone report a problem" (public access without sign-in). Build an Informer App called DriftWatch for a utility manager. Declare an app-owned integration in `informer.yaml` for `<cloud-run-url>` (`authType: none`) and make every server-side call to it through that slot's `request()`; never use bare fetch for outside URLs. First 20 minutes: a page that lists `/gauges` through the integration, deployed, opened on a phone, and confirmed whether a viewer needs to sign in; report before building more. Then pages: (1) Gauges: cards with name, trust band colour, score, one-line finding; (2) Gauge detail: finding card with the score arithmetic, the evidence, and for a Disagreement the four fields (best guess, field note, why they disagree, double-check); a "Run investigation" button that opens `<console-url>/?site=<site>` in a new tab; a server route that fetches `/trace/<id>` through the integration after a run and stores it; (3) Run history from Postgres (migration: runs(site, started_at, band, score, cause, trace_json)); (4) Registry from `/registry`. Phone-first, fast. Windows: build script named `build:web`; deploy with `npm run deploy`. Print the URL.
 > Optional only if done 90 minutes early: a scheduled agent that re-runs all gauges nightly and a push notification when a band changes.
 
+### C8 · Thoth afternoon job — Δh test, weighting, suggested shift, auto reference · branch `pi/dh-test` · 2:00 – 4:00
+Save as `docs/prompts/pi_dh.md` on main first. On thoth: `git pull && git checkout -B pi/dh-test origin/main && nohup claude -p --permission-mode acceptEdits --max-turns 150 "$(cat docs/prompts/pi_dh.md)" > logs/pi_dh.log 2>&1 &`
+> You are working unattended on thoth. Read CLAUDE.md, docs/plan.md §4, docs/decision_log.md, and docs/usgs_rating_review.md if present. You may edit only `driftwatch/modules/rating_curve/segmentation.py`, `report.py`, `pairing.py` (reference window only), `driftwatch/core/schemas.py` (additive fields only), their tests, and append to docs/decision_log.md. Another agent owns `driftwatch/api/` and `driftwatch/agents/` right now; do not touch them.
+> 1. Two residual series. Run the change-point search on both the percent-of-flow residual (current) and the stage-shift residual in ft. Report both shift lists and, per gauge, which series shows the larger standardized step, plus `low_flow_concentrated: bool` (post-shift residuals larger in the lowest third of flows than in the top third). USGS treats scour and fill as changes to the zero-flow height, so a step that shows mainly in ft at low flows is a clue for the agents.
+> 2. Quality weighting. Exclude Poor-rated measurements from the change-point search (keep them in plots and counts); compute every shift size as a quality-weighted median.
+> 3. Suggested shift. Add `suggested_shift_ft` and `suggested_shift_n` to the Report: the weighted median stage shift over the latest stable period, labelled provisional ("a hydrographer confirms").
+> 4. Reference mode. Add `reference_mode: fixed | auto`. `fixed` = today's windows. `auto` = the most recent stable period with at least 15 measurements spanning at least 2 years, re-derived from the segmentation on the full history; the Report records the mode and the window used. Default stays `fixed`. Run all 8 gauges in both modes and tabulate where the band or top shift differs.
+> 5. Tests for 1–4. `make test` green, `make demo` green. Write docs/dh_results.md (tables for 1 and 4, plus any surprise). Commit per step, push `pi/dh-test`, write docs/dh_status.md. Stop by 4:00.
+
 ### C6 · M5 deploy + evals — Claude Code, laptop, branch `m5-deploy`, stop 8:00 pm
-> Read CLAUDE.md and plan §6. (1) Dockerfile (python:3.13-slim, snapshot and saved traces baked in, `uvicorn driftwatch.api.app:app --port 8080`). `gcloud run deploy driftwatch --source . --region us-east1 --allow-unauthenticated`, Gemini via the service account, OPENROUTER_API_KEY from Secret Manager, CORS_ORIGINS set to the Informer app origin. Print the URL and smoke-test /gauges and /replay. (2) `evals/cases.yaml` + `evals/run_evals.py` + `make evals` → `docs/eval_report.md`: Newport → Stale, fill, cites "Fill control changed"; Hepco → Stale, skeptic objects, final cause not plain scour; Asheville → Stale, positive-sign cause; Mills → Watch; Swannanoa, South Toe, Watauga, Eno → Trusted with no cause named; synthetic +25 % step injected into Eno at 2025-07-01 → fires; synthetic no-step Eno series → 0 shifts; replay determinism. Report pass/fail, tokens, wall time per case, with LLM=fallback and LLM=gemini columns. Commit, push, PR.
+> Read CLAUDE.md and plan §6. (1) Dockerfile (python:3.13-slim, snapshot and saved traces baked in, `uvicorn driftwatch.api.app:app --port 8080`). `gcloud run deploy driftwatch --source . --region us-east1 --allow-unauthenticated`, Gemini via the service account, OPENROUTER_API_KEY from Secret Manager, CORS_ORIGINS set to the Informer app origin. Print the URL and smoke-test /gauges and /replay. (2) `evals/cases.yaml` + `evals/run_evals.py` + `make evals` → `docs/eval_report.md`: Newport → Stale, fill, cites "Fill control changed"; Hepco → Stale, skeptic objects at least once, output is a Disagreement whose field_note is the scour note and whose best_guess is not scour; Asheville → Stale, positive-sign cause; Mills → Watch; Swannanoa, South Toe, Watauga, Eno → Trusted with no cause named; synthetic +25 % step injected into Eno at 2025-07-01 → fires; synthetic no-step Eno series → 0 shifts; replay determinism. Report pass/fail, tokens, wall time per case, with LLM=fallback and LLM=gemini columns. Commit, push, PR.
 
 **Codex review #3 (~7:30):** *"You are a judge opening `<live-url>` on a phone for 90 seconds. What breaks, what's slow, what's confusing? Top 5, ranked."*
 
@@ -111,7 +120,7 @@ Merge `pi/docs` if `make test` is green; otherwise merge only README and pitch_s
 ## F. Human-only jobs
 - Confirm the demo roles in B (Newport main, Hepco skeptic, Asheville delayed, Swannanoa quiet).
 - Approve every narration's tone and every number in the pitch before it goes in the video.
-- Confirm the Hepco replay trace to use for the demo (run 2 or the Disagreement run).
+- Judge question to have ready: *"How does it know the reference curve going forward?"* Answer: for the demo the reference is pinned to pre-Helene so the result can be checked against a known event; in operation it is the latest stable period, re-derived every run (`reference_mode: auto`, C8), which is how a hydrographer thinks about the current rating. Drift against USGS's own published rating is the next step (ideas doc).
 - Keep `docs/decision_log.md` honest: every cut gets a dated line.
 - Eat lunch and dinner; stop at 11.
 

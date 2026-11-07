@@ -16,6 +16,8 @@ Say "confident" only when the ranker's confidence is 0.8 or higher; otherwise sa
 
 **If the team's final call has a `disagreement`**, write it in this order instead of step 2: the best guess (cause and confidence, say "uncertain"), then the field note quoted verbatim with its date, then why they disagree (from `why_they_disagree`, in plain words), then the sentence "Double-check: " followed by `recommended_check`. Then the score sentence.
 
+**If `cause_status` is "open"** (the team ranked causes, but no field note backs any of them), write it in this order instead of step 2: say the cause is open and not confirmed by any field note, then the sentence "Double-check: " followed by `recommended_check`. Then the score sentence. Do **not** name or hint at any cause or mechanism (no scour, fill, debris, vegetation, datum, sediment, bed, washed, "likely due to", "caused by"). Use confidence_word "uncertain".
+
 Also return the parts of what you wrote:
 - `direction`: the `direction_phrase`, verbatim.
 - `confidence_word`: "confident", "likely" or "uncertain" (use "uncertain" for a disagreement; "n/a" for a Trusted gauge).
