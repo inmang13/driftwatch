@@ -6,7 +6,7 @@ POST /run/{site}        run the agent team now; TraceEvents as SSE (LLM from the
 GET  /trace/{id}        a saved trace (id = file stem, or a site id for its replay trace)
 GET  /replay/{id}       a saved trace re-streamed as SSE, ~0.6 s between events (?pace=0 for tests)
 GET  /registry          the module specs, live first
-GET  /                  console.html
+GET  /                  console.html (Plotly served from /static, no CDN)
 
 Every stream ends with a `finding` event: the finding card's data (cause status, Disagreement
 rows, narration). CORS_ORIGINS (comma-separated) turns on CORS for those origins only.
@@ -27,10 +27,11 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from sse_starlette.sse import EventSourceResponse
 
 from driftwatch.agents import trace as tr
-from driftwatch.agents.fallbacks import confidence_word
+from driftwatch.agents.fallbacks import cause_status, confidence_word
 from driftwatch.modules.rating_curve import causes, pairing, rating
 from driftwatch.modules.rating_curve import report as rc_report
 from driftwatch.modules.rating_curve.usgs import SITES
@@ -40,12 +41,14 @@ load_dotenv()  # LLM / credentials from .env; never overrides the shell
 
 HERE = Path(__file__).resolve().parent
 CONSOLE = HERE / "console.html"
+STATIC = HERE / "static"  # vendored plotly.min.js: the console works with no internet
 HELENE = "2024-09-27"
 REPLAY_PACE_S = float(os.environ.get("REPLAY_PACE", "0.6"))
 TRACE_ID = re.compile(r"^\d{8}-\d{8}T\d{6,12}Z$")  # <site>-<YYYYMMDDTHHMMSSffffffZ>
 SITE_ID = re.compile(r"^\d{8}$")
 
 app = FastAPI(title="DriftWatch", version="0.1.0")
+app.mount("/static", StaticFiles(directory=STATIC), name="static")
 _origins = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()]
 if _origins:
     app.add_middleware(
@@ -137,14 +140,11 @@ def finding(doc: dict[str, Any]) -> dict[str, Any]:
     )
     conf = fin.get("confidence")
     out["confidence_word"] = confidence_word(conf) if conf is not None else None
-    if fin.get("disagreement"):
-        out["cause_status"] = "disagreement"
+    # traces from before M3 have no cause_status in final: same rule, recomputed
+    out["cause_status"] = fin.get("cause_status") or cause_status(fin, notes)
+    if out["cause_status"] == "disagreement":
         out["disagreement"] = fin["disagreement"]
         out["confidence_word"] = "uncertain"
-    elif support:
-        out["cause_status"] = "corroborated"
-    else:
-        out["cause_status"] = "open"
     return out
 
 

@@ -372,3 +372,55 @@ def test_fallback_and_llm_disagreements_share_one_type(monkeypatch, tmp_path):
         }
     )
     assert b["why_they_disagree"] == "LLM words."
+
+
+def test_cause_status_open_for_asheville_corroborated_for_newport(runs):
+    assert runs[ASHEVILLE]["final"]["cause_status"] == "open"  # scour, only Debris notes
+    assert runs[NEWPORT]["final"]["cause_status"] == "corroborated"  # "Fill control changed"
+    assert runs[HEPCO]["final"]["cause_status"] == "disagreement"
+
+
+def test_open_cause_narration_names_no_mechanism(runs):
+    r = runs[ASHEVILLE]
+    text = r["narration"]
+    assert "Double-check:" in text and fallbacks.OPEN_CHECK in text
+    assert r["facts"]["triage"]["direction_phrase"] in text
+    assert fallbacks.MECHANISM_WORDS.search(text) is None
+
+
+def test_open_cause_hides_the_cause_from_the_narrator(runs):
+    r = runs[ASHEVILLE]
+    seen = graph.narrator_final(r["final"])
+    assert seen == {"cause_status": "open", "recommended_check": fallbacks.OPEN_CHECK}
+    assert graph.narrator_view(r["facts"], r["final"])["cause_status"] == "open"
+    assert graph.narrator_final(runs[NEWPORT]["final"])["cause"] == "fill"
+
+
+def test_llm_open_narration_naming_a_cause_is_rejected(monkeypatch, tmp_path):
+    monkeypatch.setattr(llm, "backend", lambda role, mode: (object(), "fake"))
+    facts = _facts(ASHEVILLE)
+
+    async def fake(role, mode, schema, system, user):
+        if schema is Narration:
+            assert '"cause_status": "open"' in user and "scour" not in user.lower()
+            t = facts["triage"]
+            text = (
+                f"Recent field measurements sit 41 % {t['direction_phrase']}. This shift is "
+                f"likely due to scour. Double-check: {fallbacks.OPEN_CHECK} {t['score_display']}"
+            )
+            n = Narration(
+                direction=t["direction_phrase"],
+                confidence_word="uncertain",
+                cause_or_disagreement="Likely due to scour.",
+                action=f"Double-check: {fallbacks.OPEN_CHECK}",
+                score_sentence=t["score_display"],
+                text=text,
+            )
+            return n, {"model": "fake"}
+        raise RuntimeError("rules")
+
+    monkeypatch.setattr(llm, "structured", fake)
+    out = graph.run_sync(ASHEVILLE, "gemini", tmp_path)
+    ev = [e for e in replay(out["trace_path"]) if e.node == "narrator"][-1].payload
+    assert "must not name a mechanism" in ev["rejected"]
+    assert fallbacks.MECHANISM_WORDS.search(out["narration"]) is None
