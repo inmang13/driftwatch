@@ -1,17 +1,17 @@
 {
   "site": "03479000",
   "site_name": "WATAUGA RIVER NEAR SUGAR GROVE, NC",
-  "generated_at": "2026-11-07T15:11:52.387476Z",
+  "generated_at": "2026-11-07T18:55:25.994146Z",
   "source": "snapshot",
   "relationship": {
     "kind": "power_law",
-    "a": 140.04132460075127,
-    "b": 1.717095160143788,
-    "e": 0.9477031249162128,
+    "a": 140.0413246053289,
+    "b": 1.717095159964515,
+    "e": 0.9477031249162049,
     "reference_start": "2012-01-01",
     "reference_end": "2024-09-25",
     "n": 102,
-    "rmse_log": 0.07599126290047485
+    "rmse_log": 0.07599126289375524
   },
   "drift": {
     "site": "03479000",
@@ -19,14 +19,57 @@
       {
         "start": "2012-01-19T19:30:30Z",
         "end": "2026-10-14T15:41:36Z",
-        "n": 114,
+        "n": 104,
         "median_residual_pct": 0.81
       }
     ],
     "shifts": [],
+    "stable_periods_ft": [
+      {
+        "start": "2012-01-19T19:30:30Z",
+        "end": "2018-08-02T17:03:13Z",
+        "n": 51,
+        "median_residual_pct": 2.05
+      },
+      {
+        "start": "2018-09-12T14:47:35Z",
+        "end": "2019-02-06T14:42:42Z",
+        "n": 6,
+        "median_residual_pct": -2.38
+      },
+      {
+        "start": "2019-02-06T15:42:54Z",
+        "end": "2026-10-14T15:41:36Z",
+        "n": 47,
+        "median_residual_pct": -1.11
+      }
+    ],
+    "shifts_ft": [
+      {
+        "time": "2018-09-12T14:47:35Z",
+        "size_pct": -1.09,
+        "size_ft": -0.01,
+        "direction": "negative",
+        "n_after": 53,
+        "confidence": 0.802
+      },
+      {
+        "time": "2019-02-06T15:42:54Z",
+        "size_pct": -1.44,
+        "size_ft": -0.011,
+        "direction": "negative",
+        "n_after": 47,
+        "confidence": 0.5986
+      }
+    ],
+    "step_pct_sigma": null,
+    "step_ft_sigma": null,
+    "larger_step_series": null,
+    "low_flow_concentrated": false,
     "n_tested": 114,
     "n_excluded": 1,
     "n_invalid_domain": 0,
+    "n_poor_unsearched": 10,
     "penalty": 50.0
   },
   "trust": {
@@ -61,5 +104,12 @@
     ]
   },
   "likely_cause": null,
-  "narrative": null
+  "narrative": null,
+  "suggested_shift_ft": 0.005,
+  "suggested_shift_n": 104,
+  "suggested_shift_label": "provisional: a hydrographer confirms",
+  "reference_mode": "fixed",
+  "reference_start": "2012-01-01",
+  "reference_end": "2024-09-25",
+  "reference_note": null
 }
