@@ -3,7 +3,15 @@
 import pytest
 
 from driftwatch.agents import fallbacks, graph, llm, tools
-from driftwatch.agents.models import Hypothesis, Ranking, SkepticVerdict
+from driftwatch.agents.models import (
+    BestGuess,
+    Disagreement,
+    FieldNoteRef,
+    Hypothesis,
+    Narration,
+    Ranking,
+    SkepticVerdict,
+)
 from driftwatch.agents.trace import TraceRecorder, load_trace, replay
 from driftwatch.modules.rating_curve import causes
 
@@ -276,3 +284,91 @@ def test_fallback_ranker_scores_insufficient_data_with_few_visits():
     hyps = {h.cause: h for h in fallbacks.rank(facts).hypotheses}
     assert hyps["insufficient_data"].confidence > 0
     assert hyps["insufficient_data"].sign_matches
+
+
+# --- structured narration (B), narrator facts (C), Disagreement parity (E) -----------------
+
+
+def _facts(site):
+    f = {"triage": graph.triage_facts(site)}
+    if f["triage"]["band"] != "Trusted":
+        f.update(graph.collect_evidence(site, f["triage"]))
+    return f
+
+
+def test_fallback_narration_passes_the_structured_guard(runs):
+    for r in runs.values():
+        parts = [e for e in replay(r["trace_path"]) if e.node == "narrator"][-1].payload["parts"]
+        n = Narration.model_validate(parts)
+        assert graph.narration_ok(n, r["facts"], r["final"]) is None
+        assert n.direction == r["facts"]["triage"]["direction_phrase"]
+
+
+def test_llm_narration_with_wrong_direction_is_rejected(monkeypatch, tmp_path):
+    monkeypatch.setattr(llm, "backend", lambda role, mode: (object(), "fake"))
+    facts = _facts(SWANNANOA)
+
+    async def fake(role, mode, schema, system, user):
+        if schema is Narration:
+            t = facts["triage"]
+            n = Narration(
+                direction="below the rating",  # wrong: Swannanoa sits above
+                confidence_word="n/a",
+                cause_or_disagreement="No shift.",
+                action="Keep visiting.",
+                score_sentence=t["score_display"],
+                text=f"Measurements sit 7 % below the rating. {t['score_display']}",
+            )
+            return n, {"model": "fake"}
+        raise RuntimeError("rules")
+
+    monkeypatch.setattr(llm, "structured", fake)
+    out = graph.run_sync(SWANNANOA, "gemini", tmp_path)
+    ev = [e for e in replay(out["trace_path"]) if e.node == "narrator"][-1].payload
+    assert "direction must be" in ev["rejected"]
+    assert "above the rating" in out["narration"]  # fell back to the template
+
+
+def test_narrator_view_has_trusted_facts_and_no_signed_numbers():
+    v = graph.narrator_view(_facts(SWANNANOA))
+    for k in ("days_since_last_visit", "n_visits_last_12_months", "latest_control_note"):
+        assert k in v
+    assert v["recent_median_residual"].endswith("above the rating")
+    assert "score_deductions" not in v and "recent_median_residual_pct" not in v
+    prompt = llm.prompt("narrator").lower()
+    assert "do not mention anything not in facts" in prompt
+    assert "do not describe mechanisms" in prompt
+
+
+def test_fallback_and_llm_disagreements_share_one_type(monkeypatch, tmp_path):
+    fb = graph.run_sync(HEPCO, "fallback", tmp_path)
+    monkeypatch.setattr(llm, "backend", lambda role, mode: (object(), "fake"))
+
+    async def fake(role, mode, schema, system, user):
+        # second review (an objection is on file): the LLM disagrees in its own words
+        if schema is SkepticVerdict and '"verdict": "object"' in user:
+            d = Disagreement(
+                best_guess=BestGuess(cause="fill", confidence=0.3),
+                field_note=FieldNoteRef(note="made up", date="1999-01-01"),
+                why_they_disagree="LLM words.",
+                recommended_check="LLM check.",
+            )
+            v = SkepticVerdict(verdict="disagree", argument="x", confidence=0.3, disagreement=d)
+            return v, {"model": "fake"}
+        raise RuntimeError("rules")
+
+    monkeypatch.setattr(llm, "structured", fake)
+    lm = graph.run_sync(HEPCO, "gemini", tmp_path)
+    a, b = fb["final"]["disagreement"], lm["final"]["disagreement"]
+    assert Disagreement.model_validate(a) and Disagreement.model_validate(b)
+    assert set(a) == set(b)
+    # the note and date always come from the field records, never from the model
+    assert (
+        b["field_note"]
+        == a["field_note"]
+        == {
+            "note": "Scour control changed",
+            "date": "2024-12-17",
+        }
+    )
+    assert b["why_they_disagree"] == "LLM words."

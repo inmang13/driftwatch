@@ -306,16 +306,33 @@ def disagreement(facts: dict[str, Any], ranking: Ranking, confidence: float) -> 
     )
 
 
+def confidence_word(conf: float) -> str:
+    return "confident" if conf >= 0.8 else "likely" if conf >= 0.4 else "uncertain"
+
+
 def narrate(facts: dict[str, Any], final: dict[str, Any] | None) -> Narration:
     t = facts["triage"]
     name = t.get("site_name") or t["site"]
-    score = f"Trust score {t['score']:.0f}/100 ({t['band']})."
-    off = f"{t['off_by_pct']:.0f} % {t['direction_phrase']}"
-    if final is None:
+    score = t["score_display"]
+    direction = t["direction_phrase"]
+    off = f"{t['off_by_pct']:.0f} % {direction}"
+
+    def done(word: str, cause: str, action: str, what: str) -> Narration:
         return Narration(
-            text=f"{name}: no lasting shift since the storm; recent field measurements average "
-            f"{off}, so published flows can be used as is. No action beyond the regular visit "
-            f"schedule. {score}"
+            direction=direction,
+            confidence_word=word,
+            cause_or_disagreement=cause,
+            action=action,
+            score_sentence=score,
+            text=" ".join(x for x in (what, cause, action, score) if x),
+        )
+
+    if final is None:
+        return done(
+            "n/a",
+            "No lasting shift since the storm, so published flows can be used as is.",
+            "No action beyond the regular visit schedule.",
+            f"{name}: recent field measurements average {off}.",
         )
     shift = t.get("top_shift")
     since = f" (the shift began {shift['time'][:10]})" if shift else ""
@@ -326,15 +343,17 @@ def narrate(facts: dict[str, Any], final: dict[str, Any] | None) -> Narration:
     d = final.get("disagreement")
     if d:
         bg = d["best_guess"]
-        return Narration(
-            text=f"{what} Best guess: {LABEL[bg['cause']].lower()} ({bg['confidence'] * 100:.0f} "
-            f"%, uncertain). The field note says \"{d['field_note']['note']}\" "
-            f"({d['field_note']['date']}). Why they disagree: {d['why_they_disagree']} "
-            f"Double-check: {d['recommended_check']} {score}"
+        return done(
+            "uncertain",
+            f"Best guess: {LABEL[bg['cause']].lower()} ({bg['confidence'] * 100:.0f} %, "
+            f"uncertain). The field note says \"{d['field_note']['note']}\" "
+            f"({d['field_note']['date']}). Why they disagree: {d['why_they_disagree']}",
+            f"Double-check: {d['recommended_check']}",
+            what,
         )
     cause = final["cause"]
     conf = final["confidence"]
-    sure = "confident" if conf >= 0.8 else "likely" if conf >= 0.4 else "uncertain"
+    word = confidence_word(conf)
     objected = (
         f" A second check overturned the first guess ({LABEL[final['first_cause']].lower()})."
         if final.get("first_cause") and final["first_cause"] != cause
@@ -342,7 +361,9 @@ def narrate(facts: dict[str, Any], final: dict[str, Any] | None) -> Narration:
     )
     if final.get("unresolved"):
         objected += " A reviewer still disputes it, so treat the cause as unconfirmed."
-    return Narration(
-        text=f"{what} Most likely cause: {LABEL[cause].lower()} — {sure} "
-        f"({conf * 100:.0f} %).{objected} Next: {NEXT_STEP[cause]} {score}"
+    return done(
+        word,
+        f"Most likely cause: {LABEL[cause].lower()} — {word} ({conf * 100:.0f} %).{objected}",
+        f"Next: {NEXT_STEP[cause]}",
+        what,
     )

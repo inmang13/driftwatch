@@ -77,5 +77,18 @@ class SkepticVerdict(BaseModel):
     disagreement: Disagreement | None = None
 
 
+CONFIDENCE_WORDS = ("confident", "likely", "uncertain", "n/a")
+
+
 class Narration(BaseModel):
+    """The finding, as parts plus the full text. The graph checks the parts against the facts
+    (direction and score sentence verbatim) before it uses the text."""
+
+    direction: str = Field(description="the given direction_phrase, verbatim")
+    confidence_word: str = Field(
+        description="confident (>= 0.8), likely or uncertain; n/a for a Trusted gauge"
+    )
+    cause_or_disagreement: str = Field(description="the cause sentence, or the disagreement")
+    action: str = Field(description="one concrete next step")
+    score_sentence: str = Field(description="the given score_display sentence, verbatim")
     text: str = Field(description="<= 120 words for a utility manager")

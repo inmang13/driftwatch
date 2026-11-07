@@ -160,36 +160,61 @@ NARRATOR_FIELDS = (
     "published_flows",
     "off_by_pct",
     "normal_scatter_pct",
+    "days_since_last_visit",
+    "n_visits_last_12_months",
+    "latest_control_note",
     "recent_rated",
 )
 
 
 def narrator_view(facts: dict[str, Any]) -> dict[str, Any]:
-    """What the narrator sees: direction as words, size unsigned. Signed residuals and signed
-    shift sizes are left out so the model cannot infer (and flip) the direction from a number."""
+    """Everything the narrator may say, and nothing else. Direction is words, size is unsigned:
+    signed residuals, signed shift sizes and the score-deduction prose are left out so the model
+    can neither infer (and flip) the direction nor pick up claims that aren't facts."""
     t = facts["triage"]
     v = {k: t[k] for k in NARRATOR_FIELDS if k in t}
+    v["recent_median_residual"] = f"{t['off_by_pct']} % {t['direction_phrase']}"
     if t.get("top_shift"):
         v["shift_began"] = t["top_shift"]["time"][:10]
         v["measurements_since_shift"] = t["top_shift"]["n_after"]
-    v["score_deductions"] = [
-        {"name": d["name"], "points": d["points"], "reason": d["reason"]}
-        for d in t.get("deductions", [])
-        if d["name"] != "residual"  # its reason text carries the sign; direction_phrase covers it
-    ]
     return v
 
 
-def narration_ok(text: str, facts: dict[str, Any], final: dict | None = None) -> str | None:
-    """None if fine, else why it was rejected."""
-    n = len(text.split())
-    if n > MAX_WORDS:
-        return f"{n} words > {MAX_WORDS}"
-    s = facts["triage"]["score"]
+def expected_confidence_word(final: dict | None) -> str:
+    if final is None:
+        return "n/a"
+    if final.get("disagreement"):
+        return "uncertain"
+    return fallbacks.confidence_word(final["confidence"])
+
+
+def narration_ok(
+    n: Narration | str, facts: dict[str, Any], final: dict | None = None
+) -> str | None:
+    """None if the narration can be used, else why not. A plain string is checked for length,
+    score and Double-check only (used for the fallback text in tests)."""
+    text = n if isinstance(n, str) else n.text
+    t = facts["triage"]
+    words = len(text.split())
+    if words > MAX_WORDS:
+        return f"{words} words > {MAX_WORDS}"
+    s = t["score"]
     if not re.search(rf"\b({round(s)}|{s:.1f})\b", text):
         return "the trust score is missing"
     if final and final.get("disagreement") and "double-check" not in text.lower():
         return "a Disagreement must end with 'Double-check: ...'"
+    if isinstance(n, str):
+        return None
+    for field in ("direction", "confidence_word", "cause_or_disagreement", "action"):
+        if not getattr(n, field).strip():
+            return f"field {field} is empty"
+    if n.direction.strip() != t["direction_phrase"] or t["direction_phrase"] not in text:
+        return f"direction must be '{t['direction_phrase']}' and appear verbatim in the text"
+    if n.score_sentence.strip() != t["score_display"] or t["score_display"] not in text:
+        return "score_sentence must be the score_display sentence and appear verbatim in the text"
+    want = expected_confidence_word(final)
+    if n.confidence_word.strip().lower() != want:
+        return f"confidence_word must be '{want}'"
     return None
 
 
@@ -351,7 +376,8 @@ def build_graph(rec: TraceRecorder):
                 "disagreement": verdict.get("disagreement"),
             }
         meta: dict[str, Any] = {"model": "fallback"}
-        text = fallbacks.narrate(facts, final).text
+        fb = fallbacks.narrate(facts, final)
+        parts, text = fb.model_dump(), fb.text
         if state["llm"] != "fallback":  # backend is built inside the try below
             try:
                 n, meta = await llm.structured(
@@ -363,15 +389,17 @@ def build_graph(rec: TraceRecorder):
                         "narrator_input", facts=_dump(narrator_view(facts)), final=_dump(final)
                     ),
                 )
-                bad = narration_ok(n.text, facts, final)
+                bad = narration_ok(n, facts, final)
                 if bad:
                     meta["rejected"] = bad
                     meta["rejected_text"] = n.text
                 else:
-                    text = n.text.strip()
+                    parts, text = n.model_dump(), n.text.strip()
             except Exception as e:  # noqa: BLE001
                 meta = _llm_failed(e)
-        rec.emit("narrator", "completed", {"narration": text, "final": final, **meta})
+        rec.emit(
+            "narrator", "completed", {"narration": text, "parts": parts, "final": final, **meta}
+        )
         return {
             "narration": text,
             "final": final,
