@@ -60,17 +60,33 @@ def test_two_discharges_in_one_visit_pair_with_their_own_stage():
     assert ms[0].time == datetime(2020, 5, 1, 14, tzinfo=UTC)
 
 
-def test_nearest_stage_within_two_hours_else_dropped():
+def test_exact_match_only_and_drops_are_counted(caplog):
     rows = [
         _stage("v1", "2020-05-01T14:00:00+00:00", "2.0"),
-        _q("v1", "2020-05-01T15:30:00+00:00", "100"),  # 1.5 h away -> paired
+        _q("v1", "2020-05-01T14:00:00+00:00", "100"),  # exact -> paired
+        _q("v1", "2020-05-01T14:01:00+00:00", "110"),  # 1 min off -> dropped (no fallback)
         _stage("v2", "2020-06-01T10:00:00+00:00", "3.0"),
-        _q("v2", "2020-06-01T13:00:00+00:00", "200"),  # 3 h away -> dropped
+        _q("v2", "2020-06-01T10:00:00Z", "200"),  # same instant, other spelling -> paired
         _q("v3", "2020-07-01T10:00:00+00:00", "300"),  # no stage in visit -> dropped
+        _stage("v4", "2020-08-01T10:00:00+00:00", "1.0"),  # stage in another visit
+        _q("v5", "2020-08-01T10:00:00+00:00", "400"),  # same time, other visit -> dropped
+        _stage("v6", "2020-09-01T10:00:00+00:00", "4.0"),
+        _stage("v6", "2020-09-01T10:00:00+00:00", "4.5"),  # disagreeing duplicate
+        _q("v6", "2020-09-01T10:00:00+00:00", "500"),  # ambiguous -> dropped
+        _stage("v7", "2020-10-01T10:00:00+00:00", "5.0"),
+        _stage("v7", "2020-10-01T10:00:00+00:00", "5.0"),  # identical duplicate is fine
+        _q("v7", "2020-10-01T10:00:00+00:00", "600"),
     ]
-    ms = pairing.pair_measurements(_snapshot(rows))
-    assert len(ms) == 1
-    assert ms[0].stage_ft == 2.0 and ms[0].pairing.startswith("nearest")
+    with caplog.at_level("INFO", logger=pairing.__name__):
+        ds = pairing.build_dataset(_snapshot(rows))
+    assert [m.discharge_cfs for m in ds.measurements] == [100.0, 200.0, 600.0]
+    assert all(m.pairing == "exact" for m in ds.measurements)
+    assert ds.metadata["pairing_dropped"] == {
+        "no_exact_stage": 3,
+        "ambiguous_stage": 1,
+        "bad_value": 0,
+    }
+    assert "dropped 4" in caplog.text
 
 
 def test_blank_and_non_positive_values_dropped_and_weights_default():

@@ -41,7 +41,7 @@ class Measurement(BaseModel):
     discharge_cfs: float
     rated: Rated = "Unspecified"
     weight: float = Field(gt=0, default=1.5)  # Excellent 4, Good 3, Fair 2, Poor 1, else 1.5
-    pairing: str = "exact"  # "exact" or "nearest (<gap>)" within the same visit
+    pairing: str = "exact"  # always "exact": same field_visit_id and time (no fallback)
     control_condition: str | None = None
     approval_status: str | None = None
     excluded: bool = False  # True = kept for plots, left out of the drift test
