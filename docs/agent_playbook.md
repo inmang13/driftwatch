@@ -1,7 +1,7 @@
 # DriftWatch — agent playbook (v3)
 
 > How and where each agent is used, with paste-ready prompts, and what the human does at the same time. Pair with `docs/plan.md`.
-> v1 Fri 10 pm · v2 Fri 11 pm (thoth edits) · **v3 Sat 10:30 am: status board + revised Saturday from here.** Grace works 8 am – 11 pm.
+> v1 Fri 10 pm · v2 Fri 11 pm (thoth edits) · v3 Sat 10:30 am · **v3.1 Sat 12:45: Informer GO, C4 done, C5 pulled forward.** Grace works 8 am – 11 pm.
 
 ## A. Rules for every agent session
 
@@ -23,8 +23,9 @@
 | M0 scaffold + 8-site snapshot | ✅ merged | main |
 | M1 engine: pairing, rating fit, shift detection, causes, trust score, CLI, 8 reports | ✅ merged (overnight on thoth) | main |
 | M1 fixes: cap 50, exact pairing, UTC, below-zero-flow guard, dashes, n_after, Helene visits counted for staleness, null test, docs | ✅ reviewed, **merge now** | PR `m1-fixes` |
-| M2 agents | ▶ next (10:30 – 2:00) | `m2-agents` |
-| Registry specs (thoth, daytime) | ▶ next (10:45 – ~1:00, unattended) | `pi/registry` |
+| M2 agents | ✅ built 11:56; skeptic rule + Disagreement schema + narrator direction fix in progress | PR `m2-agents` |
+| Registry specs (thoth) | ✅ merged (11:50) | main |
+| Informer spike | ✅ GO at 12:13 | `C:\Users\Grace\informer-spike\` |
 | M3 console · M4 Informer · M5 deploy + evals · DevPost | later today | — |
 
 **Current results (after fixes):** Pigeon R near Hepco Stale 24 (−28 % since Dec 2024) · French Broad at Newport Stale 30 (−43 % since Oct 2024, "Fill control changed") · French Broad at Asheville Stale 46 (+36 % since Jul 2025, delayed) · Mills Watch 73 · Swannanoa 94, South Toe 95, Watauga 95, Eno 91 Trusted.
@@ -41,15 +42,14 @@
 | **10:45 – 2:00** | **Claude Code (laptop): M2 agents** (C1). **Thoth: registry specs** (C2). | Draft `docs/pitch.md`. From ~12:00 read the first Gemini narrations; edit tone in `driftwatch/agents/prompts/`. Eat lunch while tests run. |
 | **~1:15** | **Codex review #2** (C1, end). | Paste Codex's list into the M2 session; it fixes before the 2:00 stop. |
 | **2:00 – 4:30** | **Claude Code (laptop): M3 console** (C3). Merge `pi/registry` first. | Watch the first live run on the page; write down every moment a judge would be confused → prompt edits. |
-| **4:30 – 5:00** | **Informer spike** (C4). | **Go / no-go at 5:00, no extensions.** |
-| **5:00 – 6:30** | Go: **Claude Code + Informer plugin: M4 product UI** (C5). No-go: polish the console. | Test on your phone as it deploys. |
+| **after M3 merge – 6:30** | **Claude Code + Informer plugin: M4 product UI** (C5). Informer spike passed 12:13 (C4). | Test on your phone as it deploys; confirm viewers need no sign-in. |
 | **6:30 – 8:00** | **Claude Code: M5 Cloud Run deploy + evals** (C6). **Codex review #3** at ~7:30. | Open the live URL on your phone; fix order = what Codex and you both hit. |
 | **8:00** | **Freeze `core/`, `agents/`, `modules/rating_curve/`.** | — |
 | **8:00 – 9:15** | Claude chat: README, DevPost text, 6 slides from `docs/pitch.md`. | Approve every claim in the text against `docs/m2_results.md` and `docs/eval_report.md`. |
 | **9:15 – 10:30** | — | Record the 2-minute video (C7). Screenshots. **Submit DevPost by 10:30.** |
 | **10:30 – 11:00** | Launch thoth job #2 (D). | Stop at 11. |
 
-**Cut order if behind (cut from the top):** web-search tool (already out) → Informer push/MCP extras → Informer app (console becomes the product UI) → Cloud Run (demo from the laptop) → Asheville in the video → skeptic loop (keep one skeptic pass). **Never cut:** M2 with fallback, replayable traces, the console, the video, DevPost submitted Saturday night.
+**Cut order if behind (cut from the top):** web-search tool (already out) → Informer push/MCP extras → Informer run-history page (keep gauges + detail + registry) → Cloud Run (demo from the laptop) → Asheville in the video → skeptic loop (keep one skeptic pass). **Never cut:** M2 with fallback, replayable traces, the console, the video, DevPost submitted Saturday night.
 
 ### C1 · M2 agents — Claude Code, laptop, branch `m2-agents`, stop 2:00 pm
 Paste:
@@ -75,18 +75,24 @@ Merge `m2-agents` and `pi/registry` into main first. Paste:
 > Read CLAUDE.md, plan §4 "UI", docs/m2_results.md. Branch `m3-console`. Build `driftwatch/api/app.py` (FastAPI): GET /gauges (site, name, band, score), GET /report/{site}, POST /run/{site} streaming TraceEvents as SSE (LLM from env), GET /trace/{id}, GET /replay/{id} (SSE at human pace, ~0.6 s between events), GET /registry (from `driftwatch.modules.registry.load_registry()`), static `console.html` at `/`. CORS configurable via `CORS_ORIGINS`.
 > The page (one file, vanilla JS + Plotly from a CDN, works on a phone): left, gauge list with band colours, Newport first; center, stage–discharge scatter (reference-window points vs post-shift points in two colours, base curve drawn, Helene-excluded points hollow) above a residual timeline with Helene (2024-09-27) and detected shift dates as vertical lines; right, a 5-box agent graph that highlights the running node, plus a streaming log showing each node's key output in one line; bottom, the finding card: narration, cause + confidence, and the score arithmetic (every deduction with its reason). A "Replay" button uses /replay on the latest saved trace so the demo works with no LLM. Registry tab: 8 cards from /registry, live first, each showing the four slots.
 > `make serve`. Then run Newport, Hepco, Swannanoa end to end with LLM=gemini, save the traces, and take screenshots into docs/images/. Commit, push, PR. Stop 4:30 pm.
+Replay reads traces/replay_defaults.json first; the finding card renders a Disagreement as four labelled rows: best guess, field note, why they disagree, double-check.
 
-### C4 · Informer spike — 4:30 to 5:00
-1. `npm install -g @entrinsik/informer-cli` → `inf login <team>.go.informer.cloud` (you must be tenant admin).
-2. Claude Code in a new folder `informer-app/` (inside the repo): `/plugin marketplace add entrinsik-org/claude-plugins` → `/plugin install informer@entrinsik-plugins`.
-3. Expose the laptop API: `ngrok http 8000` (or the Cloud Run URL if C6 already ran).
-4. Prompt: *"Build a minimal Informer App with one page and one server route that GETs `<api-url>/gauges` and shows the list. Deploy it."*
-5. **Go** if it deploys and the route reaches your API by 5:00. Otherwise **no-go**: the console is the product UI and you skip to C6 early.
+### C4 · Informer spike — DONE 12:13, result GO
+A minimal app is live on `inman.go.informer.cloud`; its server route reaches the USGS API and renders a station name. Deploy works; routes can reach an outside API. Spike code moved to `C:\Users\Grace\informer-spike\` (never commit it onto a code branch).
 
-### C5 · M4 Informer product UI — 5:00 to 6:30 (only on "go")
-Paste into Claude Code (Informer plugin loaded, folder `informer-app/`):
-> Build an Informer App called DriftWatch for a utility manager. Pages: (1) Gauges: cards with name, trust band colour, score, one-line finding; (2) Gauge detail: finding card with the score arithmetic and evidence, a "Run investigation" button that opens `<api-url>/?site=<site>` (the live console) and, after the run, a server route that fetches `<api-url>/trace/<id>` and stores it; (3) Run history from Postgres (migration: runs(site, started_at, band, score, cause, trace_json)); (4) Registry from `<api-url>/registry`. Phone-first layout, fast, no login wall for viewers if `informer.yaml` allows public access. Deploy with `inf deploy` and print the URL.
-> Optional only if done by 6:00: a scheduled agent that re-runs all gauges nightly and a push notification when a gauge's band changes.
+Findings that shape C5:
+1. **Outside APIs must be declared.** Server-route `fetch` reaches only Informer paths. Declare each outside API as an app-owned integration in `informer.yaml` (`authType: none`, `apiBaseUri: <url>`) and call it with `context.<slot>.request({ method, url })`. Pattern: the App Builder Boot Camp app already on the tenant.
+2. **Cloud Run goes through the same integration**, server-side. `CORS_ORIGINS` on the Python service only matters if the page itself fetches from the browser.
+3. **Embedding the console or its SSE stream in an Informer page needs admin approval** (Informer Admin → Approved Resources, Asset type `data`). The "Run investigation" button opens the console in a new tab and avoids this.
+4. Login is a browser sign-in (`inf login <url>`, `--no-browser` prints the link). CLI needs Node 22+.
+5. **Windows:** `inf deploy` crashes in its own build step. Rename the app's build script to `build:web`, run `npm run build:web` before every `inf deploy`, or `npm run deploy` which does both.
+
+Not yet verified: phone layout; whether viewers need a sign-in; whether the integration reaches your own API (only USGS was tested). C5 checks all three in its first 20 minutes.
+
+### C5 · M4 Informer product UI — can start as soon as M3 is merged (was 5:00)
+Folder `informer-app/` at the repo root on branch `m4-informer`, Informer plugin loaded. Paste:
+> Read docs/agent_playbook.md C4 findings first. Build an Informer App called DriftWatch for a utility manager. Declare an app-owned integration in `informer.yaml` for `<cloud-run-url>` (`authType: none`) and make every server-side call to it through that slot's `request()`; never use bare fetch for outside URLs. First 20 minutes: a page that lists `/gauges` through the integration, deployed, opened on a phone, and confirmed whether a viewer needs to sign in; report before building more. Then pages: (1) Gauges: cards with name, trust band colour, score, one-line finding; (2) Gauge detail: finding card with the score arithmetic, the evidence, and for a Disagreement the four fields (best guess, field note, why they disagree, double-check); a "Run investigation" button that opens `<console-url>/?site=<site>` in a new tab; a server route that fetches `/trace/<id>` through the integration after a run and stores it; (3) Run history from Postgres (migration: runs(site, started_at, band, score, cause, trace_json)); (4) Registry from `/registry`. Phone-first, fast. Windows: build script named `build:web`; deploy with `npm run deploy`. Print the URL.
+> Optional only if done 90 minutes early: a scheduled agent that re-runs all gauges nightly and a push notification when a band changes.
 
 ### C6 · M5 deploy + evals — Claude Code, laptop, branch `m5-deploy`, stop 8:00 pm
 > Read CLAUDE.md and plan §6. (1) Dockerfile (python:3.13-slim, snapshot and saved traces baked in, `uvicorn driftwatch.api.app:app --port 8080`). `gcloud run deploy driftwatch --source . --region us-east1 --allow-unauthenticated`, Gemini via the service account, OPENROUTER_API_KEY from Secret Manager, CORS_ORIGINS set to the Informer app origin. Print the URL and smoke-test /gauges and /replay. (2) `evals/cases.yaml` + `evals/run_evals.py` + `make evals` → `docs/eval_report.md`: Newport → Stale, fill, cites "Fill control changed"; Hepco → Stale, skeptic objects, final cause not plain scour; Asheville → Stale, positive-sign cause; Mills → Watch; Swannanoa, South Toe, Watauga, Eno → Trusted with no cause named; synthetic +25 % step injected into Eno at 2025-07-01 → fires; synthetic no-step Eno series → 0 shifts; replay determinism. Report pass/fail, tokens, wall time per case, with LLM=fallback and LLM=gemini columns. Commit, push, PR.
@@ -105,7 +111,7 @@ Merge `pi/docs` if `make test` is green; otherwise merge only README and pitch_s
 ## F. Human-only jobs
 - Confirm the demo roles in B (Newport main, Hepco skeptic, Asheville delayed, Swannanoa quiet).
 - Approve every narration's tone and every number in the pitch before it goes in the video.
-- Call the Informer go/no-go at 5:00 pm sharp.
+- Confirm the Hepco replay trace to use for the demo (run 2 or the Disagreement run).
 - Keep `docs/decision_log.md` honest: every cut gets a dated line.
 - Eat lunch and dinner; stop at 11.
 

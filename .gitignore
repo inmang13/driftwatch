@@ -20,3 +20,6 @@ venv/
 # Pi job logs
 logs/
 reports/*.tmp
+traces/*.tmp
+traces/demo/
+informer-station/
