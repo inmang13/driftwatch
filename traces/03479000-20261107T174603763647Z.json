@@ -1,23 +1,23 @@
 {
-  "run_id": "03479000-20261107T171851961299Z-696974",
+  "run_id": "03479000-20261107T174603763647Z-7385a5",
   "site": "03479000",
   "llm": "gemini",
-  "started_at": "2026-11-07T17:18:51.961299+00:00",
+  "started_at": "2026-11-07T17:46:03.763647+00:00",
   "final": {
-    "narration": "The flow numbers from the Watauga River gauge near Sugar Grove can be trusted. Recent field checks show published flows are within 0.5% of actual river measurements, which is well inside the station's normal 4.5% scatter. We are confident the rating curve is operating normally, supported by fresh field visits and stable riverbed controls. You can continue using these published flow figures for regular operations without making any adjustments. Trust score 95/100 (Trusted).",
+    "narration": "This river gauge can be trusted. Recent field measurements sit 0.5 % above the rating, so published flows are about that much too low, which is well within normal scatter. We are confident the rating is tracking accurately, with regular field checks keeping data current and no control issues present. Continue using the published flow data for daily operations as usual. Trust score 95/100 (Trusted).",
     "final": null,
-    "input_tokens": 840,
-    "output_tokens": 114,
+    "input_tokens": 924,
+    "output_tokens": 97,
     "llm_calls": 1,
     "fallbacks_used": 0,
-    "wall_seconds": 7.38
+    "wall_seconds": 7.8
   },
   "events": [
     {
-      "run_id": "03479000-20261107T171851961299Z-696974",
+      "run_id": "03479000-20261107T174603763647Z-7385a5",
       "site": "03479000",
       "seq": 0,
-      "ts": "2026-11-07T17:18:51.961487Z",
+      "ts": "2026-11-07T17:46:03.763802Z",
       "node": "run",
       "status": "started",
       "payload": {
@@ -25,19 +25,19 @@
       }
     },
     {
-      "run_id": "03479000-20261107T171851961299Z-696974",
+      "run_id": "03479000-20261107T174603763647Z-7385a5",
       "site": "03479000",
       "seq": 1,
-      "ts": "2026-11-07T17:18:51.983707Z",
+      "ts": "2026-11-07T17:46:03.784490Z",
       "node": "triage",
       "status": "started",
       "payload": {}
     },
     {
-      "run_id": "03479000-20261107T171851961299Z-696974",
+      "run_id": "03479000-20261107T174603763647Z-7385a5",
       "site": "03479000",
       "seq": 2,
-      "ts": "2026-11-07T17:18:52.279782Z",
+      "ts": "2026-11-07T17:46:04.041287Z",
       "node": "triage",
       "status": "completed",
       "payload": {
@@ -76,6 +76,9 @@
         "recent_median_residual_pct": 0.5,
         "normal_scatter_pct": 4.5,
         "direction": "positive",
+        "direction_phrase": "above the rating",
+        "published_flows": "too low",
+        "off_by_pct": 0.5,
         "recent_rated": [
           "Fair",
           "Fair",
@@ -97,45 +100,45 @@
       }
     },
     {
-      "run_id": "03479000-20261107T171851961299Z-696974",
+      "run_id": "03479000-20261107T174603763647Z-7385a5",
       "site": "03479000",
       "seq": 3,
-      "ts": "2026-11-07T17:18:52.289873Z",
+      "ts": "2026-11-07T17:46:04.045434Z",
       "node": "narrator",
       "status": "started",
       "payload": {}
     },
     {
-      "run_id": "03479000-20261107T171851961299Z-696974",
+      "run_id": "03479000-20261107T174603763647Z-7385a5",
       "site": "03479000",
       "seq": 4,
-      "ts": "2026-11-07T17:18:59.334513Z",
+      "ts": "2026-11-07T17:46:11.561170Z",
       "node": "narrator",
       "status": "completed",
       "payload": {
-        "narration": "The flow numbers from the Watauga River gauge near Sugar Grove can be trusted. Recent field checks show published flows are within 0.5% of actual river measurements, which is well inside the station's normal 4.5% scatter. We are confident the rating curve is operating normally, supported by fresh field visits and stable riverbed controls. You can continue using these published flow figures for regular operations without making any adjustments. Trust score 95/100 (Trusted).",
+        "narration": "This river gauge can be trusted. Recent field measurements sit 0.5 % above the rating, so published flows are about that much too low, which is well within normal scatter. We are confident the rating is tracking accurately, with regular field checks keeping data current and no control issues present. Continue using the published flow data for daily operations as usual. Trust score 95/100 (Trusted).",
         "final": null,
         "model": "vertex:gemini-3.8-flash",
-        "input_tokens": 840,
-        "output_tokens": 114,
-        "seconds": 7.04
+        "input_tokens": 924,
+        "output_tokens": 97,
+        "seconds": 7.51
       }
     },
     {
-      "run_id": "03479000-20261107T171851961299Z-696974",
+      "run_id": "03479000-20261107T174603763647Z-7385a5",
       "site": "03479000",
       "seq": 5,
-      "ts": "2026-11-07T17:18:59.340373Z",
+      "ts": "2026-11-07T17:46:11.567122Z",
       "node": "run",
       "status": "completed",
       "payload": {
-        "narration": "The flow numbers from the Watauga River gauge near Sugar Grove can be trusted. Recent field checks show published flows are within 0.5% of actual river measurements, which is well inside the station's normal 4.5% scatter. We are confident the rating curve is operating normally, supported by fresh field visits and stable riverbed controls. You can continue using these published flow figures for regular operations without making any adjustments. Trust score 95/100 (Trusted).",
+        "narration": "This river gauge can be trusted. Recent field measurements sit 0.5 % above the rating, so published flows are about that much too low, which is well within normal scatter. We are confident the rating is tracking accurately, with regular field checks keeping data current and no control issues present. Continue using the published flow data for daily operations as usual. Trust score 95/100 (Trusted).",
         "final": null,
-        "input_tokens": 840,
-        "output_tokens": 114,
+        "input_tokens": 924,
+        "output_tokens": 97,
         "llm_calls": 1,
         "fallbacks_used": 0,
-        "wall_seconds": 7.38
+        "wall_seconds": 7.8
       }
     }
   ]

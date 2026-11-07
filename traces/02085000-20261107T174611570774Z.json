@@ -1,23 +1,23 @@
 {
-  "run_id": "02085000-20261107T171859345315Z-8d23bf",
+  "run_id": "02085000-20261107T174611570774Z-9a3d5d",
   "site": "02085000",
   "llm": "gemini",
-  "started_at": "2026-11-07T17:18:59.345315+00:00",
+  "started_at": "2026-11-07T17:46:11.570774+00:00",
   "final": {
-    "narration": "This gauge can be trusted. Published flows are tracking actual river conditions well, running about 11% higher than recent field checks, which is only slightly above the site's normal 8% scatter. We are confident the gauge is operating reliably, with no control problems and frequent field checks over the past year, including one just 22 days ago. Continue relying on the published data for daily utility operations. Trust score 91/100 (Trusted).",
+    "narration": "This gauge can be trusted. Recent field measurements sit 11.1 % below the rating, so published flows are about that much too high, but differences remain close to normal scatter and require no correction. There are no active problems or control shifts, so we are confident the gauge is performing properly. Continue using the published flow data for routine operations while maintaining regular inspection schedules. Trust score 91/100 (Trusted).",
     "final": null,
-    "input_tokens": 843,
-    "output_tokens": 110,
+    "input_tokens": 926,
+    "output_tokens": 102,
     "llm_calls": 1,
     "fallbacks_used": 0,
-    "wall_seconds": 9.03
+    "wall_seconds": 18.95
   },
   "events": [
     {
-      "run_id": "02085000-20261107T171859345315Z-8d23bf",
+      "run_id": "02085000-20261107T174611570774Z-9a3d5d",
       "site": "02085000",
       "seq": 0,
-      "ts": "2026-11-07T17:18:59.345487Z",
+      "ts": "2026-11-07T17:46:11.570977Z",
       "node": "run",
       "status": "started",
       "payload": {
@@ -25,19 +25,19 @@
       }
     },
     {
-      "run_id": "02085000-20261107T171859345315Z-8d23bf",
+      "run_id": "02085000-20261107T174611570774Z-9a3d5d",
       "site": "02085000",
       "seq": 1,
-      "ts": "2026-11-07T17:18:59.372138Z",
+      "ts": "2026-11-07T17:46:11.597499Z",
       "node": "triage",
       "status": "started",
       "payload": {}
     },
     {
-      "run_id": "02085000-20261107T171859345315Z-8d23bf",
+      "run_id": "02085000-20261107T174611570774Z-9a3d5d",
       "site": "02085000",
       "seq": 2,
-      "ts": "2026-11-07T17:18:59.638107Z",
+      "ts": "2026-11-07T17:46:11.796647Z",
       "node": "triage",
       "status": "completed",
       "payload": {
@@ -76,6 +76,9 @@
         "recent_median_residual_pct": -11.1,
         "normal_scatter_pct": 8.0,
         "direction": "negative",
+        "direction_phrase": "below the rating",
+        "published_flows": "too high",
+        "off_by_pct": 11.1,
         "recent_rated": [
           "Good",
           "Fair",
@@ -97,45 +100,45 @@
       }
     },
     {
-      "run_id": "02085000-20261107T171859345315Z-8d23bf",
+      "run_id": "02085000-20261107T174611570774Z-9a3d5d",
       "site": "02085000",
       "seq": 3,
-      "ts": "2026-11-07T17:18:59.644193Z",
+      "ts": "2026-11-07T17:46:11.801504Z",
       "node": "narrator",
       "status": "started",
       "payload": {}
     },
     {
-      "run_id": "02085000-20261107T171859345315Z-8d23bf",
+      "run_id": "02085000-20261107T174611570774Z-9a3d5d",
       "site": "02085000",
       "seq": 4,
-      "ts": "2026-11-07T17:19:08.370498Z",
+      "ts": "2026-11-07T17:46:30.510803Z",
       "node": "narrator",
       "status": "completed",
       "payload": {
-        "narration": "This gauge can be trusted. Published flows are tracking actual river conditions well, running about 11% higher than recent field checks, which is only slightly above the site's normal 8% scatter. We are confident the gauge is operating reliably, with no control problems and frequent field checks over the past year, including one just 22 days ago. Continue relying on the published data for daily utility operations. Trust score 91/100 (Trusted).",
+        "narration": "This gauge can be trusted. Recent field measurements sit 11.1 % below the rating, so published flows are about that much too high, but differences remain close to normal scatter and require no correction. There are no active problems or control shifts, so we are confident the gauge is performing properly. Continue using the published flow data for routine operations while maintaining regular inspection schedules. Trust score 91/100 (Trusted).",
         "final": null,
         "model": "vertex:gemini-3.8-flash",
-        "input_tokens": 843,
-        "output_tokens": 110,
-        "seconds": 8.72
+        "input_tokens": 926,
+        "output_tokens": 102,
+        "seconds": 18.7
       }
     },
     {
-      "run_id": "02085000-20261107T171859345315Z-8d23bf",
+      "run_id": "02085000-20261107T174611570774Z-9a3d5d",
       "site": "02085000",
       "seq": 5,
-      "ts": "2026-11-07T17:19:08.377893Z",
+      "ts": "2026-11-07T17:46:30.516752Z",
       "node": "run",
       "status": "completed",
       "payload": {
-        "narration": "This gauge can be trusted. Published flows are tracking actual river conditions well, running about 11% higher than recent field checks, which is only slightly above the site's normal 8% scatter. We are confident the gauge is operating reliably, with no control problems and frequent field checks over the past year, including one just 22 days ago. Continue relying on the published data for daily utility operations. Trust score 91/100 (Trusted).",
+        "narration": "This gauge can be trusted. Recent field measurements sit 11.1 % below the rating, so published flows are about that much too high, but differences remain close to normal scatter and require no correction. There are no active problems or control shifts, so we are confident the gauge is performing properly. Continue using the published flow data for routine operations while maintaining regular inspection schedules. Trust score 91/100 (Trusted).",
         "final": null,
-        "input_tokens": 843,
-        "output_tokens": 110,
+        "input_tokens": 926,
+        "output_tokens": 102,
         "llm_calls": 1,
         "fallbacks_used": 0,
-        "wall_seconds": 9.03
+        "wall_seconds": 18.95
       }
     }
   ]
