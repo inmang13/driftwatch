@@ -168,6 +168,21 @@ class TrustScore(BaseModel):
         return self
 
 
+class TrendResult(BaseModel):
+    """Slow drift of the % residual over the latest stable segment (rating_curve/trend.py)."""
+
+    slope_pct_per_year: float
+    ci_low: float
+    ci_high: float
+    p_value: float
+    n: int
+    span_years: float
+    significant: bool
+    window_start: datetime
+    window_end: datetime
+    text: str
+
+
 class Report(BaseModel):
     site: str
     site_name: str | None = None
@@ -193,6 +208,10 @@ class Report(BaseModel):
     holdout_n: int = Field(ge=0, default=0)
     holdout_start: datetime | None = None
     holdout_end: datetime | None = None
+    # Slow-drift trend (report.build_report(with_trend=True), the CLI report); None when not
+    # computed or when the latest stable segment is too short (trend.fit_trend).
+    trend: TrendResult | None = None
+    trend_note: str | None = None
 
     _tz = field_validator("generated_at", "holdout_start", "holdout_end")(_require_tz)
 
