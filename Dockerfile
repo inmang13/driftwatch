@@ -15,6 +15,7 @@ RUN pip install --no-cache-dir ".[agents,api]"
 
 COPY data/snapshot/ data/snapshot/
 COPY traces/ traces/
+COPY reports/ reports/
 
 EXPOSE 8080
 CMD ["python", "-m", "uvicorn", "driftwatch.api.app:app", "--host", "0.0.0.0", "--port", "8080"]

@@ -115,6 +115,9 @@ table.data td.r, table.data th.r { text-align: right; }
 .readout .v { font: 500 20px/24px var(--mono); margin: 2px 0; }
 .readout .v.sig { color: var(--signal); }
 .narr { max-width: 900px; margin: 0 0 12px; }
+.trend { max-width: 900px; margin: 0 0 12px; }
+.trend p { margin: 0; font-weight: 600; }
+.trend p.trend-note { font: 12px/18px var(--mono); color: var(--ink-muted); margin-top: 2px; }
 .grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
 .rows { display: grid; grid-template-columns: 150px 1fr; gap: 0; margin: 0; }
 .rows dt, .rows dd { border-top: 1px solid var(--rule); padding: 6px 0; margin: 0; }
@@ -597,6 +600,13 @@ function readoutsHTML(d) {
     <div class="caption">middle value of the newest ${r.n} field measurements</div></div>`);
   return parts.length ? `<div class="readouts">${parts.join("")}</div>` : "";
 }
+// slow-drift sentence from the stored report; only when the trend test calls it significant
+function trendHTML(d) {
+  const t = d?.trend;
+  if (!t || t.significant !== true) return "";
+  return `<div class="trend"><p>${esc(t.text)}</p>
+    ${d.trend_note ? `<p class="trend-note">${esc(d.trend_note)}</p>` : ""}</div>`;
+}
 function detailsHTML(d) {
   if (!d) return "";
   const rel = d.report.relationship, sh = d.report.drift.shifts;
@@ -649,6 +659,7 @@ function renderCard(f, label) {
       <span class="label ${/replay/.test(label) ? "replay" : ""}">${esc(label || "")}</span></div>
     ${trust ? `<p class="meaning">${esc(BAND_MEANING[trust.band] || "")}</p>` : ""}
     ${readoutsHTML(d)}
+    ${trendHTML(d)}
     ${f?.narration ? `<p class="narr">${esc(plain(f.narration))}</p>` : ""}
     <div class="grid2"><div>${causeHTML}</div><div><h2 class="lbl">Trust score arithmetic</h2>${scoreHTML}</div></div>
     ${detailsHTML(d)}`;
