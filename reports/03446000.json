@@ -1,7 +1,7 @@
 {
   "site": "03446000",
   "site_name": "MILLS RIVER NEAR MILLS RIVER, NC",
-  "generated_at": "2026-11-07T18:55:16.915732Z",
+  "generated_at": "2026-11-07T19:18:26.901637Z",
   "source": "snapshot",
   "relationship": {
     "kind": "power_law",
@@ -18,51 +18,21 @@
     "stable_periods": [
       {
         "start": "2012-01-11T19:34:45Z",
-        "end": "2019-05-09T16:27:01Z",
-        "n": 101,
-        "median_residual_pct": 1.94
-      },
-      {
-        "start": "2019-05-09T17:41:17Z",
         "end": "2026-10-07T17:04:07Z",
-        "n": 63,
-        "median_residual_pct": -4.04
+        "n": 164,
+        "median_residual_pct": -0.66
       }
     ],
-    "shifts": [
-      {
-        "time": "2019-05-09T17:41:17Z",
-        "size_pct": -5.87,
-        "size_ft": -0.036,
-        "direction": "negative",
-        "n_after": 63,
-        "confidence": 1.0
-      }
-    ],
+    "shifts": [],
     "stable_periods_ft": [
       {
         "start": "2012-01-11T19:34:45Z",
-        "end": "2018-08-29T15:39:30Z",
-        "n": 94,
-        "median_residual_pct": 1.98
-      },
-      {
-        "start": "2018-10-25T17:50:00Z",
         "end": "2026-10-07T17:04:07Z",
-        "n": 70,
-        "median_residual_pct": -4.02
+        "n": 164,
+        "median_residual_pct": -0.66
       }
     ],
-    "shifts_ft": [
-      {
-        "time": "2018-10-25T17:50:00Z",
-        "size_pct": -5.98,
-        "size_ft": -0.036,
-        "direction": "negative",
-        "n_after": 70,
-        "confidence": 1.0
-      }
-    ],
+    "shifts_ft": [],
     "step_pct_sigma": null,
     "step_ft_sigma": null,
     "larger_step_series": null,
@@ -71,7 +41,10 @@
     "n_excluded": 1,
     "n_invalid_domain": 0,
     "n_poor_unsearched": 15,
-    "penalty": 50.0
+    "penalty": 50.0,
+    "min_shift_pct": 10.0,
+    "n_gated": 1,
+    "n_gated_ft": 1
   },
   "trust": {
     "score": 73.3,
@@ -106,11 +79,14 @@
   },
   "likely_cause": "debris",
   "narrative": "Field note says debris, and the gauge reads 12 % less water than rated, which is the direction debris produces.",
-  "suggested_shift_ft": -0.026,
-  "suggested_shift_n": 63,
+  "suggested_shift_ft": -0.004,
+  "suggested_shift_n": 164,
   "suggested_shift_label": "provisional: a hydrographer confirms",
   "reference_mode": "fixed",
   "reference_start": "2012-01-01",
   "reference_end": "2024-09-25",
-  "reference_note": null
+  "reference_note": null,
+  "holdout_n": 16,
+  "holdout_start": "2024-11-21T15:50:34Z",
+  "holdout_end": "2026-10-07T17:04:07Z"
 }

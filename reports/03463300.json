@@ -1,7 +1,7 @@
 {
   "site": "03463300",
   "site_name": "SOUTH TOE RIVER NEAR CELO, NC",
-  "generated_at": "2026-11-07T18:55:24.353984Z",
+  "generated_at": "2026-11-07T19:18:34.324126Z",
   "source": "snapshot",
   "relationship": {
     "kind": "power_law",
@@ -27,41 +27,12 @@
     "stable_periods_ft": [
       {
         "start": "2012-02-09T15:20:30Z",
-        "end": "2017-08-15T14:36:23Z",
-        "n": 45,
-        "median_residual_pct": -0.57
-      },
-      {
-        "start": "2017-08-15T15:40:30Z",
-        "end": "2017-09-12T16:45:32Z",
-        "n": 6,
-        "median_residual_pct": -7.91
-      },
-      {
-        "start": "2017-09-12T18:39:51Z",
         "end": "2026-10-14T17:00:32Z",
-        "n": 68,
-        "median_residual_pct": 0.14
+        "n": 119,
+        "median_residual_pct": -0.25
       }
     ],
-    "shifts_ft": [
-      {
-        "time": "2017-08-15T15:40:30Z",
-        "size_pct": -4.76,
-        "size_ft": -0.082,
-        "direction": "negative",
-        "n_after": 74,
-        "confidence": 0.9949
-      },
-      {
-        "time": "2017-09-12T18:39:51Z",
-        "size_pct": 6.13,
-        "size_ft": 0.087,
-        "direction": "positive",
-        "n_after": 68,
-        "confidence": 0.9938
-      }
-    ],
+    "shifts_ft": [],
     "step_pct_sigma": null,
     "step_ft_sigma": null,
     "larger_step_series": null,
@@ -70,7 +41,10 @@
     "n_excluded": 1,
     "n_invalid_domain": 0,
     "n_poor_unsearched": 4,
-    "penalty": 50.0
+    "penalty": 50.0,
+    "min_shift_pct": 10.0,
+    "n_gated": 0,
+    "n_gated_ft": 2
   },
   "trust": {
     "score": 95.0,
@@ -111,5 +85,8 @@
   "reference_mode": "fixed",
   "reference_start": "2012-01-01",
   "reference_end": "2024-09-25",
-  "reference_note": null
+  "reference_note": null,
+  "holdout_n": 9,
+  "holdout_start": "2024-12-04T15:42:47Z",
+  "holdout_end": "2026-10-14T17:00:32Z"
 }

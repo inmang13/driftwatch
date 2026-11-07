@@ -1,7 +1,7 @@
 {
   "site": "03451500",
   "site_name": "FRENCH BROAD RIVER AT ASHEVILLE, NC",
-  "generated_at": "2026-11-07T18:55:20.377053Z",
+  "generated_at": "2026-11-07T19:18:30.353869Z",
   "source": "snapshot",
   "relationship": {
     "kind": "power_law",
@@ -71,7 +71,10 @@
     "n_excluded": 1,
     "n_invalid_domain": 0,
     "n_poor_unsearched": 8,
-    "penalty": 50.0
+    "penalty": 50.0,
+    "min_shift_pct": 10.0,
+    "n_gated": 0,
+    "n_gated_ft": 0
   },
   "trust": {
     "score": 45.6,
@@ -112,5 +115,8 @@
   "reference_mode": "fixed",
   "reference_start": "2012-01-01",
   "reference_end": "2024-09-25",
-  "reference_note": null
+  "reference_note": null,
+  "holdout_n": 13,
+  "holdout_start": "2024-09-26T20:34:39Z",
+  "holdout_end": "2026-10-16T14:42:27Z"
 }

@@ -1,7 +1,7 @@
 {
   "site": "03451000",
   "site_name": "SWANNANOA RIVER AT BILTMORE, NC",
-  "generated_at": "2026-11-07T18:55:22.452017Z",
+  "generated_at": "2026-11-07T19:18:32.417830Z",
   "source": "snapshot",
   "relationship": {
     "kind": "power_law",
@@ -27,41 +27,12 @@
     "stable_periods_ft": [
       {
         "start": "2012-02-13T21:53:30Z",
-        "end": "2018-05-03T17:00:02Z",
-        "n": 57,
-        "median_residual_pct": 2.44
-      },
-      {
-        "start": "2018-05-30T17:01:30Z",
-        "end": "2018-08-28T19:40:00Z",
-        "n": 6,
-        "median_residual_pct": -7.06
-      },
-      {
-        "start": "2018-10-15T19:25:04Z",
         "end": "2026-10-02T14:17:37Z",
-        "n": 56,
-        "median_residual_pct": -0.67
+        "n": 119,
+        "median_residual_pct": 0.62
       }
     ],
-    "shifts_ft": [
-      {
-        "time": "2018-05-30T17:01:30Z",
-        "size_pct": -7.89,
-        "size_ft": -0.038,
-        "direction": "negative",
-        "n_after": 62,
-        "confidence": 0.9841
-      },
-      {
-        "time": "2018-10-15T19:25:04Z",
-        "size_pct": 4.98,
-        "size_ft": 0.022,
-        "direction": "positive",
-        "n_after": 56,
-        "confidence": 0.8246
-      }
-    ],
+    "shifts_ft": [],
     "step_pct_sigma": null,
     "step_ft_sigma": null,
     "larger_step_series": null,
@@ -70,7 +41,10 @@
     "n_excluded": 1,
     "n_invalid_domain": 0,
     "n_poor_unsearched": 8,
-    "penalty": 50.0
+    "penalty": 50.0,
+    "min_shift_pct": 10.0,
+    "n_gated": 0,
+    "n_gated_ft": 2
   },
   "trust": {
     "score": 93.7,
@@ -111,5 +85,8 @@
   "reference_mode": "fixed",
   "reference_start": "2012-01-01",
   "reference_end": "2024-09-25",
-  "reference_note": null
+  "reference_note": null,
+  "holdout_n": 11,
+  "holdout_start": "2024-12-09T14:49:24Z",
+  "holdout_end": "2026-10-02T14:17:37Z"
 }

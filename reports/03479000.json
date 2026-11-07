@@ -1,7 +1,7 @@
 {
   "site": "03479000",
   "site_name": "WATAUGA RIVER NEAR SUGAR GROVE, NC",
-  "generated_at": "2026-11-07T18:55:25.994146Z",
+  "generated_at": "2026-11-07T19:18:36.047411Z",
   "source": "snapshot",
   "relationship": {
     "kind": "power_law",
@@ -27,41 +27,12 @@
     "stable_periods_ft": [
       {
         "start": "2012-01-19T19:30:30Z",
-        "end": "2018-08-02T17:03:13Z",
-        "n": 51,
-        "median_residual_pct": 2.05
-      },
-      {
-        "start": "2018-09-12T14:47:35Z",
-        "end": "2019-02-06T14:42:42Z",
-        "n": 6,
-        "median_residual_pct": -2.38
-      },
-      {
-        "start": "2019-02-06T15:42:54Z",
         "end": "2026-10-14T15:41:36Z",
-        "n": 47,
-        "median_residual_pct": -1.11
+        "n": 104,
+        "median_residual_pct": 0.81
       }
     ],
-    "shifts_ft": [
-      {
-        "time": "2018-09-12T14:47:35Z",
-        "size_pct": -1.09,
-        "size_ft": -0.01,
-        "direction": "negative",
-        "n_after": 53,
-        "confidence": 0.802
-      },
-      {
-        "time": "2019-02-06T15:42:54Z",
-        "size_pct": -1.44,
-        "size_ft": -0.011,
-        "direction": "negative",
-        "n_after": 47,
-        "confidence": 0.5986
-      }
-    ],
+    "shifts_ft": [],
     "step_pct_sigma": null,
     "step_ft_sigma": null,
     "larger_step_series": null,
@@ -70,7 +41,10 @@
     "n_excluded": 1,
     "n_invalid_domain": 0,
     "n_poor_unsearched": 10,
-    "penalty": 50.0
+    "penalty": 50.0,
+    "min_shift_pct": 10.0,
+    "n_gated": 0,
+    "n_gated_ft": 2
   },
   "trust": {
     "score": 95.0,
@@ -111,5 +85,8 @@
   "reference_mode": "fixed",
   "reference_start": "2012-01-01",
   "reference_end": "2024-09-25",
-  "reference_note": null
+  "reference_note": null,
+  "holdout_n": 10,
+  "holdout_start": "2025-02-05T15:03:25Z",
+  "holdout_end": "2026-10-14T15:41:36Z"
 }

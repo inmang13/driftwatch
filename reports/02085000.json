@@ -1,7 +1,7 @@
 {
   "site": "02085000",
   "site_name": "ENO RIVER AT HILLSBOROUGH, NC",
-  "generated_at": "2026-11-07T18:55:27.023758Z",
+  "generated_at": "2026-11-07T19:18:37.050501Z",
   "source": "snapshot",
   "relationship": {
     "kind": "power_law",
@@ -18,93 +18,21 @@
     "stable_periods": [
       {
         "start": "2015-03-04T19:54:00Z",
-        "end": "2022-08-31T15:29:30Z",
-        "n": 50,
-        "median_residual_pct": 1.6
-      },
-      {
-        "start": "2022-09-06T14:34:30Z",
-        "end": "2022-11-09T17:06:30Z",
-        "n": 6,
-        "median_residual_pct": -42.57
-      },
-      {
-        "start": "2022-11-28T18:01:00Z",
         "end": "2026-10-15T16:24:27Z",
-        "n": 22,
-        "median_residual_pct": -5.5
+        "n": 78,
+        "median_residual_pct": -0.5
       }
     ],
-    "shifts": [
-      {
-        "time": "2022-09-06T14:34:30Z",
-        "size_pct": -17.23,
-        "size_ft": -0.022,
-        "direction": "negative",
-        "n_after": 28,
-        "confidence": 0.9994
-      },
-      {
-        "time": "2022-11-28T18:01:00Z",
-        "size_pct": 11.16,
-        "size_ft": 0.004,
-        "direction": "positive",
-        "n_after": 22,
-        "confidence": 0.9829
-      }
-    ],
+    "shifts": [],
     "stable_periods_ft": [
       {
         "start": "2015-03-04T19:54:00Z",
-        "end": "2015-09-03T15:55:00Z",
-        "n": 6,
-        "median_residual_pct": 7.06
-      },
-      {
-        "start": "2015-10-03T17:47:33Z",
-        "end": "2016-02-16T17:43:51Z",
-        "n": 6,
-        "median_residual_pct": 1.56
-      },
-      {
-        "start": "2016-04-11T13:52:30Z",
-        "end": "2021-12-03T18:56:30Z",
-        "n": 33,
-        "median_residual_pct": 1.36
-      },
-      {
-        "start": "2022-03-03T21:14:43Z",
         "end": "2026-10-15T16:24:27Z",
-        "n": 33,
-        "median_residual_pct": -6.77
+        "n": 78,
+        "median_residual_pct": -0.5
       }
     ],
-    "shifts_ft": [
-      {
-        "time": "2015-10-03T17:47:33Z",
-        "size_pct": -2.51,
-        "size_ft": 0.007,
-        "direction": "negative",
-        "n_after": 72,
-        "confidence": 0.6905
-      },
-      {
-        "time": "2016-04-11T13:52:30Z",
-        "size_pct": -3.19,
-        "size_ft": -0.02,
-        "direction": "negative",
-        "n_after": 66,
-        "confidence": 0.1948
-      },
-      {
-        "time": "2022-03-03T21:14:43Z",
-        "size_pct": -6.15,
-        "size_ft": -0.019,
-        "direction": "negative",
-        "n_after": 33,
-        "confidence": 0.9918
-      }
-    ],
+    "shifts_ft": [],
     "step_pct_sigma": null,
     "step_ft_sigma": null,
     "larger_step_series": null,
@@ -113,7 +41,10 @@
     "n_excluded": 0,
     "n_invalid_domain": 0,
     "n_poor_unsearched": 19,
-    "penalty": 50.0
+    "penalty": 50.0,
+    "min_shift_pct": 12.03,
+    "n_gated": 2,
+    "n_gated_ft": 3
   },
   "trust": {
     "score": 90.6,
@@ -148,11 +79,14 @@
   },
   "likely_cause": null,
   "narrative": null,
-  "suggested_shift_ft": -0.013,
-  "suggested_shift_n": 22,
+  "suggested_shift_ft": -0.001,
+  "suggested_shift_n": 78,
   "suggested_shift_label": "provisional: a hydrographer confirms",
   "reference_mode": "fixed",
   "reference_start": "2015-01-01",
   "reference_end": "2025-07-06",
-  "reference_note": null
+  "reference_note": null,
+  "holdout_n": 8,
+  "holdout_start": "2025-09-16T17:22:06Z",
+  "holdout_end": "2026-10-15T16:24:27Z"
 }

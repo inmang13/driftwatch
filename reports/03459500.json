@@ -1,7 +1,7 @@
 {
   "site": "03459500",
   "site_name": "PIGEON RIVER NEAR HEPCO, NC",
-  "generated_at": "2026-11-07T18:55:10.078105Z",
+  "generated_at": "2026-11-07T19:18:20.144142Z",
   "source": "snapshot",
   "relationship": {
     "kind": "power_law",
@@ -71,7 +71,10 @@
     "n_excluded": 0,
     "n_invalid_domain": 0,
     "n_poor_unsearched": 11,
-    "penalty": 50.0
+    "penalty": 50.0,
+    "min_shift_pct": 10.0,
+    "n_gated": 0,
+    "n_gated_ft": 0
   },
   "trust": {
     "score": 23.799999999999997,
@@ -112,5 +115,8 @@
   "reference_mode": "fixed",
   "reference_start": "2012-01-01",
   "reference_end": "2024-09-25",
-  "reference_note": null
+  "reference_note": null,
+  "holdout_n": 12,
+  "holdout_start": "2024-12-17T18:18:38Z",
+  "holdout_end": "2026-08-07T16:06:09Z"
 }
