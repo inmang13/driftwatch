@@ -1,23 +1,23 @@
 {
-  "run_id": "02085000-20261107T174611570774Z-9a3d5d",
+  "run_id": "02085000-20261107T175453192069Z-c7b5a7",
   "site": "02085000",
   "llm": "gemini",
-  "started_at": "2026-11-07T17:46:11.570774+00:00",
+  "started_at": "2026-11-07T17:54:53.192069+00:00",
   "final": {
-    "narration": "This gauge can be trusted. Recent field measurements sit 11.1 % below the rating, so published flows are about that much too high, but differences remain close to normal scatter and require no correction. There are no active problems or control shifts, so we are confident the gauge is performing properly. Continue using the published flow data for routine operations while maintaining regular inspection schedules. Trust score 91/100 (Trusted).",
+    "narration": "This gauge can be trusted. Recent field measurements sit 11.1 % below the rating, so published flows are about that much too high, with a recent median residual of 11.1 % below the rating. Field crews made 7 visits in the last 12 months, with the last visit 22 days ago noting the control as Clear. Continue regular monitoring as scheduled. Trust score 91/100 (Trusted).",
     "final": null,
-    "input_tokens": 926,
-    "output_tokens": 102,
+    "input_tokens": 1096,
+    "output_tokens": 171,
     "llm_calls": 1,
     "fallbacks_used": 0,
-    "wall_seconds": 18.95
+    "wall_seconds": 12.58
   },
   "events": [
     {
-      "run_id": "02085000-20261107T174611570774Z-9a3d5d",
+      "run_id": "02085000-20261107T175453192069Z-c7b5a7",
       "site": "02085000",
       "seq": 0,
-      "ts": "2026-11-07T17:46:11.570977Z",
+      "ts": "2026-11-07T17:54:53.192217Z",
       "node": "run",
       "status": "started",
       "payload": {
@@ -25,19 +25,19 @@
       }
     },
     {
-      "run_id": "02085000-20261107T174611570774Z-9a3d5d",
+      "run_id": "02085000-20261107T175453192069Z-c7b5a7",
       "site": "02085000",
       "seq": 1,
-      "ts": "2026-11-07T17:46:11.597499Z",
+      "ts": "2026-11-07T17:54:53.221360Z",
       "node": "triage",
       "status": "started",
       "payload": {}
     },
     {
-      "run_id": "02085000-20261107T174611570774Z-9a3d5d",
+      "run_id": "02085000-20261107T175453192069Z-c7b5a7",
       "site": "02085000",
       "seq": 2,
-      "ts": "2026-11-07T17:46:11.796647Z",
+      "ts": "2026-11-07T17:54:53.571241Z",
       "node": "triage",
       "status": "completed",
       "payload": {
@@ -79,6 +79,9 @@
         "direction_phrase": "below the rating",
         "published_flows": "too high",
         "off_by_pct": 11.1,
+        "days_since_last_visit": 22,
+        "n_visits_last_12_months": 7,
+        "latest_control_note": "Clear",
         "recent_rated": [
           "Good",
           "Fair",
@@ -100,45 +103,53 @@
       }
     },
     {
-      "run_id": "02085000-20261107T174611570774Z-9a3d5d",
+      "run_id": "02085000-20261107T175453192069Z-c7b5a7",
       "site": "02085000",
       "seq": 3,
-      "ts": "2026-11-07T17:46:11.801504Z",
+      "ts": "2026-11-07T17:54:53.579767Z",
       "node": "narrator",
       "status": "started",
       "payload": {}
     },
     {
-      "run_id": "02085000-20261107T174611570774Z-9a3d5d",
+      "run_id": "02085000-20261107T175453192069Z-c7b5a7",
       "site": "02085000",
       "seq": 4,
-      "ts": "2026-11-07T17:46:30.510803Z",
+      "ts": "2026-11-07T17:55:05.761259Z",
       "node": "narrator",
       "status": "completed",
       "payload": {
-        "narration": "This gauge can be trusted. Recent field measurements sit 11.1 % below the rating, so published flows are about that much too high, but differences remain close to normal scatter and require no correction. There are no active problems or control shifts, so we are confident the gauge is performing properly. Continue using the published flow data for routine operations while maintaining regular inspection schedules. Trust score 91/100 (Trusted).",
+        "narration": "This gauge can be trusted. Recent field measurements sit 11.1 % below the rating, so published flows are about that much too high, with a recent median residual of 11.1 % below the rating. Field crews made 7 visits in the last 12 months, with the last visit 22 days ago noting the control as Clear. Continue regular monitoring as scheduled. Trust score 91/100 (Trusted).",
+        "parts": {
+          "direction": "below the rating",
+          "confidence_word": "n/a",
+          "cause_or_disagreement": "This gauge can be trusted.",
+          "action": "Continue regular monitoring as scheduled.",
+          "score_sentence": "Trust score 91/100 (Trusted).",
+          "text": "This gauge can be trusted. Recent field measurements sit 11.1 % below the rating, so published flows are about that much too high, with a recent median residual of 11.1 % below the rating. Field crews made 7 visits in the last 12 months, with the last visit 22 days ago noting the control as Clear. Continue regular monitoring as scheduled. Trust score 91/100 (Trusted)."
+        },
         "final": null,
         "model": "vertex:gemini-3.8-flash",
-        "input_tokens": 926,
-        "output_tokens": 102,
-        "seconds": 18.7
+        "input_tokens": 1096,
+        "output_tokens": 171,
+        "seconds": 12.17
       }
     },
     {
-      "run_id": "02085000-20261107T174611570774Z-9a3d5d",
+      "run_id": "02085000-20261107T175453192069Z-c7b5a7",
       "site": "02085000",
       "seq": 5,
-      "ts": "2026-11-07T17:46:30.516752Z",
+      "ts": "2026-11-07T17:55:05.767432Z",
       "node": "run",
       "status": "completed",
       "payload": {
-        "narration": "This gauge can be trusted. Recent field measurements sit 11.1 % below the rating, so published flows are about that much too high, but differences remain close to normal scatter and require no correction. There are no active problems or control shifts, so we are confident the gauge is performing properly. Continue using the published flow data for routine operations while maintaining regular inspection schedules. Trust score 91/100 (Trusted).",
+        "narration": "This gauge can be trusted. Recent field measurements sit 11.1 % below the rating, so published flows are about that much too high, with a recent median residual of 11.1 % below the rating. Field crews made 7 visits in the last 12 months, with the last visit 22 days ago noting the control as Clear. Continue regular monitoring as scheduled. Trust score 91/100 (Trusted).",
         "final": null,
-        "input_tokens": 926,
-        "output_tokens": 102,
+        "input_tokens": 1096,
+        "output_tokens": 171,
         "llm_calls": 1,
         "fallbacks_used": 0,
-        "wall_seconds": 18.95
+        "wall_seconds": 12.58
       }
     }
   ]

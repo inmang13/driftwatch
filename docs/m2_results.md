@@ -1,79 +1,100 @@
 # M2 results: what the agent team says about the 8 gauges
 
-*Branch `m2-agents`, 2026-11-07, Gemini runs updated 12:12–12:20 pm. These are the Gemini runs, with traces in `traces/`. Ranker and
-narrator ran on Vertex `gemini-3.8-flash`. The skeptic ran on OpenRouter `openai/gpt-5.4-mini`.
-Every LLM call succeeded and no node fell back to the rules. The fallback runs (`LLM=fallback`)
-are listed for comparison; `make test` and `make demo` use those.*
+*Branch `m2-agents`, 2026-11-07. Gemini traces in `traces/` are from 12:12–12:55 pm. Ranker and
+narrator ran on Vertex `gemini-3.8-flash`; the skeptic ran on OpenRouter `openai/gpt-5.4-mini`.
+No node fell back to the rules in any committed trace. `make test` and `make demo` use
+`LLM=fallback`.*
 
-## Skeptic rule for a contradicted control note (added 12:10 pm)
+## Decisions waiting on Grace
 
-Grace added a rule to `prompts/skeptic.md`: if the ranker's top cause contradicts a hydrographer's
-note on the control, the skeptic objects once and asks the ranker to name the channel-geometry or
-flood evidence that outweighs the note. It accepts on the next pass if the ranker does.
+1. **Replay default for Hepco.** There are three Gemini Hepco traces (table below). Replay uses the
+   file named in `traces/replay_defaults.json` and falls back to the newest file, which is run 3.
+   To pick one, create `traces/replay_defaults.json` with
+   `{"03459500": "03459500-20261107T171258320517Z.json"}` (run 2, for example). **Grace's pick: not
+   made yet.**
+2. **The skeptic skipped its one objection in run 3.** It went straight to `disagree` instead of
+   objecting first, as the control-note rule asks. The prompt doesn't say which rule wins. If the
+   objection should come first, add one line to `prompts/skeptic.md`: "On your first review, the
+   control-note objection comes before any disagreement." I haven't tested that line.
 
-**Test result: the rule fires as asked.** Hepco (note: "Scour control changed") got an objection on
-both Gemini runs. Newport ("Fill control changed", top cause fill) was accepted on the first pass.
-Asheville and Mills, which have debris notes but no control-changed note, were also accepted.
+## What changed since the morning run
 
-**Side effect: Hepco no longer ends at fill.** In both runs Gemini's first pick was **datum change**,
-not fill. That is not caused by the rule: the ranker prompt didn't change and the ranker
-runs before the skeptic. At temperature 0, Gemini picked fill earlier today and datum change on
-these two runs, so it is not deterministic.
+- **Skeptic control-note rule** (Grace, 12:10). If the top cause contradicts a hydrographer's
+  "… control changed" note, the skeptic objects once and asks for the evidence that outweighs the
+  note.
+- **Disagreement verdict** (12:45). On the skeptic's final pass, if its confidence is under 0.6
+  *and* a control note names a different cause, it returns `disagree` with a best guess, the note
+  verbatim, why they disagree, and a recommended check. The narrator renders it as best guess → note
+  → why → "Double-check: …".
+  - The code, not the model, fills the note and its date from the field records.
+  - A low-confidence gauge whose notes agree with the cause, or that has no control note at all,
+    gets an ordinary accept. Fallback Newport (fill 0.44, "Fill control changed") is one example.
+  - **The console's finding card doesn't exist yet (M3).** The four fields are in the skeptic and
+    narrator trace payloads (`disagreement`, `parts`), ready for it.
+- **Ranker sees the channel numbers after an objection.** The first round stays blind to them.
+- **Narrator.**
+  - The direction words ("above/below the rating", "too high/too low") are computed in code and
+    must appear verbatim.
+  - The output is structured (direction, confidence word, cause or disagreement, action, score
+    sentence, text) and checked field by field. Anything off falls back to the template.
+  - It only gets listed facts: visit recency, visits in 12 months, latest control note, and the
+    residual with its direction.
+  - It may not describe mechanisms or mention anything outside its facts. "Confident" requires
+    0.8 or higher.
+- **Missing credentials** no longer raise. Every LLM node falls back to the rules with a WARNING in
+  the trace.
 
-| Hepco run | Round 1 | Skeptic | Round 2 | Skeptic | Round 3 | Skeptic | Final |
-|---|---|---|---|---|---|---|---|
-| 1 (12:12) | datum change 0.46 | objects: note says scour | datum change 0.45 | accepts | — | — | **datum change 0.45**, 1 objection, 58 s |
-| 2 (12:13) | datum change 0.45 | objects: note + backwater pattern | fill 0.45 | objects: still not justified over the note | inconclusive 0.45 | accepts | **inconclusive 0.45**, 2 objections, 263 s |
+## Hepco: three Gemini runs
 
-**Two weak points in the round-2 accepts:**
-- In run 1 the skeptic accepted because the ranker "now cites the geometry". It didn't: the ranker
-  repeated its datum-change case and only added that scour has the wrong sign. The skeptic's own
-  argument said the geometry favors fill over datum change, and then it accepted datum change.
-- The ranker can't see the channel numbers. I hid them so that the skeptic's check is independent.
-  So when the rule asks the ranker to "name the channel-geometry evidence", the ranker can only
-  quote numbers back from the objection text. If the rule is supposed to make the ranker argue
-  from geometry, show it the channel numbers on rounds after an objection.
+Key: each round is the ranker's top cause and confidence, followed by what the skeptic did.
 
-The final cause is still never plain scour, which is the spec's requirement. Run 2 is the better
-demo story: "the reviewer overturned the first diagnosis and the honest answer is inconclusive".
-Run 1 ends on a cause that the skeptic's own argument contradicts. Both traces are in `traces/`.
-Replay picks the newest file, which is run 2.
+| Run | Prompts in force | Round 1 | Skeptic | Round 2 | Skeptic | Round 3 | Skeptic | Final | LLM calls | Wall |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 (12:12) | control-note rule | datum change 0.46 | objects (note says scour) | datum change 0.45 | accepts | — | — | **datum change 0.45** | 5 | 58 s |
+| 2 (12:13) | control-note rule | datum change 0.45 | objects (note + backwater) | fill 0.45 | objects | inconclusive 0.45 | accepts | **inconclusive 0.45** | 7 | 263 s |
+| 3 (12:47) | + Disagreement, + channel after objection | datum change 0.50 | **disagrees** (confidence 0.5) | — | — | — | — | **datum change 0.50, Disagreement** | 3 | 29 s |
 
-**Eval case (M5):** "Hepco → skeptic objects" now passes with Gemini. "Hepco final cause = fill"
-does not, so use "final cause is not scour".
+**Run 3's Disagreement, as the narrator wrote it:** "Our best guess is a datum change, but
+confidence is uncertain. A field note on 2024-12-17 noted 'Scour control changed'. They disagree
+because scour would increase readings rather than create a negative shift, while channel velocity
+dropped significantly, pointing to downstream backwater or fill rather than a simple datum change.
+Double-check: Resurvey the control section and reference marks…"
 
-## Gemini run, per gauge (current prompts)
+**Run 3's narration predates the structured narrator and the facts-only rule (12:54).** I didn't
+re-run Hepco or Newport after that, because the item only asked for the Trusted gauges and Asheville.
+
+Gemini picks datum change first on every run since 12:12, though it picked fill this morning. It is
+not deterministic at temperature 0. The final cause is never plain scour.
+
+**Eval case (M5):** use "Hepco final cause is not scour". "Hepco → fill" fails with Gemini, and
+"Hepco → skeptic objects" passed on runs 1 and 2 but not on run 3.
+
+## Gemini run, per gauge (latest trace each)
 
 Key: **Final cause** is the team's answer after the skeptic, and **conf.** is the ranker's
 confidence in it (0–1). **Objections** counts the times the skeptic sent the ranker back. **Tokens**
-are input + output across all LLM calls in the run. **Wall** is seconds for the whole run,
-including the M1 engine. Ranker and narrator: Vertex `gemini-3.8-flash`. Skeptic: OpenRouter
-`openai/gpt-5.4-mini`. No node fell back to the rules.
+are input + output across all LLM calls. **Wall** is seconds for the whole run, including the M1
+engine. The **trace time** shows which prompt version produced it: before or after 12:54 (B/C).
 
-| Site | Gauge | Band (score) | Final cause | Conf. | Objections | Tokens | Wall |
-|---|---|---|---|---|---|---|---|
-| 03459500 | Pigeon R near Hepco (run 1) | Stale (24) | datum change | 0.45 | 1 | 10,508 + 1,389 | 58 s |
-| 03459500 | Pigeon R near Hepco (run 2) | Stale (24) | inconclusive | 0.45 | 2 | 15,885 + 2,277 | 263 s |
-| 03455000 | French Broad near Newport | Stale (30) | fill | 0.82 | 0 | 6,337 + 815 | 22 s |
-| 03446000 | Mills R | Watch (73) | debris | 0.55 | 0 | 5,930 + 708 | 24 s |
-| 03451500 | French Broad at Asheville | Stale (46) | scour | 0.72 | 0 | 5,879 + 768 | 31 s |
-| 03451000 | Swannanoa at Biltmore | Trusted (94) | none (straight to narrator) | — | — | 843 + 107 | 15 s |
-| 03463300 | South Toe near Celo | Trusted (95) | none | — | — | 844 + 116 | 8 s |
-| 03479000 | Watauga near Sugar Grove | Trusted (95) | none | — | — | 840 + 114 | 7 s |
-| 02085000 | Eno at Hillsborough | Trusted (91) | none | — | — | 843 + 110 | 9 s |
+| Site | Gauge | Band (score) | Final cause | Conf. | Objections | Tokens | Wall | Trace time |
+|---|---|---|---|---|---|---|---|---|
+| 03459500 | Pigeon R near Hepco (run 3) | Stale (24) | datum change + Disagreement | 0.50 | 0 | 6,462 + 921 | 29 s | 12:47 |
+| 03455000 | French Broad near Newport | Stale (30) | fill | 0.78 | 0 | 6,934 + 767 | 88 s | 12:46 |
+| 03446000 | Mills R | Watch (73) | debris | 0.55 | 0 | 5,930 + 708 | 24 s | 12:20 |
+| 03451500 | French Broad at Asheville | Stale (46) | scour | 0.78 | 0 | 6,704 + 760 | 24 s | 12:55 |
+| 03451000 | Swannanoa at Biltmore | Trusted (94) | none (straight to narrator) | — | — | 1,096 + 170 | 13 s | 12:55 |
+| 03463300 | South Toe near Celo | Trusted (95) | none | — | — | 1,093 + 177 | 11 s | 12:55 |
+| 03479000 | Watauga near Sugar Grove | Trusted (95) | none | — | — | 1,097 + 179 | 11 s | 12:55 |
+| 02085000 | Eno at Hillsborough | Trusted (91) | none | — | — | 1,096 + 171 | 13 s | 12:55 |
 
-Gemini latency swings a lot. Hepco run 2 made 6 LLM calls and took 263 s; Mills' ranker call
-took 71 s on one earlier pass and 15 s on the next.
-
-Earlier today, before the control-note rule, Gemini ranked Hepco fill 0.45 and the skeptic
-accepted with no objection. Those traces have been replaced.
+Gemini latency swings a lot. Newport took 88 s on this pass and 22 s on the one before.
 
 ## Fallback run (`LLM=fallback`), for comparison
 
 | Site | Final cause | Conf. | Skeptic |
 |---|---|---|---|
-| Hepco | fill | 0.60 | **objected once.** The first pick was datum change. The skeptic said "the water moves much slower while the section barely changed (area −11 %, speed −22 %)… fill or backwater on the control", and the ranker switched to fill. |
-| Newport | fill | 0.44 | accepted (backwater pattern fits fill) |
+| Hepco | fill | 0.60 | **objected once.** The first pick was datum change. The skeptic said "the water moves much slower while the section barely changed (area −11 %, speed −22 %)… fill or backwater on the control", and the ranker switched to fill. On its final pass the skeptic returns a **Disagreement**: best guess fill at 0.40 (its 0.60 less 0.2 because the "Scour control changed" note contradicts it). It then recommends surveying the control for deposited gravel and confirming the datum. |
+| Newport | fill | 0.44 | accepted: the note agrees, so no Disagreement |
 | Mills | debris | 0.67 | accepted |
 | Asheville | scour | 0.50 | accepted |
 | 4 Trusted gauges | none | — | not run |
@@ -105,25 +126,19 @@ went from 79 to 103 ft, which looks like the crews measured at a different secti
 flood). The channel numbers help pick a *cause* once the rating has shifted. They don't detect
 drift.
 
-## Narration notes (for tone edits in `driftwatch/agents/prompts/narrator.md`)
+## Narration notes
 
-- The "worth watching" paragraph is gone (Grace, 12:10 pm). The "use 'confident' only at 0.8 or
-  more" sentence was in the same paragraph, so it is gone too, and Gemini now says "we are
-  confident" for every Trusted gauge. To restore just the confidence rule, add back: *Use
-  "confident" only when the confidence is 0.8 or more.* I also reverted the matching "worth
-  watching" text in the fallback template, so the two narrators agree again.
-- **Gemini got the sign wrong in 2 of the 4 Trusted narrations, so check them before using them
-  on camera.**
-  - Swannanoa measures +7 %: the river carries more than rated, so published flows are slightly
-    low. Gemini wrote "published flows … running about 7% higher than the rating predicts" and
-    called 7 % "close to" the gauge's normal 4.8 % scatter.
-  - South Toe measures −1.2 %. Gemini wrote "running only 1.2% above the rating curve".
-  - Eno (published flows 11 % higher than the field checks) and Watauga are worded correctly.
-  - A rule in the prompt might help, something like: "say 'published flows are about X % too
-    high/low', using the direction given". Better still, pass the narrator a precomputed
-    `published_flows_are: "too high" | "too low"` field.
-- Gemini tells managers to "ask the USGS to update the rating". The fallback template gives
-  hydrographer-style actions ("apply a negative shift"). Gemini's version fits a utility manager better.
+- **Correction to my earlier note:** only Swannanoa's direction was reversed (it read "higher than
+  the rating" while it sits 7 % *above*, so published flows are slightly low). South Toe's "1.2 %
+  above the rating" was correct: its recent median is +1.2 %. The −1.2 % I compared it against was
+  the M1 post-Helene median.
+- With the facts-only narrator (12:55), all 4 Trusted narrations and Asheville's passed the
+  structured check on the first try and give the direction correctly. They now read like data
+  ("6 visits in the last 12 months, 23 days since the last visit, latest control note Clear")
+  instead of reassurance.
+- Watauga and Eno state the residual twice, once in the required direction sentence and once as
+  "a recent median residual of…". Two say "median residual", which is jargon for a manager. Both
+  are tone edits in `narrator.md` if you want them.
 
 ## Problems found and fixed during the run
 
