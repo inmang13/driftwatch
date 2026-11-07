@@ -190,3 +190,77 @@ def test_null_eno_resampled_residuals_give_no_shift_after_reference():
     pre = [m for m in ds.measurements if m.time.date() <= ds.reference_end]
     drift = segmentation.drift_test(ds.model_copy(update={"measurements": pre + post}), rel)
     assert [s for s in drift.shifts if s.time.date() > ds.reference_end] == []
+
+
+# --- dh step 1: two residual series -------------------------------------------------------
+
+
+def _shift_ds(after, n_ref=80, n_post=24, seed=5, rated="Good"):
+    """Synthetic gauge on Q = 40 (H - 0.5)^1.7. `after(h)` maps a post-reference stage to the
+    stage the old rating should have been read at (the channel change)."""
+    rng = np.random.default_rng(seed)
+    t0 = datetime(2012, 1, 1, tzinfo=UTC)
+    ms = []
+    for i in range(n_ref + n_post):
+        h = float(rng.uniform(1.5, 8.0))
+        h_eff = after(h) if i >= n_ref else h
+        q = 40.0 * (h_eff - 0.5) ** 1.7 * float(np.exp(rng.normal(0, 0.03)))
+        r = rated(i) if callable(rated) else rated
+        ms.append(
+            Measurement(
+                site="x",
+                field_visit_id=str(i),
+                time=t0 + timedelta(days=45 * i),
+                stage_ft=h,
+                discharge_cfs=q,
+                rated=r,
+                weight=pairing.quality_weight(r),
+            )
+        )
+    ds = Dataset(
+        site="x",
+        source="snapshot",
+        reference_start=t0.date(),
+        reference_end=ms[n_ref - 1].time.date(),
+        measurements=ms,
+    )
+    return ds, ms
+
+
+def test_low_control_fill_shows_in_ft_at_low_flows():
+    # Fill on the low-water control: 0.6 ft less effective stage at 1.5 ft, fading to 0 by 8 ft.
+    ds, ms = _shift_ds(lambda h: h - 0.6 * max(0.0, 1 - (h - 1.5) / 6.5))
+    drift = segmentation.drift_test(ds, rating.fit_rating(ds))
+    assert [s.time for s in drift.shifts_ft] == [ms[80].time]
+    assert drift.shifts_ft[0].size_ft < 0
+    assert drift.low_flow_concentrated is True
+    assert drift.larger_step_series in ("pct", "ft")
+
+
+def test_uniform_percent_slide_is_not_low_flow_concentrated():
+    # 30 % less flow at every stage: in ft that step is biggest at high flows.
+    ds, ms = _shift_ds(lambda h: 0.5 + (h - 0.5) * 0.7 ** (1 / 1.7))
+    drift = segmentation.drift_test(ds, rating.fit_rating(ds))
+    assert [s.time for s in drift.shifts] == [ms[80].time]
+    assert drift.low_flow_concentrated is False
+
+
+def test_larger_step_series_matches_the_standardized_steps():
+    for site in ("03459500", "03455000", "03451500"):
+        ds = pairing.load_dataset(site)
+        d = segmentation.drift_test(ds, rating.fit_rating(ds))
+        want = "ft" if (d.step_ft_sigma or 0) > (d.step_pct_sigma or 0) else "pct"
+        assert d.larger_step_series == want
+
+
+def test_no_post_reference_shift_means_no_larger_series():
+    ds = pairing.load_dataset("03451000")
+    d = segmentation.drift_test(ds, rating.fit_rating(ds))
+    assert d.larger_step_series is None and d.low_flow_concentrated is False
+
+
+def test_newport_step_is_larger_in_ft_and_at_low_flows():
+    ds = pairing.load_dataset("03455000")
+    d = segmentation.drift_test(ds, rating.fit_rating(ds))
+    assert d.larger_step_series == "ft"
+    assert d.low_flow_concentrated is True

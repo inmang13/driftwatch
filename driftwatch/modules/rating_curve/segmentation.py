@@ -6,6 +6,11 @@ order, minus invalid_domain ones (stage <= e, where the rating has no flow; see 
 quiet gauge and a noisy one. PELT (l2 cost, min_size 6) splits the series; each piece is searched
 again until no piece splits. Sizes are reported in plain % flow and ft (see rating.py signs).
 
+The search runs twice: on the % flow residual above, and on the stage-shift residual in ft
+(also standardized by its reference spread). USGS treats scour and fill as changes to the
+zero-flow height, so a step that shows mainly in ft, and mostly at low flows, is a clue for the
+agents (`larger_step_series`, `low_flow_concentrated`).
+
 A shift's size is the step between the median residual of the segment before and the segment
 after it. confidence = 1 - Mann-Whitney p-value between those two segments.
 """
@@ -85,9 +90,67 @@ def drift_test(ds: Dataset, rel: Relationship, penalty: float = PENALTY) -> Drif
     ft = rating.stage_shift_ft(rel, h, q)
 
     in_ref = np.array([m.time.date() <= ds.reference_end for m in ms])
-    ref = log_r[in_ref] if in_ref.any() else log_r
-    z = (log_r - np.median(ref)) / _robust_sigma(ref)
 
+    def _ref(x: np.ndarray) -> np.ndarray:
+        return x[in_ref] if in_ref.any() else x
+
+    # Series 1 (% flow): searched on ln(Q/Q_hat). Series 2 (ft): searched on the stage shift.
+    z_pct = (log_r - np.median(_ref(log_r))) / _robust_sigma(_ref(log_r))
+    z_ft = (ft - np.median(_ref(ft))) / _robust_sigma(_ref(ft))
+    stable, shifts = _segment(ms, z_pct, log_r, pct, ft, penalty)
+    stable_ft, shifts_ft = _segment(ms, z_ft, ft, pct, ft, penalty)
+
+    # Which series shows the bigger step after the reference window, in units of its own
+    # reference scatter (robust sigma of the % residual / of the ft residual).
+    sig_pct, sig_ft = _robust_sigma(_ref(pct)), _robust_sigma(_ref(ft))
+    post = [s for s in shifts if s.time.date() > ds.reference_end]
+    post_ft = [s for s in shifts_ft if s.time.date() > ds.reference_end]
+    best_pct = max(post, key=lambda s: abs(s.size_pct), default=None)
+    best_ft = max(post_ft, key=lambda s: abs(s.size_ft), default=None)
+    step_pct = abs(best_pct.size_pct) / sig_pct if best_pct else None
+    step_ft = abs(best_ft.size_ft) / sig_ft if best_ft else None
+    larger, anchor = None, None
+    if step_pct is not None or step_ft is not None:
+        if step_ft is not None and (step_pct is None or step_ft > step_pct):
+            larger, anchor = "ft", best_ft
+        else:
+            larger, anchor = "pct", best_pct
+    low_flow = low_flow_concentrated(ms, q, ft, anchor.time) if anchor else False
+
+    return DriftResult(
+        site=ds.site,
+        stable_periods=stable,
+        shifts=shifts,
+        stable_periods_ft=stable_ft,
+        shifts_ft=shifts_ft,
+        step_pct_sigma=round(step_pct, 2) if step_pct is not None else None,
+        step_ft_sigma=round(step_ft, 2) if step_ft is not None else None,
+        larger_step_series=larger,
+        low_flow_concentrated=low_flow,
+        n_tested=len(ms),
+        n_excluded=n_excluded,
+        n_invalid_domain=n_invalid,
+        penalty=penalty,
+    )
+
+
+def low_flow_concentrated(ms: list[Measurement], q: np.ndarray, ft: np.ndarray, since) -> bool:
+    """True when, after the shift, the stage-shift residual (|ft|) is larger in the lowest third
+    of measured flows than in the top third. A step in the control's zero-flow height (scour or
+    fill of a low-water control) shows this way; a step that slides the whole curve in % shows
+    larger in ft at high flows instead. Needs 6 post-shift measurements (2 per third)."""
+    idx = np.array([m.time >= since for m in ms])
+    qa, fa = q[idx], ft[idx]
+    if len(qa) < 6:
+        return False
+    lo_cut, hi_cut = np.quantile(qa, [1 / 3, 2 / 3])
+    low, high = np.abs(fa[qa <= lo_cut]), np.abs(fa[qa >= hi_cut])
+    return bool(np.median(low) > np.median(high))
+
+
+def _segment(ms, z, test_series, pct, ft, penalty):
+    """Change points on z -> (stable periods, shifts). Sizes in % and ft; confidence from a
+    Mann-Whitney test on test_series (the unstandardized searched series)."""
     cps = change_points(z, penalty)
     edges = [0, *cps, len(ms)]
     segments = list(pairwise(edges))
@@ -105,7 +168,7 @@ def drift_test(ds: Dataset, rel: Relationship, penalty: float = PENALTY) -> Drif
     for (lo, mid), (_, hi) in pairwise(segments):
         size_pct = float(np.median(pct[mid:hi]) - np.median(pct[lo:mid]))
         size_ft = float(np.median(ft[mid:hi]) - np.median(ft[lo:mid]))
-        p = mannwhitneyu(log_r[lo:mid], log_r[mid:hi]).pvalue
+        p = mannwhitneyu(test_series[lo:mid], test_series[mid:hi]).pvalue
         shifts.append(
             Shift(
                 time=ms[mid].time,
@@ -116,12 +179,4 @@ def drift_test(ds: Dataset, rel: Relationship, penalty: float = PENALTY) -> Drif
                 confidence=round(float(np.clip(1.0 - p, 0.0, 1.0)), 4),
             )
         )
-    return DriftResult(
-        site=ds.site,
-        stable_periods=stable,
-        shifts=shifts,
-        n_tested=len(ms),
-        n_excluded=n_excluded,
-        n_invalid_domain=n_invalid,
-        penalty=penalty,
-    )
+    return stable, shifts

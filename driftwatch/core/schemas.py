@@ -112,6 +112,15 @@ class DriftResult(BaseModel):
     site: str
     stable_periods: list[StablePeriod] = Field(default_factory=list)
     shifts: list[Shift] = Field(default_factory=list)
+    # Same search on the stage-shift residual in ft (segmentation.py). The two lists can differ.
+    stable_periods_ft: list[StablePeriod] = Field(default_factory=list)
+    shifts_ft: list[Shift] = Field(default_factory=list)
+    # Largest post-reference step in each series, in units of that series' reference scatter.
+    step_pct_sigma: float | None = None
+    step_ft_sigma: float | None = None
+    larger_step_series: Literal["pct", "ft"] | None = None  # None: no post-reference shift
+    # After that step: |ft residual| larger in the lowest third of flows than in the top third.
+    low_flow_concentrated: bool = False
     n_tested: int = Field(ge=0, default=0)
     n_excluded: int = Field(ge=0, default=0)
     n_invalid_domain: int = Field(ge=0, default=0)  # stage <= e: no rated flow, left out of test
