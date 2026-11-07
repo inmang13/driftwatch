@@ -23,3 +23,7 @@ reports/*.tmp
 traces/*.tmp
 traces/demo/
 informer-station/
+
+# Local draft documents
+docs/devpost.md
+docs/pitch.md

@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DriftWatch Console</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+:root {
+  --bg: #f4f5f2; --panel: #ffffff; --ink: #1d2320; --muted: #66706b; --line: #dfe3dd;
+  --accent: #1f5f8b; --ref: #1f5f8b; --post: #d0632a; --between: #9aa39e;
+  --trusted: #2e7d4f; --watch: #b7791f; --stale: #b83a32;
+  --active: #1f5f8b; --done: #2e7d4f;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+header h1 { font-size: 18px; margin: 0; letter-spacing: .2px; }
+header h1 span { color: var(--muted); font-weight: 400; font-size: 13px; margin-left: 6px; }
+.tabs { display: flex; gap: 4px; margin-left: auto; }
+.tabs button, .btn { border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  padding: 6px 12px; border-radius: 6px; font: inherit; cursor: pointer; }
+.tabs button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+.btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn:disabled { opacity: .5; cursor: default; }
+main { display: grid; gap: 12px; padding: 12px 16px;
+  grid-template-columns: 240px minmax(0, 1fr) 320px;
+  grid-template-areas: "gauges plots agents" "card card card"; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px;
+  min-width: 0; }
+.panel h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted);
+  margin: 0 0 8px; font-weight: 600; }
+#gauges { grid-area: gauges; }
+#plots { grid-area: plots; }
+#agents { grid-area: agents; }
+#card { grid-area: card; }
+.gauge { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  padding: 8px; border: 1px solid transparent; border-radius: 6px; background: none;
+  font: inherit; color: inherit; cursor: pointer; }
+.gauge:hover { background: var(--bg); }
+.gauge.sel { border-color: var(--accent); background: #eef4f8; }
+.gauge .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.gauge .nm { flex: 1; min-width: 0; font-size: 13px; }
+.gauge .nm small { display: block; color: var(--muted); font-size: 11px; }
+.gauge .sc { font-variant-numeric: tabular-nums; font-weight: 600; }
+.band { display: inline-block; padding: 1px 8px; border-radius: 10px; color: #fff; font-size: 12px;
+  font-weight: 600; }
+.Trusted { background: var(--trusted); } .Watch { background: var(--watch); }
+.Stale { background: var(--stale); }
+.dot.Trusted { background: var(--trusted); } .dot.Watch { background: var(--watch); }
+.dot.Stale { background: var(--stale); }
+#scatter { height: 400px; } #timeline { height: 230px; }
+.toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+.label { color: var(--muted); font-size: 12px; }
+.label.replay { color: var(--accent); font-weight: 600; }
+/* agent graph */
+#graph { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.node { border: 1.5px solid var(--line); border-radius: 6px; padding: 6px 10px; font-size: 13px;
+  display: flex; justify-content: space-between; align-items: center; transition: all .2s; }
+.node small { color: var(--muted); font-size: 11px; }
+.node.active { border-color: var(--active); background: #e8f1f8;
+  box-shadow: 0 0 0 3px rgba(31, 95, 139, .25); animation: glow 1s ease-in-out infinite alternate; }
+.node.done { border-color: var(--done); }
+.node.done::after { content: "✓"; color: var(--done); font-weight: 700; }
+.node.skipped { opacity: .4; border-style: dashed; }
+@keyframes glow { from { box-shadow: 0 0 0 2px rgba(31,95,139,.2); }
+  to { box-shadow: 0 0 0 6px rgba(31,95,139,.35); } }
+.arrow { text-align: center; color: var(--muted); font-size: 11px; line-height: 1; }
+#log { font: 12px/1.4 ui-monospace, Consolas, monospace; background: #1d2320; color: #e7ece8;
+  border-radius: 6px; padding: 8px; height: 250px; overflow-y: auto; white-space: pre-wrap; }
+#log .n { color: #8fc1e3; } #log .w { color: #f0b46a; }
+/* finding card */
+#card .head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+#card .head h3 { margin: 0; font-size: 17px; }
+.narr { font-size: 15px; max-width: 900px; margin: 0 0 12px; }
+.grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.rows { display: grid; grid-template-columns: 140px 1fr; gap: 6px 12px; margin: 0; }
+.rows dt { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .4px;
+  padding-top: 2px; }
+.rows dd { margin: 0; }
+.status { font-weight: 700; }
+.status.open { color: var(--watch); } .status.disagreement { color: var(--stale); }
+.status.corroborated { color: var(--trusted); }
+table.score { border-collapse: collapse; width: 100%; font-size: 13px; }
+table.score td { border-top: 1px solid var(--line); padding: 5px 6px; vertical-align: top; }
+table.score td.pts { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap;
+  font-weight: 600; }
+.arith { font-variant-numeric: tabular-nums; font-weight: 600; margin: 4px 0 8px; }
+/* registry */
+#registry { display: none; padding: 12px 16px; }
+#registry .cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.mod { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+.mod h3 { margin: 0 0 4px; font-size: 15px; }
+.mod .st { font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 1px 6px;
+  border-radius: 4px; }
+.mod .st.live { background: var(--trusted); color: #fff; }
+.mod .st.specified { background: var(--line); color: var(--muted); }
+.mod p { margin: 6px 0; font-size: 13px; color: var(--muted); }
+.mod dl { display: grid; grid-template-columns: 1fr; gap: 2px; margin: 8px 0 0; font-size: 13px; }
+.mod dt { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--accent);
+  margin-top: 6px; font-weight: 600; }
+.mod dd { margin: 0; }
+@media (max-width: 1100px) {
+  main { grid-template-columns: 220px minmax(0, 1fr);
+    grid-template-areas: "gauges plots" "agents agents" "card card"; }
+}
+@media (max-width: 720px) {
+  main { grid-template-columns: minmax(0, 1fr); padding: 10px;
+    grid-template-areas: "gauges" "plots" "agents" "card"; }
+  #gauges .list { display: flex; overflow-x: auto; gap: 4px; }
+  .gauge { flex: none; width: auto; max-width: 220px; }
+  .grid2 { grid-template-columns: minmax(0, 1fr); }
+  .rows { grid-template-columns: 1fr; }
+  #scatter { height: 380px; } #timeline { height: 200px; }
+  .tabs { margin-left: 0; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>DriftWatch <span>rating curves after Hurricane Helene</span></h1>
+  <div class="tabs">
+    <button id="tab-console" class="on" onclick="showTab('console')">Console</button>
+    <button id="tab-registry" onclick="showTab('registry')">Registry</button>
+  </div>
+</header>
+
+<main id="console">
+  <section id="gauges" class="panel">
+    <h2>Gauges</h2>
+    <div class="list" id="gauge-list">Loading…</div>
+  </section>
+
+  <section id="plots" class="panel">
+    <div class="toolbar">
+      <strong id="site-title">—</strong>
+      <span class="label" id="ref-label"></span>
+    </div>
+    <div id="scatter"></div>
+    <div id="timeline"></div>
+  </section>
+
+  <section id="agents" class="panel">
+    <div class="toolbar">
+      <button class="btn primary" id="run-btn" onclick="runLive()">Run</button>
+      <button class="btn" id="replay-btn" onclick="replay()">Replay</button>
+      <span class="label" id="run-label"></span>
+    </div>
+    <h2>Agent team</h2>
+    <div id="graph">
+      <div class="node" data-node="triage">Triage <small>rules</small></div>
+      <div class="arrow">▼</div>
+      <div class="node" data-node="evidence_collector">Evidence collector <small>tools</small></div>
+      <div class="arrow">▼</div>
+      <div class="node" data-node="hypothesis_ranker">Hypothesis ranker <small id="rank-round">LLM</small></div>
+      <div class="arrow">▼ ▲ objection loops back</div>
+      <div class="node" data-node="skeptic">Skeptic <small>second model</small></div>
+      <div class="arrow">▼</div>
+      <div class="node" data-node="narrator">Narrator <small class="llm-name">LLM</small></div>
+    </div>
+    <h2>Log</h2>
+    <div id="log"></div>
+  </section>
+
+  <section id="card" class="panel">
+    <h2>Finding</h2>
+    <div id="card-body">Pick a gauge.</div>
+  </section>
+</main>
+
+<section id="registry">
+  <div class="cards" id="reg-cards">Loading…</div>
+</section>
+
+<script>
+const API = "";  // same origin
+const NODES = ["triage", "evidence_collector", "hypothesis_ranker", "skeptic", "narrator"];
+const DEMO_FIRST = "03455000";  // Newport leads the list
+const params = new URLSearchParams(location.search);
+const PACE = params.get("pace");
+const CAUSE_LABEL = { fill: "fill", scour: "scour", debris: "debris", vegetation: "vegetation",
+  datum_change: "datum change / gauge rebuild", measurement_quality: "measurement quality",
+  insufficient_data: "insufficient data", inconclusive: "inconclusive" };
+let gauges = [], current = null, currentReport = null, busy = false, regLoaded = false;
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmtTime = (iso) => iso ? new Date(iso).toLocaleString([], { month: "short", day: "numeric",
+  hour: "numeric", minute: "2-digit" }) : "";
+const fmtDate = (iso) => iso ? iso.slice(0, 10) : "";
+const cause = (c) => CAUSE_LABEL[c] || c || "—";
+const num = (x, d = 1) => (x == null ? "—" : Number(x) === 0 ? "0" : Number(x).toFixed(d));
+
+async function getJSON(path) {
+  const r = await fetch(API + path);
+  if (!r.ok) throw new Error(`${path}: ${r.status}`);
+  return r.json();
+}
+
+/* ---------- SSE over fetch (EventSource can't POST) ---------- */
+async function streamSSE(path, method, onEvent) {
+  const r = await fetch(API + path, { method });
+  if (!r.ok || !r.body) throw new Error(`${path}: ${r.status}`);
+  const reader = r.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true }).replace(/\r\n/g, "\n");
+    let i;
+    while ((i = buf.indexOf("\n\n")) >= 0) {
+      const block = buf.slice(0, i); buf = buf.slice(i + 2);
+      let ev = "message", data = [];
+      for (const line of block.split("\n")) {
+        if (line.startsWith("event:")) ev = line.slice(6).trim();
+        else if (line.startsWith("data:")) data.push(line.slice(5).replace(/^ /, ""));
+      }
+      if (data.length) onEvent(ev, JSON.parse(data.join("\n")));
+    }
+  }
+}
+
+/* ---------- gauges ---------- */
+async function loadGauges() {
+  gauges = await getJSON("/gauges");
+  gauges.sort((a, b) => (b.site === DEMO_FIRST) - (a.site === DEMO_FIRST) || a.score - b.score);
+  $("gauge-list").innerHTML = gauges.map((g) => `
+    <button class="gauge" data-site="${g.site}" onclick="selectSite('${g.site}')">
+      <span class="dot ${g.band}"></span>
+      <span class="nm">${esc(shortName(g.name))}<small>${g.site} · ${g.band}</small></span>
+      <span class="sc">${Math.round(g.score)}</span>
+    </button>`).join("");
+}
+function shortName(n) {
+  return (n || "").replace(/, (NC|TN)$/i, "").toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase()).replace(/\bNr\b/, "near");
+}
+
+async function selectSite(site) {
+  if (busy) return;
+  current = gauges.find((g) => g.site === site);
+  document.querySelectorAll(".gauge").forEach((b) => b.classList.toggle("sel", b.dataset.site === site));
+  $("site-title").textContent = shortName(current.name);
+  resetGraph(); $("log").innerHTML = ""; $("run-label").textContent = "";
+  $("replay-btn").disabled = !current.replay;
+  const [rep, tr] = await Promise.all([getJSON(`/report/${site}`),
+    current.replay ? getJSON(`/trace/${current.replay.id}`).catch(() => null) : null]);
+  currentReport = rep;
+  drawPlots(rep);
+  if (tr) {
+    renderCard(tr.finding, `saved run of ${fmtTime(tr.started_at)} · ${tr.llm}`);
+    logLine(`Saved run of ${fmtTime(tr.started_at)} (${tr.llm}). Press Replay to watch it, Run to run it now.`);
+  } else {
+    renderCard(null, "no saved run");
+  }
+}
+
+/* ---------- plots ---------- */
+function drawPlots(d) {
+  const rel = d.report.relationship;
+  $("ref-label").textContent = `base rating Q = ${num(rel.a, 1)}·(H − ${num(rel.e, 2)})^${num(rel.b, 2)} ` +
+    `· reference ${rel.reference_start} → ${rel.reference_end}`;
+  const groups = [
+    ["reference", "Reference window", "--ref"],
+    ["between", "After reference, before shift", "--between"],
+    ["post_shift", d.split_time ? `Since shift (${fmtDate(d.split_time)})` : "After reference window", "--post"],
+  ];
+  const css = getComputedStyle(document.documentElement);
+  const col = (v) => css.getPropertyValue(v).trim();
+  const traces = [];
+  for (const [key, name, c] of groups) {
+    const pts = d.points.filter((p) => p.period === key);
+    if (!pts.length) continue;
+    for (const excl of [false, true]) {
+      const sub = pts.filter((p) => !!p.excluded === excl);
+      if (!sub.length) continue;
+      traces.push({
+        x: sub.map((p) => p.discharge_cfs), y: sub.map((p) => p.stage_ft), mode: "markers",
+        type: "scatter", name: excl ? `${name}: Helene peak, excluded` : name,
+        marker: excl ? { size: 10, color: "rgba(0,0,0,0)", line: { color: col(c), width: 2 }, symbol: "circle" }
+                     : { size: 7, color: col(c), opacity: key === "reference" ? 0.55 : 0.9 },
+        text: sub.map((p) => `${fmtDate(p.time)} · ${p.rated}${p.control_condition ? " · " + p.control_condition : ""}`),
+        hovertemplate: "%{x:,.0f} cfs at %{y:.2f} ft<br>%{text}<extra></extra>",
+      });
+    }
+  }
+  traces.push({ x: d.curve.map((p) => p.discharge_cfs), y: d.curve.map((p) => p.stage_ft),
+    mode: "lines", name: "Base rating", line: { color: col("--ink"), width: 2 }, hoverinfo: "skip" });
+  const base = { margin: { l: 52, r: 10, t: 26, b: 40 }, paper_bgcolor: "rgba(0,0,0,0)",
+    plot_bgcolor: "rgba(0,0,0,0)", font: { size: 11 },
+    legend: { orientation: "h", y: -0.32, yanchor: "top", font: { size: 11 } } };
+  const narrow = window.innerWidth < 720;
+  Plotly.react("scatter", traces, { ...base, margin: { l: 52, r: 10, t: 26, b: 110 },
+    title: { text: "Stage vs discharge", font: { size: 13 }, x: 0.01 },
+    xaxis: { title: "Discharge (cfs, log)", type: "log", gridcolor: "#eee" },
+    yaxis: { title: "Stage (ft)", gridcolor: "#eee" } }, { displayModeBar: false, responsive: true });
+
+  // residual timeline
+  const tl = [];
+  for (const [key, name, c] of groups) {
+    const sub = d.points.filter((p) => p.period === key && p.residual_pct != null);
+    if (!sub.length) continue;
+    tl.push({ x: sub.map((p) => p.time), y: sub.map((p) => p.residual_pct), mode: "markers",
+      type: "scatter", name, showlegend: false,
+      marker: { size: sub.map((p) => p.excluded ? 9 : 6),
+        color: sub.map((p) => p.excluded ? "rgba(0,0,0,0)" : col(c)),
+        line: { color: col(c), width: sub.map((p) => p.excluded ? 2 : 0) } },
+      text: sub.map((p) => `${p.rated}${p.excluded ? " · excluded (Helene peak)" : ""}`),
+      hovertemplate: "%{x|%Y-%m-%d}: %{y:+.1f} %<br>%{text}<extra></extra>" });
+  }
+  const shapes = [vline(d.helene, col("--stale"), "dash")], ann = [vlabel(d.helene, "Helene", "right")];
+  for (const s of d.report.drift.shifts) {
+    shapes.push(vline(s.time, col("--post"), "dot"));
+    ann.push(vlabel(s.time, `shift ${s.size_pct > 0 ? "+" : ""}${num(s.size_pct, 0)} %`, "left"));
+  }
+  shapes.push({ type: "line", xref: "paper", x0: 0, x1: 1, y0: 0, y1: 0, line: { color: "#999", width: 1 } });
+  Plotly.react("timeline", tl, { ...base, margin: { l: 52, r: 10, t: 26, b: 30 },
+    title: { text: narrow ? "Residual vs rating (%)" : "Residual vs base rating (%; + = more water than rated)",
+      font: { size: 13 }, x: 0.01 },
+    xaxis: { type: "date", gridcolor: "#eee" }, yaxis: { gridcolor: "#eee", ticksuffix: " %" },
+    shapes, annotations: ann }, { displayModeBar: false, responsive: true });
+}
+const vline = (x, color, dash) => ({ type: "line", xref: "x", yref: "paper", x0: x, x1: x, y0: 0, y1: 1,
+  line: { color, width: 1.5, dash } });
+const vlabel = (x, text, side) => ({ x, xref: "x", yref: "paper", y: 1, yanchor: "bottom", text,
+  showarrow: false, font: { size: 10 }, xanchor: side, xshift: side === "right" ? -3 : 3 });
+
+/* ---------- agent graph + log ---------- */
+function resetGraph() {
+  document.querySelectorAll(".node").forEach((n) => n.className = "node");
+  $("rank-round").textContent = "LLM";
+}
+function setNode(node, cls) {
+  const el = document.querySelector(`.node[data-node="${node}"]`);
+  if (!el) return;
+  if (cls === "active") document.querySelectorAll(".node.active").forEach((n) => n.classList.remove("active"));
+  el.classList.remove("active", "done", "skipped");
+  el.classList.add(cls);
+}
+function logLine(html, cls = "") {
+  const div = document.createElement("div");
+  if (cls) div.className = cls;
+  div.innerHTML = html;
+  $("log").appendChild(div);
+  $("log").scrollTop = $("log").scrollHeight;
+}
+function summarize(e) {
+  const p = e.payload || {};
+  if (e.node === "run") {
+    if (e.status === "started") return `run started · LLM ${p.llm}`;
+    if (e.status === "error") return `run error: ${p.error}`;
+    return `done · ${p.llm_calls} LLM calls · ${p.input_tokens}+${p.output_tokens} tokens · ${p.wall_seconds} s` +
+      (p.fallbacks_used ? ` · ${p.fallbacks_used} fell back to rules` : "");
+  }
+  if (e.status === "started") {
+    if (e.node === "hypothesis_ranker") return `round ${p.round} started`;
+    if (e.node === "skeptic") return `reviewing ${cause(p.reviewing)}`;
+    return null;
+  }
+  if (e.status === "error") return `error: ${p.error || JSON.stringify(p).slice(0, 120)}`;
+  if (e.node === "triage") {
+    const t = p.top_shift;
+    return `${p.band} ${Math.round(p.score)} · recent ${num(p.recent_median_residual_pct)} % ` +
+      (t ? `· shift ${fmtDate(t.time)} ${num(t.size_pct)} % ` : "· no shift ") +
+      `→ ${p.route === "narrator" ? "narrator (no cause to find)" : "collect evidence"}`;
+  }
+  if (e.node === "evidence_collector" && e.status === "progress") {
+    const r = p.result || {};
+    if (p.tool === "channel_geometry") return r.sufficient
+      ? `channel at ${num(r.at_stage_ft, 2)} ft: area ${num(r.area_change_pct)} %, speed ${num(r.velocity_change_pct)} %`
+      : "channel geometry: not enough measurements";
+    if (p.tool === "field_notes") return `field notes: ${(r.distinct_notes || []).join(", ") || "none"}`;
+    if (p.tool === "flood_context") return r.peak
+      ? `flood: ${Number(r.peak.discharge_cfs).toLocaleString()} cfs on ${fmtDate(r.peak.time)} (${num(r.peak.x_largest_reference)}× largest reference)`
+      : `flood context: Helene in gap ${r.helene_in_gap ? "yes" : "no"}`;
+    if (p.tool === "site_metadata") return `site: ${r.county_name || ""}, ${r.drainage_area ?? "?"} sq mi`;
+    return `${p.tool}`;
+  }
+  if (e.node === "evidence_collector") return `channel signature: ${p.channel_signature || "—"}`;
+  if (e.node === "hypothesis_ranker") {
+    const h = (p.hypotheses || [])[0];
+    return `round ${p.round}: ${h ? `${cause(h.cause)} ${num(h.confidence, 2)}` : "—"}` +
+      ((p.hypotheses || [])[1] ? ` (next: ${cause(p.hypotheses[1].cause)} ${num(p.hypotheses[1].confidence, 2)})` : "") +
+      (p.model ? ` · ${p.model}` : "");
+  }
+  if (e.node === "skeptic") {
+    if (p.verdict === "object") return `OBJECTS (${String(p.objection).replace(/_/g, " ")}) → back to ranker`;
+    if (p.verdict === "disagree") return `DISAGREES with the field note · best guess ${cause(p.suggested_cause)} ${num(p.confidence, 2)}`;
+    return `accepts ${cause(p.suggested_cause)} ${num(p.confidence, 2)}`;
+  }
+  if (e.node === "narrator") return `"${(p.narration || "").slice(0, 110)}…"`;
+  return null;
+}
+function onTrace(e) {
+  if (NODES.includes(e.node)) {
+    if (e.status === "started" || e.status === "progress") setNode(e.node, "active");
+    if (e.status === "completed") setNode(e.node, "done");
+    if (e.node === "hypothesis_ranker" && e.payload.round) $("rank-round").textContent = `round ${e.payload.round}`;
+  }
+  if (e.node === "run" && e.status !== "started") {
+    document.querySelectorAll(".node").forEach((n) => {
+      if (!n.classList.contains("done")) { n.classList.remove("active"); n.classList.add("skipped"); }
+    });
+  }
+  const s = summarize(e);
+  if (s) logLine(`<span class="n">${e.node.replace("_", " ")}</span> ${esc(s)}`,
+    /OBJECTS|DISAGREES|error/.test(s) ? "w" : "");
+}
+
+async function stream(path, method, label) {
+  if (busy || !current) return;
+  busy = true; $("run-btn").disabled = $("replay-btn").disabled = true;
+  document.body.dataset.state = "streaming";
+  resetGraph(); $("log").innerHTML = "";
+  $("run-label").textContent = label; $("run-label").className = "label";
+  let meta = {};
+  try {
+    await streamSSE(path, method, (ev, data) => {
+      if (ev === "meta") {
+        meta = data;
+        document.querySelectorAll(".llm-name").forEach((n) => n.textContent = data.llm);
+        $("rank-round").textContent = data.llm;
+        const l = data.replay ? `replay of ${fmtTime(data.started_at)} · ${data.llm}` : `live run · ${data.llm}`;
+        $("run-label").textContent = l; $("run-label").className = "label" + (data.replay ? " replay" : "");
+      } else if (ev === "trace") onTrace(data);
+      else if (ev === "finding") renderCard(data, meta.replay ? `replay of ${fmtTime(data.started_at)} · ${data.llm}`
+                                                             : `live run of ${fmtTime(data.started_at)} · ${data.llm}`);
+      else if (ev === "error") logLine(`error: ${esc(data.error)}`, "w");
+    });
+  } catch (err) { logLine(`error: ${esc(err.message)}`, "w"); }
+  busy = false; $("run-btn").disabled = false; $("replay-btn").disabled = !current.replay;
+  document.body.dataset.state = "done";
+  if (!meta.replay) {  // a live run made a new trace: refresh the replay target
+    await loadGauges(); current = gauges.find((g) => g.site === current.site);
+    document.querySelectorAll(".gauge").forEach((b) => b.classList.toggle("sel", b.dataset.site === current.site));
+  }
+}
+function replay() {
+  if (!current?.replay) return;
+  stream(`/replay/${current.replay.id}${PACE != null ? `?pace=${PACE}` : ""}`, "GET", "replaying…");
+}
+function runLive() { stream(`/run/${current.site}`, "POST", "running… (live LLM calls take 30–90 s)"); }
+
+/* ---------- finding card ---------- */
+function renderCard(f, label) {
+  const rep = currentReport?.report;
+  const trust = rep?.trust;
+  let causeHTML;
+  if (!f) causeHTML = `<dl class="rows"><dt>Cause</dt><dd>No saved agent run for this gauge.</dd></dl>`;
+  else if (f.cause_status === "none") causeHTML = `<dl class="rows"><dt>Cause</dt>
+    <dd><span class="status corroborated">None needed.</span> The rating still fits; triage sent this gauge straight to the narrator.</dd></dl>`;
+  else if (f.cause_status === "disagreement") {
+    const d = f.disagreement;
+    causeHTML = `<p><span class="status disagreement">Disagreement</span> — the team would not overrule the hydrographer without proof.</p>
+      <dl class="rows"><dt>Best guess</dt><dd>${esc(cause(d.best_guess.cause))} · confidence ${num(d.best_guess.confidence, 2)} (uncertain)</dd>
+      <dt>Field note</dt><dd>“${esc(d.field_note.note)}” · ${esc(d.field_note.date)}</dd>
+      <dt>Why they disagree</dt><dd>${esc(d.why_they_disagree)}</dd>
+      <dt>Double-check</dt><dd>${esc(d.recommended_check)}</dd></dl>`;
+  } else if (f.cause_status === "open") causeHTML = `<dl class="rows">
+      <dt>Cause</dt><dd><span class="status open">Open.</span> Best fit so far is ${esc(cause(f.cause))}
+        (confidence ${num(f.confidence, 2)}), but no field note since the reference window backs it.
+        Treat it as a lead, not a finding.</dd>
+      <dt>Skeptic</dt><dd>${esc(f.skeptic_argument || "—")}</dd></dl>`;
+  else causeHTML = `<dl class="rows">
+      <dt>Cause</dt><dd><span class="status corroborated">${esc(cause(f.cause))}</span> · confidence
+        ${num(f.confidence, 2)} (${esc(f.confidence_word)})${f.objections ? ` · after ${f.objections} objection(s)` : ""}</dd>
+      <dt>Backed by</dt><dd>${f.supporting_notes.map((n) => `“${esc(n)}”`).join(", ")}</dd>
+      <dt>Skeptic</dt><dd>${esc(f.skeptic_argument || "—")}</dd></dl>`;
+
+  let scoreHTML = "";
+  if (trust) {
+    const ds = trust.deductions;
+    const arith = `100 ${ds.map((d) => `− ${num(d.points)}`).join(" ")} = ${num(trust.score)} → ` +
+      `${Math.round(trust.score)}/100`;
+    scoreHTML = `<div class="arith">${arith} <span class="band ${trust.band}">${trust.band}</span></div>
+      <table class="score">${ds.map((d) => `<tr><td class="pts">${d.points ? "−" + num(d.points) : "0"}</td>
+        <td><strong>${esc(d.name.replace(/_/g, " "))}</strong> · ${esc(d.reason)}</td></tr>`).join("")}</table>`;
+  }
+  $("card-body").innerHTML = `
+    <div class="head"><h3>${esc(shortName(current?.name))}</h3>
+      ${trust ? `<span class="band ${trust.band}">${trust.band} ${Math.round(trust.score)}</span>` : ""}
+      <span class="label ${/replay/.test(label) ? "replay" : ""}">${esc(label || "")}</span></div>
+    ${f?.narration ? `<p class="narr">${esc(f.narration)}</p>` : ""}
+    <div class="grid2"><div>${causeHTML}</div><div><h2>Trust score arithmetic</h2>${scoreHTML}</div></div>`;
+}
+
+/* ---------- registry ---------- */
+async function loadRegistry() {
+  const reg = await getJSON("/registry");
+  const slots = [["get_data", "Get data"], ["expected_relationship", "Expected relationship"],
+    ["drift_test", "Drift test"], ["likely_causes", "Likely causes"]];
+  $("reg-cards").innerHTML = reg.map((m) => `<div class="mod">
+    <span class="st ${m.status}">${m.status}</span><h3>${esc(m.title)}</h3>
+    <p>${esc(m.who_cares)}</p>
+    <dl>${slots.map(([k, t]) => `<dt>${t}</dt><dd>${esc(m[k])}</dd>`).join("")}</dl></div>`).join("");
+  regLoaded = true;
+}
+function showTab(t) {
+  $("console").style.display = t === "console" ? "" : "none";
+  $("registry").style.display = t === "registry" ? "block" : "none";
+  $("tab-console").classList.toggle("on", t === "console");
+  $("tab-registry").classList.toggle("on", t === "registry");
+  if (t === "registry" && !regLoaded) loadRegistry();
+  if (t === "console") window.dispatchEvent(new Event("resize"));
+}
+
+/* ---------- boot (deep links: ?site=…&replay=1&pace=0 · ?site=…&run=1 · ?tab=registry) ---------- */
+(async () => {
+  await loadGauges();
+  if (params.get("tab") === "registry") showTab("registry");
+  await selectSite(params.get("site") || gauges[0].site);
+  if (params.get("replay")) replay();
+  else if (params.get("run")) runLive();
+  else document.body.dataset.state = "done";  // screenshot scripts wait for this
+})();
+</script>
+</body>
+</html>

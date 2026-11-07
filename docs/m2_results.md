@@ -92,6 +92,7 @@ engine. The **trace time** shows which prompt version produced it: before or aft
 | 02085000 | Eno at Hillsborough | Trusted (91) | none | — | — | 1,096 + 171 | 13 s | 12:55 |
 
 Gemini latency swings a lot: Newport took 88 s on one pass and 22–29 s on others. Mills' trace (12:20) predates the structured narrator; every other gauge's latest trace uses it.
+**Update 1:32 pm (M3):** Mills re-run with Gemini (`03446000-20261107T183210809638Z.json`): debris 0.52, no objections, 6,994 + 756 tokens, 43 s, structured narrator, no fallbacks. Newport ran live from the console at 1:30 pm (`03455000-20261107T183044853720Z.json`): fill 0.78, skeptic accepted at 0.86, 7,262 + 817 tokens, 27 s.
 
 ## Fallback run (`LLM=fallback`), for comparison
 
