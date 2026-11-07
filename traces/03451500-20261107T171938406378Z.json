@@ -1,30 +1,30 @@
 {
-  "run_id": "03451500-20261107T164758746056Z-fef728",
+  "run_id": "03451500-20261107T171938406378Z-d5fd63",
   "site": "03451500",
   "llm": "gemini",
-  "started_at": "2026-11-07T16:47:58.746056+00:00",
+  "started_at": "2026-11-07T17:19:38.406378+00:00",
   "final": {
-    "narration": "Published river flows are underreporting by about 41%, meaning the river has been carrying significantly more water than the gauge indicates since late July 2025. Riverbed scour is the most likely explanation, and we are moderately sure of this diagnosis. Contact the USGS to survey the channel cross-section and adjust the rating curve. Trust score 46/100 (Stale).",
+    "narration": "Published river flows are currently running about 41% too low, meaning the river is actually carrying roughly 41% more water than reported, following a shift that began in late July 2025. We are reasonably confident that riverbed scour is the cause, as sediment has washed out and lowered the riverbed. Contact the USGS to request a channel survey and an updated rating curve to correct the published numbers. Trust score 46/100 (Stale).",
     "final": {
       "cause": "scour",
-      "confidence": 0.7,
+      "confidence": 0.72,
       "first_cause": "scour",
       "objections": 0,
       "unresolved": false,
-      "skeptic_argument": "The residual is +41.1%, which matches scour\u2019s expected positive sign, and the channel trend is consistent with a lowered control: at the same stage area rose 7.7% while velocity rose only 1.7%, i.e. no strong backwater/fill signal. The +0.269 ft step shift is real, but the geometry does not contradict scour enough to object."
+      "skeptic_argument": "The observed residual is +41.1%, which matches scour\u2019s expected positive sign, and the channel geometry is consistent with a lowered control: at the same stage, area rose only 7.7% while velocity rose 1.7%, both within the small/noise range and not enough to argue for fill or a datum change. The debris notes point the other way on sign (negative residuals), so they do not overturn the scour case."
     },
-    "input_tokens": 5666,
-    "output_tokens": 674,
+    "input_tokens": 5879,
+    "output_tokens": 768,
     "llm_calls": 3,
     "fallbacks_used": 0,
-    "wall_seconds": 39.59
+    "wall_seconds": 30.78
   },
   "events": [
     {
-      "run_id": "03451500-20261107T164758746056Z-fef728",
+      "run_id": "03451500-20261107T171938406378Z-d5fd63",
       "site": "03451500",
       "seq": 0,
-      "ts": "2026-11-07T16:47:58.746214Z",
+      "ts": "2026-11-07T17:19:38.406460Z",
       "node": "run",
       "status": "started",
       "payload": {
@@ -32,19 +32,19 @@
       }
     },
     {
-      "run_id": "03451500-20261107T164758746056Z-fef728",
+      "run_id": "03451500-20261107T171938406378Z-d5fd63",
       "site": "03451500",
       "seq": 1,
-      "ts": "2026-11-07T16:47:58.769679Z",
+      "ts": "2026-11-07T17:19:38.426035Z",
       "node": "triage",
       "status": "started",
       "payload": {}
     },
     {
-      "run_id": "03451500-20261107T164758746056Z-fef728",
+      "run_id": "03451500-20261107T171938406378Z-d5fd63",
       "site": "03451500",
       "seq": 2,
-      "ts": "2026-11-07T16:47:59.229903Z",
+      "ts": "2026-11-07T17:19:38.846503Z",
       "node": "triage",
       "status": "completed",
       "payload": {
@@ -111,19 +111,19 @@
       }
     },
     {
-      "run_id": "03451500-20261107T164758746056Z-fef728",
+      "run_id": "03451500-20261107T171938406378Z-d5fd63",
       "site": "03451500",
       "seq": 3,
-      "ts": "2026-11-07T16:47:59.240315Z",
+      "ts": "2026-11-07T17:19:38.851733Z",
       "node": "evidence_collector",
       "status": "started",
       "payload": {}
     },
     {
-      "run_id": "03451500-20261107T164758746056Z-fef728",
+      "run_id": "03451500-20261107T171938406378Z-d5fd63",
       "site": "03451500",
       "seq": 4,
-      "ts": "2026-11-07T16:47:59.322424Z",
+      "ts": "2026-11-07T17:19:38.917342Z",
       "node": "evidence_collector",
       "status": "progress",
       "payload": {
@@ -144,10 +144,10 @@
       }
     },
     {
-      "run_id": "03451500-20261107T164758746056Z-fef728",
+      "run_id": "03451500-20261107T171938406378Z-d5fd63",
       "site": "03451500",
       "seq": 5,
-      "ts": "2026-11-07T16:47:59.326566Z",
+      "ts": "2026-11-07T17:19:38.922570Z",
       "node": "evidence_collector",
       "status": "progress",
       "payload": {
@@ -251,10 +251,10 @@
       }
     },
     {
-      "run_id": "03451500-20261107T164758746056Z-fef728",
+      "run_id": "03451500-20261107T171938406378Z-d5fd63",
       "site": "03451500",
       "seq": 6,
-      "ts": "2026-11-07T16:47:59.330221Z",
+      "ts": "2026-11-07T17:19:38.926235Z",
       "node": "evidence_collector",
       "status": "progress",
       "payload": {
@@ -271,10 +271,10 @@
       }
     },
     {
-      "run_id": "03451500-20261107T164758746056Z-fef728",
+      "run_id": "03451500-20261107T171938406378Z-d5fd63",
       "site": "03451500",
       "seq": 7,
-      "ts": "2026-11-07T16:47:59.332540Z",
+      "ts": "2026-11-07T17:19:38.930622Z",
       "node": "evidence_collector",
       "status": "progress",
       "payload": {
@@ -293,10 +293,10 @@
       }
     },
     {
-      "run_id": "03451500-20261107T164758746056Z-fef728",
+      "run_id": "03451500-20261107T171938406378Z-d5fd63",
       "site": "03451500",
       "seq": 8,
-      "ts": "2026-11-07T16:47:59.335308Z",
+      "ts": "2026-11-07T17:19:38.934131Z",
       "node": "evidence_collector",
       "status": "completed",
       "payload": {
@@ -310,10 +310,10 @@
       }
     },
     {
-      "run_id": "03451500-20261107T164758746056Z-fef728",
+      "run_id": "03451500-20261107T171938406378Z-d5fd63",
       "site": "03451500",
       "seq": 9,
-      "ts": "2026-11-07T16:47:59.340289Z",
+      "ts": "2026-11-07T17:19:38.940862Z",
       "node": "hypothesis_ranker",
       "status": "started",
       "payload": {
@@ -322,10 +322,10 @@
       }
     },
     {
-      "run_id": "03451500-20261107T164758746056Z-fef728",
+      "run_id": "03451500-20261107T171938406378Z-d5fd63",
       "site": "03451500",
       "seq": 10,
-      "ts": "2026-11-07T16:48:25.729084Z",
+      "ts": "2026-11-07T17:19:54.929436Z",
       "node": "hypothesis_ranker",
       "status": "completed",
       "payload": {
@@ -333,37 +333,38 @@
         "hypotheses": [
           {
             "cause": "scour",
-            "confidence": 0.7,
+            "confidence": 0.72,
             "sign_matches": true,
             "evidence": [
-              "Recent median residual is +41.1 % against a normal scatter of 3.5 %, matching the positive sign expected from scour.",
-              "A sharp positive shift of +36.12 % (+0.269 ft) was detected on 2025-07-23 and persists across 10 post-shift visits."
+              "Recent median residual is +41.1%, well above the normal scatter of 3.5%.",
+              "A persistent positive step shift of +36.12% (+0.269 ft) was detected on 2025-07-23 with 10 post-shift measurements.",
+              "Positive residuals match channel scour or control degradation carrying more water than rated."
             ]
           },
           {
             "cause": "datum_change",
-            "confidence": 0.15,
+            "confidence": 0.14,
             "sign_matches": true,
             "evidence": [
-              "A discrete step shift of +0.269 ft (+36.12 %) occurred on 2025-07-23, which could reflect an unrecorded gauge reference change.",
-              "Datum changes can have either sign, but no datum adjustment is documented in recent metadata."
-            ]
-          },
-          {
-            "cause": "measurement_quality",
-            "confidence": 0.08,
-            "sign_matches": true,
-            "evidence": [
-              "Recent gaugings include 2 Poor and 1 Fair ratings out of 8, though 5 are Good.",
-              "Persistent positive bias across 10 subsequent measurements makes random measurement noise unlikely."
+              "A sharp step shift of +0.269 ft occurred around 2025-07-23, which could reflect an unrecorded gauge datum shift.",
+              "Datum changes can cause persistent step changes of either sign without channel modification."
             ]
           },
           {
             "cause": "inconclusive",
-            "confidence": 0.05,
+            "confidence": 0.08,
             "sign_matches": true,
             "evidence": [
-              "Channel cross-section geometry is needed to definitively confirm channel degradation over a datum movement."
+              "Channel cross-section area data is required to definitively separate bed scour from a datum displacement."
+            ]
+          },
+          {
+            "cause": "measurement_quality",
+            "confidence": 0.04,
+            "sign_matches": true,
+            "evidence": [
+              "Recent measurements include 2 Poor and 1 Fair out of 8 visits.",
+              "A median residual of +41.1% across 10 measurements is far too large and consistent to be explained by measurement scatter alone (normal scatter 3.5%)."
             ]
           },
           {
@@ -371,8 +372,8 @@
             "confidence": 0.01,
             "sign_matches": false,
             "evidence": [
-              "Field notes recorded light to moderate debris previously, but latest note is Clear.",
-              "Debris causes backwater and negative residuals, directly contradicting the observed +41.1 % residual."
+              "Field notes record 'Debris - Light' and 'Debris - Moderate' between 2024-11-22 and 2025-07-23.",
+              "Debris creates backwater and negative residuals, directly contradicting the observed +41.1% positive residual."
             ]
           },
           {
@@ -380,22 +381,23 @@
             "confidence": 0.01,
             "sign_matches": false,
             "evidence": [
-              "Aggradation/fill creates negative residuals, contradicting the observed +41.1 % positive residual."
+              "Sediment fill raises stage for a given flow, producing negative residuals.",
+              "The observed median residual is positive (+41.1%), contradicting fill."
             ]
           }
         ],
-        "reasoning": "Persistent positive residuals of +41.1 % and a +36.12 % shift strongly indicate bed or control scour carrying excess water. Debris and fill are ruled out due to opposing residual signs.",
+        "reasoning": "The large persistent positive residual (+41.1%) and step shift (+36.1%) strongly point to channel or control scour. Debris notes on the control contradict the positive sign, leaving datum change as the only secondary possibility.",
         "model": "vertex:gemini-3.8-flash",
         "input_tokens": 2031,
-        "output_tokens": 468,
-        "seconds": 17.81
+        "output_tokens": 527,
+        "seconds": 9.4
       }
     },
     {
-      "run_id": "03451500-20261107T164758746056Z-fef728",
+      "run_id": "03451500-20261107T171938406378Z-d5fd63",
       "site": "03451500",
       "seq": 11,
-      "ts": "2026-11-07T16:48:25.743323Z",
+      "ts": "2026-11-07T17:19:54.937230Z",
       "node": "skeptic",
       "status": "started",
       "payload": {
@@ -403,80 +405,80 @@
       }
     },
     {
-      "run_id": "03451500-20261107T164758746056Z-fef728",
+      "run_id": "03451500-20261107T171938406378Z-d5fd63",
       "site": "03451500",
       "seq": 12,
-      "ts": "2026-11-07T16:48:30.001803Z",
+      "ts": "2026-11-07T17:19:59.561481Z",
       "node": "skeptic",
       "status": "completed",
       "payload": {
         "verdict": "accept",
         "objection": null,
-        "argument": "The residual is +41.1%, which matches scour\u2019s expected positive sign, and the channel trend is consistent with a lowered control: at the same stage area rose 7.7% while velocity rose only 1.7%, i.e. no strong backwater/fill signal. The +0.269 ft step shift is real, but the geometry does not contradict scour enough to object.",
+        "argument": "The observed residual is +41.1%, which matches scour\u2019s expected positive sign, and the channel geometry is consistent with a lowered control: at the same stage, area rose only 7.7% while velocity rose 1.7%, both within the small/noise range and not enough to argue for fill or a datum change. The debris notes point the other way on sign (negative residuals), so they do not overturn the scour case.",
         "suggested_cause": null,
         "objected_cause": null,
         "model": "openrouter:openai/gpt-5.4-mini",
-        "input_tokens": 2487,
-        "output_tokens": 111,
-        "seconds": 1.62,
+        "input_tokens": 2734,
+        "output_tokens": 128,
+        "seconds": 1.81,
         "loop_back": false,
         "objections": 0
       }
     },
     {
-      "run_id": "03451500-20261107T164758746056Z-fef728",
+      "run_id": "03451500-20261107T171938406378Z-d5fd63",
       "site": "03451500",
       "seq": 13,
-      "ts": "2026-11-07T16:48:30.009079Z",
+      "ts": "2026-11-07T17:19:59.570277Z",
       "node": "narrator",
       "status": "started",
       "payload": {}
     },
     {
-      "run_id": "03451500-20261107T164758746056Z-fef728",
+      "run_id": "03451500-20261107T171938406378Z-d5fd63",
       "site": "03451500",
       "seq": 14,
-      "ts": "2026-11-07T16:48:38.330780Z",
+      "ts": "2026-11-07T17:20:09.183781Z",
       "node": "narrator",
       "status": "completed",
       "payload": {
-        "narration": "Published river flows are underreporting by about 41%, meaning the river has been carrying significantly more water than the gauge indicates since late July 2025. Riverbed scour is the most likely explanation, and we are moderately sure of this diagnosis. Contact the USGS to survey the channel cross-section and adjust the rating curve. Trust score 46/100 (Stale).",
+        "narration": "Published river flows are currently running about 41% too low, meaning the river is actually carrying roughly 41% more water than reported, following a shift that began in late July 2025. We are reasonably confident that riverbed scour is the cause, as sediment has washed out and lowered the riverbed. Contact the USGS to request a channel survey and an updated rating curve to correct the published numbers. Trust score 46/100 (Stale).",
         "final": {
           "cause": "scour",
-          "confidence": 0.7,
+          "confidence": 0.72,
           "first_cause": "scour",
           "objections": 0,
           "unresolved": false,
-          "skeptic_argument": "The residual is +41.1%, which matches scour\u2019s expected positive sign, and the channel trend is consistent with a lowered control: at the same stage area rose 7.7% while velocity rose only 1.7%, i.e. no strong backwater/fill signal. The +0.269 ft step shift is real, but the geometry does not contradict scour enough to object."
+          "skeptic_argument": "The observed residual is +41.1%, which matches scour\u2019s expected positive sign, and the channel geometry is consistent with a lowered control: at the same stage, area rose only 7.7% while velocity rose 1.7%, both within the small/noise range and not enough to argue for fill or a datum change. The debris notes point the other way on sign (negative residuals), so they do not overturn the scour case."
         },
         "model": "vertex:gemini-3.8-flash",
-        "input_tokens": 1148,
-        "output_tokens": 95,
-        "seconds": 8.31
+        "input_tokens": 1114,
+        "output_tokens": 113,
+        "seconds": 9.61
       }
     },
     {
-      "run_id": "03451500-20261107T164758746056Z-fef728",
+      "run_id": "03451500-20261107T171938406378Z-d5fd63",
       "site": "03451500",
       "seq": 15,
-      "ts": "2026-11-07T16:48:38.341020Z",
+      "ts": "2026-11-07T17:20:09.191410Z",
       "node": "run",
       "status": "completed",
       "payload": {
-        "narration": "Published river flows are underreporting by about 41%, meaning the river has been carrying significantly more water than the gauge indicates since late July 2025. Riverbed scour is the most likely explanation, and we are moderately sure of this diagnosis. Contact the USGS to survey the channel cross-section and adjust the rating curve. Trust score 46/100 (Stale).",
+        "narration": "Published river flows are currently running about 41% too low, meaning the river is actually carrying roughly 41% more water than reported, following a shift that began in late July 2025. We are reasonably confident that riverbed scour is the cause, as sediment has washed out and lowered the riverbed. Contact the USGS to request a channel survey and an updated rating curve to correct the published numbers. Trust score 46/100 (Stale).",
         "final": {
           "cause": "scour",
-          "confidence": 0.7,
+          "confidence": 0.72,
           "first_cause": "scour",
           "objections": 0,
           "unresolved": false,
-          "skeptic_argument": "The residual is +41.1%, which matches scour\u2019s expected positive sign, and the channel trend is consistent with a lowered control: at the same stage area rose 7.7% while velocity rose only 1.7%, i.e. no strong backwater/fill signal. The +0.269 ft step shift is real, but the geometry does not contradict scour enough to object."
+          "skeptic_argument": "The observed residual is +41.1%, which matches scour\u2019s expected positive sign, and the channel geometry is consistent with a lowered control: at the same stage, area rose only 7.7% while velocity rose 1.7%, both within the small/noise range and not enough to argue for fill or a datum change. The debris notes point the other way on sign (negative residuals), so they do not overturn the scour case."
         },
-        "input_tokens": 5666,
-        "output_tokens": 674,
+        "input_tokens": 5879,
+        "output_tokens": 768,
         "llm_calls": 3,
         "fallbacks_used": 0,
-        "wall_seconds": 39.59
+        "wall_seconds": 30.78
       }
     }
   ]

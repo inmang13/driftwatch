@@ -1,30 +1,30 @@
 {
-  "run_id": "03455000-20261107T164602466775Z-fd7b83",
+  "run_id": "03455000-20261107T171721239351Z-d522a4",
   "site": "03455000",
   "llm": "gemini",
-  "started_at": "2026-11-07T16:46:02.466775+00:00",
+  "started_at": "2026-11-07T17:17:21.239351+00:00",
   "final": {
-    "narration": "Published river flows have been running about 46% too high since late October 2024, meaning the river is carrying significantly less water than reported. We are confident this error is caused by sediment filling in the river channel, which raises the water level and leads the gauge to overestimate discharge. For now, discount the published flow figures for daily operations and ask the USGS to issue a shift or updated rating table for this site. Trust score 30/100 (Stale).",
+    "narration": "Published flows at this gauge are running about 46% too high, a problem that began in late October 2024. We are quite confident (82% confidence) that sediment buildup, or channel fill, is responsible for artificially elevating the river stage. For near-term planning, reduce real-time published flow figures by approximately 45% for system operations until a revised rating curve is issued. Trust score 30/100 (Stale).",
     "final": {
       "cause": "fill",
       "confidence": 0.82,
       "first_cause": "fill",
       "objections": 0,
       "unresolved": false,
-      "skeptic_argument": "The observed residual is negative (median -46.0%, shift -42.5%), which matches fill/debris/vegetation and contradicts scour. The channel trend also supports a downstream control problem: at the same stage, area increased 25.2% while velocity fell 58.3%, a strong backwater/fill signal rather than a datum change."
+      "skeptic_argument": "The residual is -46.0%, which matches fill, and the field note explicitly says 'Fill control changed' after the Helene peak of 91,700 cfs. The channel trend also supports downstream control/backwater behavior: at the same stage, area increased 25.2% while velocity fell 58.3%, far beyond normal noise and consistent with fill/backwater rather than a datum change."
     },
-    "input_tokens": 6151,
-    "output_tokens": 790,
+    "input_tokens": 6337,
+    "output_tokens": 815,
     "llm_calls": 3,
     "fallbacks_used": 0,
-    "wall_seconds": 24.74
+    "wall_seconds": 22.03
   },
   "events": [
     {
-      "run_id": "03455000-20261107T164602466775Z-fd7b83",
+      "run_id": "03455000-20261107T171721239351Z-d522a4",
       "site": "03455000",
       "seq": 0,
-      "ts": "2026-11-07T16:46:02.466952Z",
+      "ts": "2026-11-07T17:17:21.239552Z",
       "node": "run",
       "status": "started",
       "payload": {
@@ -32,19 +32,19 @@
       }
     },
     {
-      "run_id": "03455000-20261107T164602466775Z-fd7b83",
+      "run_id": "03455000-20261107T171721239351Z-d522a4",
       "site": "03455000",
       "seq": 1,
-      "ts": "2026-11-07T16:46:02.490472Z",
+      "ts": "2026-11-07T17:17:21.266288Z",
       "node": "triage",
       "status": "started",
       "payload": {}
     },
     {
-      "run_id": "03455000-20261107T164602466775Z-fd7b83",
+      "run_id": "03455000-20261107T171721239351Z-d522a4",
       "site": "03455000",
       "seq": 2,
-      "ts": "2026-11-07T16:46:02.792235Z",
+      "ts": "2026-11-07T17:17:21.550288Z",
       "node": "triage",
       "status": "completed",
       "payload": {
@@ -111,19 +111,19 @@
       }
     },
     {
-      "run_id": "03455000-20261107T164602466775Z-fd7b83",
+      "run_id": "03455000-20261107T171721239351Z-d522a4",
       "site": "03455000",
       "seq": 3,
-      "ts": "2026-11-07T16:46:02.803606Z",
+      "ts": "2026-11-07T17:17:21.557827Z",
       "node": "evidence_collector",
       "status": "started",
       "payload": {}
     },
     {
-      "run_id": "03455000-20261107T164602466775Z-fd7b83",
+      "run_id": "03455000-20261107T171721239351Z-d522a4",
       "site": "03455000",
       "seq": 4,
-      "ts": "2026-11-07T16:46:02.886357Z",
+      "ts": "2026-11-07T17:17:21.613937Z",
       "node": "evidence_collector",
       "status": "progress",
       "payload": {
@@ -144,10 +144,10 @@
       }
     },
     {
-      "run_id": "03455000-20261107T164602466775Z-fd7b83",
+      "run_id": "03455000-20261107T171721239351Z-d522a4",
       "site": "03455000",
       "seq": 5,
-      "ts": "2026-11-07T16:46:02.889080Z",
+      "ts": "2026-11-07T17:17:21.618663Z",
       "node": "evidence_collector",
       "status": "progress",
       "payload": {
@@ -271,10 +271,10 @@
       }
     },
     {
-      "run_id": "03455000-20261107T164602466775Z-fd7b83",
+      "run_id": "03455000-20261107T171721239351Z-d522a4",
       "site": "03455000",
       "seq": 6,
-      "ts": "2026-11-07T16:46:02.891676Z",
+      "ts": "2026-11-07T17:17:21.622738Z",
       "node": "evidence_collector",
       "status": "progress",
       "payload": {
@@ -298,10 +298,10 @@
       }
     },
     {
-      "run_id": "03455000-20261107T164602466775Z-fd7b83",
+      "run_id": "03455000-20261107T171721239351Z-d522a4",
       "site": "03455000",
       "seq": 7,
-      "ts": "2026-11-07T16:46:02.894237Z",
+      "ts": "2026-11-07T17:17:21.626740Z",
       "node": "evidence_collector",
       "status": "progress",
       "payload": {
@@ -320,10 +320,10 @@
       }
     },
     {
-      "run_id": "03455000-20261107T164602466775Z-fd7b83",
+      "run_id": "03455000-20261107T171721239351Z-d522a4",
       "site": "03455000",
       "seq": 8,
-      "ts": "2026-11-07T16:46:02.898935Z",
+      "ts": "2026-11-07T17:17:21.630500Z",
       "node": "evidence_collector",
       "status": "completed",
       "payload": {
@@ -337,10 +337,10 @@
       }
     },
     {
-      "run_id": "03455000-20261107T164602466775Z-fd7b83",
+      "run_id": "03455000-20261107T171721239351Z-d522a4",
       "site": "03455000",
       "seq": 9,
-      "ts": "2026-11-07T16:46:02.903930Z",
+      "ts": "2026-11-07T17:17:21.636858Z",
       "node": "hypothesis_ranker",
       "status": "started",
       "payload": {
@@ -349,10 +349,10 @@
       }
     },
     {
-      "run_id": "03455000-20261107T164602466775Z-fd7b83",
+      "run_id": "03455000-20261107T171721239351Z-d522a4",
       "site": "03455000",
       "seq": 10,
-      "ts": "2026-11-07T16:46:17.501721Z",
+      "ts": "2026-11-07T17:17:31.392695Z",
       "node": "hypothesis_ranker",
       "status": "completed",
       "payload": {
@@ -363,9 +363,9 @@
             "confidence": 0.82,
             "sign_matches": true,
             "evidence": [
-              "Recent median residual is -46.0% with a persistent shift of -42.5% across 15 measurements.",
-              "Field notes explicitly document 'Fill control changed' on 2024-10-28 and 2025-12-05.",
-              "Followed Hurricane Helene peak of 91,700 cfs, 2.74x the reference maximum discharge."
+              "Field notes explicitly state 'Fill control changed' following major flooding.",
+              "Persistent median residual of -46.0% across 15 post-shift measurements matches fill sign convention.",
+              "Shift of -42.51% occurred directly after Hurricane Helene peak flow of 91,700 cfs (2.74x reference max)."
             ]
           },
           {
@@ -373,34 +373,26 @@
             "confidence": 0.08,
             "sign_matches": true,
             "evidence": [
-              "Gauge was recorded as 'Submerged' on 2024-09-28 during the 91,700 cfs peak flow, which can alter physical mounting or sensors.",
-              "Field inspections attributed the shift to 'Fill control changed' rather than datum movement."
+              "Gauge was recorded as 'Submerged' during the 19.76 ft Helene flood peak, which could displace reference mounts.",
+              "Shift was sudden (-0.716 ft on 2024-10-28), though channel fill was confirmed in field notes."
             ]
           },
           {
             "cause": "debris",
-            "confidence": 0.04,
+            "confidence": 0.05,
             "sign_matches": true,
             "evidence": [
-              "'Debris - Moderate' was flagged on 2024-09-27 during the rising limb.",
-              "Shift persisted across 15 measurements despite subsequent notes confirming 'Clear'."
+              "'Debris - Moderate' noted on 2024-09-27 during the flood event.",
+              "Debris is typically transient, whereas the -46.0% deficit persisted over 15 visits spanning multiple seasons."
             ]
           },
           {
             "cause": "measurement_quality",
-            "confidence": 0.03,
-            "sign_matches": true,
-            "evidence": [
-              "Recent measurements include 1 Poor and 5 Fair ratings out of 8.",
-              "Shift magnitude (-46.0%) far exceeds the baseline scatter of 3.6%."
-            ]
-          },
-          {
-            "cause": "inconclusive",
             "confidence": 0.02,
             "sign_matches": true,
             "evidence": [
-              "Strong convergence between field notes ('Fill control changed') and residual sign leaves little ambiguity."
+              "Recent measurements are rated 1 Poor and 5 Fair out of 8.",
+              "Median shift of -46.0% drastically exceeds the gauge's baseline 3.6% scatter across 15 visits."
             ]
           },
           {
@@ -408,30 +400,39 @@
             "confidence": 0.01,
             "sign_matches": true,
             "evidence": [
-              "'Vegetation - Light' was noted once in September 2026, long after the October 2024 shift onset."
+              "'Vegetation - Light' noted on 2026-09-18, long after the initial October 2024 shift.",
+              "Light seasonal growth cannot explain an ongoing -46.0% discharge offset on a large river (1,858 sq mi)."
+            ]
+          },
+          {
+            "cause": "inconclusive",
+            "confidence": 0.01,
+            "sign_matches": true,
+            "evidence": [
+              "Explicit field notes and post-flood persistence clearly point to channel control aggradation rather than ambiguous drift."
             ]
           },
           {
             "cause": "scour",
-            "confidence": 0.0,
+            "confidence": 0.01,
             "sign_matches": false,
             "evidence": [
-              "Scour produces positive residuals, contradicting the observed -46.0% median residual."
+              "Expected residual sign for scour is positive, directly contradicting the observed -46.0% residual."
             ]
           }
         ],
-        "reasoning": "A massive flood from Hurricane Helene (91,700 cfs) caused aggradation on the control, directly supported by hydrographer notes of 'Fill control changed' and a persistent -42.5% shift over 15 visits. Although the station was submerged during the peak, physical fill rather than datum displacement explains the persistent negative residual.",
+        "reasoning": "Field notes repeatedly identify 'Fill control changed' after Hurricane Helene deposited sediment across the control during a record peak of 91,700 cfs. The persistent -46.0% median residual matches aggradation perfectly across 15 subsequent measurements.",
         "model": "vertex:gemini-3.8-flash",
         "input_tokens": 2251,
-        "output_tokens": 564,
-        "seconds": 14.59
+        "output_tokens": 589,
+        "seconds": 9.74
       }
     },
     {
-      "run_id": "03455000-20261107T164602466775Z-fd7b83",
+      "run_id": "03455000-20261107T171721239351Z-d522a4",
       "site": "03455000",
       "seq": 11,
-      "ts": "2026-11-07T16:46:17.508165Z",
+      "ts": "2026-11-07T17:17:31.398454Z",
       "node": "skeptic",
       "status": "started",
       "payload": {
@@ -439,80 +440,80 @@
       }
     },
     {
-      "run_id": "03455000-20261107T164602466775Z-fd7b83",
+      "run_id": "03455000-20261107T171721239351Z-d522a4",
       "site": "03455000",
       "seq": 12,
-      "ts": "2026-11-07T16:46:19.365091Z",
+      "ts": "2026-11-07T17:17:33.420445Z",
       "node": "skeptic",
       "status": "completed",
       "payload": {
         "verdict": "accept",
         "objection": null,
-        "argument": "The observed residual is negative (median -46.0%, shift -42.5%), which matches fill/debris/vegetation and contradicts scour. The channel trend also supports a downstream control problem: at the same stage, area increased 25.2% while velocity fell 58.3%, a strong backwater/fill signal rather than a datum change.",
+        "argument": "The residual is -46.0%, which matches fill, and the field note explicitly says 'Fill control changed' after the Helene peak of 91,700 cfs. The channel trend also supports downstream control/backwater behavior: at the same stage, area increased 25.2% while velocity fell 58.3%, far beyond normal noise and consistent with fill/backwater rather than a datum change.",
         "suggested_cause": null,
         "objected_cause": null,
         "model": "openrouter:openai/gpt-5.4-mini",
-        "input_tokens": 2751,
-        "output_tokens": 111,
-        "seconds": 1.84,
+        "input_tokens": 2966,
+        "output_tokens": 114,
+        "seconds": 2.0,
         "loop_back": false,
         "objections": 0
       }
     },
     {
-      "run_id": "03455000-20261107T164602466775Z-fd7b83",
+      "run_id": "03455000-20261107T171721239351Z-d522a4",
       "site": "03455000",
       "seq": 13,
-      "ts": "2026-11-07T16:46:19.372879Z",
+      "ts": "2026-11-07T17:17:33.429546Z",
       "node": "narrator",
       "status": "started",
       "payload": {}
     },
     {
-      "run_id": "03455000-20261107T164602466775Z-fd7b83",
+      "run_id": "03455000-20261107T171721239351Z-d522a4",
       "site": "03455000",
       "seq": 14,
-      "ts": "2026-11-07T16:46:27.193926Z",
+      "ts": "2026-11-07T17:17:43.259502Z",
       "node": "narrator",
       "status": "completed",
       "payload": {
-        "narration": "Published river flows have been running about 46% too high since late October 2024, meaning the river is carrying significantly less water than reported. We are confident this error is caused by sediment filling in the river channel, which raises the water level and leads the gauge to overestimate discharge. For now, discount the published flow figures for daily operations and ask the USGS to issue a shift or updated rating table for this site. Trust score 30/100 (Stale).",
+        "narration": "Published flows at this gauge are running about 46% too high, a problem that began in late October 2024. We are quite confident (82% confidence) that sediment buildup, or channel fill, is responsible for artificially elevating the river stage. For near-term planning, reduce real-time published flow figures by approximately 45% for system operations until a revised rating curve is issued. Trust score 30/100 (Stale).",
         "final": {
           "cause": "fill",
           "confidence": 0.82,
           "first_cause": "fill",
           "objections": 0,
           "unresolved": false,
-          "skeptic_argument": "The observed residual is negative (median -46.0%, shift -42.5%), which matches fill/debris/vegetation and contradicts scour. The channel trend also supports a downstream control problem: at the same stage, area increased 25.2% while velocity fell 58.3%, a strong backwater/fill signal rather than a datum change."
+          "skeptic_argument": "The residual is -46.0%, which matches fill, and the field note explicitly says 'Fill control changed' after the Helene peak of 91,700 cfs. The channel trend also supports downstream control/backwater behavior: at the same stage, area increased 25.2% while velocity fell 58.3%, far beyond normal noise and consistent with fill/backwater rather than a datum change."
         },
         "model": "vertex:gemini-3.8-flash",
-        "input_tokens": 1149,
-        "output_tokens": 115,
-        "seconds": 7.81
+        "input_tokens": 1120,
+        "output_tokens": 112,
+        "seconds": 9.81
       }
     },
     {
-      "run_id": "03455000-20261107T164602466775Z-fd7b83",
+      "run_id": "03455000-20261107T171721239351Z-d522a4",
       "site": "03455000",
       "seq": 15,
-      "ts": "2026-11-07T16:46:27.204029Z",
+      "ts": "2026-11-07T17:17:43.267918Z",
       "node": "run",
       "status": "completed",
       "payload": {
-        "narration": "Published river flows have been running about 46% too high since late October 2024, meaning the river is carrying significantly less water than reported. We are confident this error is caused by sediment filling in the river channel, which raises the water level and leads the gauge to overestimate discharge. For now, discount the published flow figures for daily operations and ask the USGS to issue a shift or updated rating table for this site. Trust score 30/100 (Stale).",
+        "narration": "Published flows at this gauge are running about 46% too high, a problem that began in late October 2024. We are quite confident (82% confidence) that sediment buildup, or channel fill, is responsible for artificially elevating the river stage. For near-term planning, reduce real-time published flow figures by approximately 45% for system operations until a revised rating curve is issued. Trust score 30/100 (Stale).",
         "final": {
           "cause": "fill",
           "confidence": 0.82,
           "first_cause": "fill",
           "objections": 0,
           "unresolved": false,
-          "skeptic_argument": "The observed residual is negative (median -46.0%, shift -42.5%), which matches fill/debris/vegetation and contradicts scour. The channel trend also supports a downstream control problem: at the same stage, area increased 25.2% while velocity fell 58.3%, a strong backwater/fill signal rather than a datum change."
+          "skeptic_argument": "The residual is -46.0%, which matches fill, and the field note explicitly says 'Fill control changed' after the Helene peak of 91,700 cfs. The channel trend also supports downstream control/backwater behavior: at the same stage, area increased 25.2% while velocity fell 58.3%, far beyond normal noise and consistent with fill/backwater rather than a datum change."
         },
-        "input_tokens": 6151,
-        "output_tokens": 790,
+        "input_tokens": 6337,
+        "output_tokens": 815,
         "llm_calls": 3,
         "fallbacks_used": 0,
-        "wall_seconds": 24.74
+        "wall_seconds": 22.03
       }
     }
   ]

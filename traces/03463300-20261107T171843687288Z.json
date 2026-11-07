@@ -1,23 +1,23 @@
 {
-  "run_id": "03463300-20261107T164417818344Z-fcc14d",
+  "run_id": "03463300-20261107T171843687288Z-89dcae",
   "site": "03463300",
   "llm": "gemini",
-  "started_at": "2026-11-07T16:44:17.818344+00:00",
+  "started_at": "2026-11-07T17:18:43.687288+00:00",
   "final": {
-    "narration": "Published flow numbers from this gauge can be trusted. Recent field measurements track within 1.2% of the rating curve, well within the site's normal scatter of 4.0%. Field crews last visited the river 23 days ago, and there are no active control issues or unaccounted shifts affecting the readings. You can continue relying on these published flows for your regular operations and planning. Trust score 95/100 (Trusted).",
+    "narration": "This gauge can be trusted. Published flows are tracking well within normal ranges, with recent field checks running only 1.2% above the rating curve, safely below the river's typical 4.0% scatter. We are confident the data is reliable, as the site is actively maintained with six field visits over the past year and the most recent taken just 23 days ago. Continue using these flow numbers for routine operations and planning. Trust score 95/100 (Trusted).",
     "final": null,
-    "input_tokens": 886,
-    "output_tokens": 107,
+    "input_tokens": 844,
+    "output_tokens": 116,
     "llm_calls": 1,
     "fallbacks_used": 0,
-    "wall_seconds": 6.55
+    "wall_seconds": 8.27
   },
   "events": [
     {
-      "run_id": "03463300-20261107T164417818344Z-fcc14d",
+      "run_id": "03463300-20261107T171843687288Z-89dcae",
       "site": "03463300",
       "seq": 0,
-      "ts": "2026-11-07T16:44:17.818566Z",
+      "ts": "2026-11-07T17:18:43.687511Z",
       "node": "run",
       "status": "started",
       "payload": {
@@ -25,19 +25,19 @@
       }
     },
     {
-      "run_id": "03463300-20261107T164417818344Z-fcc14d",
+      "run_id": "03463300-20261107T171843687288Z-89dcae",
       "site": "03463300",
       "seq": 1,
-      "ts": "2026-11-07T16:44:17.839457Z",
+      "ts": "2026-11-07T17:18:43.708877Z",
       "node": "triage",
       "status": "started",
       "payload": {}
     },
     {
-      "run_id": "03463300-20261107T164417818344Z-fcc14d",
+      "run_id": "03463300-20261107T171843687288Z-89dcae",
       "site": "03463300",
       "seq": 2,
-      "ts": "2026-11-07T16:44:18.016341Z",
+      "ts": "2026-11-07T17:18:44.060127Z",
       "node": "triage",
       "status": "completed",
       "payload": {
@@ -97,45 +97,45 @@
       }
     },
     {
-      "run_id": "03463300-20261107T164417818344Z-fcc14d",
+      "run_id": "03463300-20261107T171843687288Z-89dcae",
       "site": "03463300",
       "seq": 3,
-      "ts": "2026-11-07T16:44:18.021144Z",
+      "ts": "2026-11-07T17:18:44.068147Z",
       "node": "narrator",
       "status": "started",
       "payload": {}
     },
     {
-      "run_id": "03463300-20261107T164417818344Z-fcc14d",
+      "run_id": "03463300-20261107T171843687288Z-89dcae",
       "site": "03463300",
       "seq": 4,
-      "ts": "2026-11-07T16:44:24.354257Z",
+      "ts": "2026-11-07T17:18:51.950062Z",
       "node": "narrator",
       "status": "completed",
       "payload": {
-        "narration": "Published flow numbers from this gauge can be trusted. Recent field measurements track within 1.2% of the rating curve, well within the site's normal scatter of 4.0%. Field crews last visited the river 23 days ago, and there are no active control issues or unaccounted shifts affecting the readings. You can continue relying on these published flows for your regular operations and planning. Trust score 95/100 (Trusted).",
+        "narration": "This gauge can be trusted. Published flows are tracking well within normal ranges, with recent field checks running only 1.2% above the rating curve, safely below the river's typical 4.0% scatter. We are confident the data is reliable, as the site is actively maintained with six field visits over the past year and the most recent taken just 23 days ago. Continue using these flow numbers for routine operations and planning. Trust score 95/100 (Trusted).",
         "final": null,
         "model": "vertex:gemini-3.8-flash",
-        "input_tokens": 886,
-        "output_tokens": 107,
-        "seconds": 6.33
+        "input_tokens": 844,
+        "output_tokens": 116,
+        "seconds": 7.87
       }
     },
     {
-      "run_id": "03463300-20261107T164417818344Z-fcc14d",
+      "run_id": "03463300-20261107T171843687288Z-89dcae",
       "site": "03463300",
       "seq": 5,
-      "ts": "2026-11-07T16:44:24.367130Z",
+      "ts": "2026-11-07T17:18:51.956327Z",
       "node": "run",
       "status": "completed",
       "payload": {
-        "narration": "Published flow numbers from this gauge can be trusted. Recent field measurements track within 1.2% of the rating curve, well within the site's normal scatter of 4.0%. Field crews last visited the river 23 days ago, and there are no active control issues or unaccounted shifts affecting the readings. You can continue relying on these published flows for your regular operations and planning. Trust score 95/100 (Trusted).",
+        "narration": "This gauge can be trusted. Published flows are tracking well within normal ranges, with recent field checks running only 1.2% above the rating curve, safely below the river's typical 4.0% scatter. We are confident the data is reliable, as the site is actively maintained with six field visits over the past year and the most recent taken just 23 days ago. Continue using these flow numbers for routine operations and planning. Trust score 95/100 (Trusted).",
         "final": null,
-        "input_tokens": 886,
-        "output_tokens": 107,
+        "input_tokens": 844,
+        "output_tokens": 116,
         "llm_calls": 1,
         "fallbacks_used": 0,
-        "wall_seconds": 6.55
+        "wall_seconds": 8.27
       }
     }
   ]

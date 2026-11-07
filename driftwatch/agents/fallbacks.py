@@ -226,19 +226,10 @@ def narrate(facts: dict[str, Any], final: dict[str, Any] | None) -> Narration:
     name = t.get("site_name") or t["site"]
     score = f"Trust score {t['score']:.0f}/100 ({t['band']})."
     if final is None:
-        med0 = t["recent_median_residual_pct"]
-        watch = abs(med0) > t["normal_scatter_pct"]
         return Narration(
             text=f"{name}: no lasting shift since the storm; recent field measurements average "
-            f"{med0:+.0f} % from the rating"
-            + (
-                f", a little outside this gauge's normal {t['normal_scatter_pct']:.0f} % scatter, "
-                "so it is worth watching. Use published flows, and check the next field "
-                f"measurement. {score}"
-                if watch
-                else f", so published flows can be used as is. No action beyond the regular "
-                f"visit schedule. {score}"
-            )
+            f"{t['recent_median_residual_pct']:+.0f} % from the rating, so published flows can be "
+            f"used as is. No action beyond the regular visit schedule. {score}"
         )
     med = t["recent_median_residual_pct"]
     hi_lo = "too high" if med < 0 else "too low"

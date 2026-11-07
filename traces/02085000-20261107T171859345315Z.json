@@ -1,23 +1,23 @@
 {
-  "run_id": "02085000-20261107T164430906292Z-499f7f",
+  "run_id": "02085000-20261107T171859345315Z-8d23bf",
   "site": "02085000",
   "llm": "gemini",
-  "started_at": "2026-11-07T16:44:30.906292+00:00",
+  "started_at": "2026-11-07T17:18:59.345315+00:00",
   "final": {
-    "narration": "This gauge is worth watching. Recent field measurements show river flow running about 11% lower than the published rating predicts, which sits outside the site's normal 8% scatter. Because data quality and visit frequency remain solid, no specific malfunction or rating shift has been identified, and the record remains generally dependable. Continue using the published flow data for regular operations, but keep an eye on the next routine field inspection to see if this modest difference persists. Trust score 91/100 (Trusted).",
+    "narration": "This gauge can be trusted. Published flows are tracking actual river conditions well, running about 11% higher than recent field checks, which is only slightly above the site's normal 8% scatter. We are confident the gauge is operating reliably, with no control problems and frequent field checks over the past year, including one just 22 days ago. Continue relying on the published data for daily utility operations. Trust score 91/100 (Trusted).",
     "final": null,
-    "input_tokens": 885,
-    "output_tokens": 118,
+    "input_tokens": 843,
+    "output_tokens": 110,
     "llm_calls": 1,
     "fallbacks_used": 0,
-    "wall_seconds": 9.51
+    "wall_seconds": 9.03
   },
   "events": [
     {
-      "run_id": "02085000-20261107T164430906292Z-499f7f",
+      "run_id": "02085000-20261107T171859345315Z-8d23bf",
       "site": "02085000",
       "seq": 0,
-      "ts": "2026-11-07T16:44:30.906559Z",
+      "ts": "2026-11-07T17:18:59.345487Z",
       "node": "run",
       "status": "started",
       "payload": {
@@ -25,19 +25,19 @@
       }
     },
     {
-      "run_id": "02085000-20261107T164430906292Z-499f7f",
+      "run_id": "02085000-20261107T171859345315Z-8d23bf",
       "site": "02085000",
       "seq": 1,
-      "ts": "2026-11-07T16:44:30.950318Z",
+      "ts": "2026-11-07T17:18:59.372138Z",
       "node": "triage",
       "status": "started",
       "payload": {}
     },
     {
-      "run_id": "02085000-20261107T164430906292Z-499f7f",
+      "run_id": "02085000-20261107T171859345315Z-8d23bf",
       "site": "02085000",
       "seq": 2,
-      "ts": "2026-11-07T16:44:31.258824Z",
+      "ts": "2026-11-07T17:18:59.638107Z",
       "node": "triage",
       "status": "completed",
       "payload": {
@@ -97,45 +97,45 @@
       }
     },
     {
-      "run_id": "02085000-20261107T164430906292Z-499f7f",
+      "run_id": "02085000-20261107T171859345315Z-8d23bf",
       "site": "02085000",
       "seq": 3,
-      "ts": "2026-11-07T16:44:31.266465Z",
+      "ts": "2026-11-07T17:18:59.644193Z",
       "node": "narrator",
       "status": "started",
       "payload": {}
     },
     {
-      "run_id": "02085000-20261107T164430906292Z-499f7f",
+      "run_id": "02085000-20261107T171859345315Z-8d23bf",
       "site": "02085000",
       "seq": 4,
-      "ts": "2026-11-07T16:44:40.406401Z",
+      "ts": "2026-11-07T17:19:08.370498Z",
       "node": "narrator",
       "status": "completed",
       "payload": {
-        "narration": "This gauge is worth watching. Recent field measurements show river flow running about 11% lower than the published rating predicts, which sits outside the site's normal 8% scatter. Because data quality and visit frequency remain solid, no specific malfunction or rating shift has been identified, and the record remains generally dependable. Continue using the published flow data for regular operations, but keep an eye on the next routine field inspection to see if this modest difference persists. Trust score 91/100 (Trusted).",
+        "narration": "This gauge can be trusted. Published flows are tracking actual river conditions well, running about 11% higher than recent field checks, which is only slightly above the site's normal 8% scatter. We are confident the gauge is operating reliably, with no control problems and frequent field checks over the past year, including one just 22 days ago. Continue relying on the published data for daily utility operations. Trust score 91/100 (Trusted).",
         "final": null,
         "model": "vertex:gemini-3.8-flash",
-        "input_tokens": 885,
-        "output_tokens": 118,
-        "seconds": 9.13
+        "input_tokens": 843,
+        "output_tokens": 110,
+        "seconds": 8.72
       }
     },
     {
-      "run_id": "02085000-20261107T164430906292Z-499f7f",
+      "run_id": "02085000-20261107T171859345315Z-8d23bf",
       "site": "02085000",
       "seq": 5,
-      "ts": "2026-11-07T16:44:40.418255Z",
+      "ts": "2026-11-07T17:19:08.377893Z",
       "node": "run",
       "status": "completed",
       "payload": {
-        "narration": "This gauge is worth watching. Recent field measurements show river flow running about 11% lower than the published rating predicts, which sits outside the site's normal 8% scatter. Because data quality and visit frequency remain solid, no specific malfunction or rating shift has been identified, and the record remains generally dependable. Continue using the published flow data for regular operations, but keep an eye on the next routine field inspection to see if this modest difference persists. Trust score 91/100 (Trusted).",
+        "narration": "This gauge can be trusted. Published flows are tracking actual river conditions well, running about 11% higher than recent field checks, which is only slightly above the site's normal 8% scatter. We are confident the gauge is operating reliably, with no control problems and frequent field checks over the past year, including one just 22 days ago. Continue relying on the published data for daily utility operations. Trust score 91/100 (Trusted).",
         "final": null,
-        "input_tokens": 885,
-        "output_tokens": 118,
+        "input_tokens": 843,
+        "output_tokens": 110,
         "llm_calls": 1,
         "fallbacks_used": 0,
-        "wall_seconds": 9.51
+        "wall_seconds": 9.03
       }
     }
   ]

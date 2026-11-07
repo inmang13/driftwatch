@@ -1,23 +1,23 @@
 {
-  "run_id": "03451000-20261107T164400667114Z-1acd5d",
+  "run_id": "03451000-20261107T171828615671Z-b5bd2d",
   "site": "03451000",
   "llm": "gemini",
-  "started_at": "2026-11-07T16:44:00.667114+00:00",
+  "started_at": "2026-11-07T17:18:28.615671+00:00",
   "final": {
-    "narration": "Published flows appear to be running about 7% too low across recent field checks. Because this exceeds the gauge's normal scatter of 4.8%, it is worth watching rather than assuming nothing is wrong. Routine site visits show no structural problems or shifts in the riverbed, so the station remains dependable overall. Continue using the published data for regular operations, but review the next field measurement to see if this slight drift persists. Trust score 94/100 (Trusted).",
+    "narration": "This gauge can be trusted for normal operations. Published flows are tracking well, running about 7% higher than the rating predicts, which is close to the site's normal 4.8% scatter. Field checks are regular and current, with the last visit 36 days ago, giving high confidence that the rating remains sound. Continue using the published flows for day-to-day operations. Trust score 94/100 (Trusted).",
     "final": null,
-    "input_tokens": 885,
-    "output_tokens": 113,
+    "input_tokens": 843,
+    "output_tokens": 107,
     "llm_calls": 1,
     "fallbacks_used": 0,
-    "wall_seconds": 17.15
+    "wall_seconds": 15.07
   },
   "events": [
     {
-      "run_id": "03451000-20261107T164400667114Z-1acd5d",
+      "run_id": "03451000-20261107T171828615671Z-b5bd2d",
       "site": "03451000",
       "seq": 0,
-      "ts": "2026-11-07T16:44:00.667311Z",
+      "ts": "2026-11-07T17:18:28.615780Z",
       "node": "run",
       "status": "started",
       "payload": {
@@ -25,19 +25,19 @@
       }
     },
     {
-      "run_id": "03451000-20261107T164400667114Z-1acd5d",
+      "run_id": "03451000-20261107T171828615671Z-b5bd2d",
       "site": "03451000",
       "seq": 1,
-      "ts": "2026-11-07T16:44:00.687129Z",
+      "ts": "2026-11-07T17:18:28.656397Z",
       "node": "triage",
       "status": "started",
       "payload": {}
     },
     {
-      "run_id": "03451000-20261107T164400667114Z-1acd5d",
+      "run_id": "03451000-20261107T171828615671Z-b5bd2d",
       "site": "03451000",
       "seq": 2,
-      "ts": "2026-11-07T16:44:01.045208Z",
+      "ts": "2026-11-07T17:18:29.040063Z",
       "node": "triage",
       "status": "completed",
       "payload": {
@@ -97,45 +97,45 @@
       }
     },
     {
-      "run_id": "03451000-20261107T164400667114Z-1acd5d",
+      "run_id": "03451000-20261107T171828615671Z-b5bd2d",
       "site": "03451000",
       "seq": 3,
-      "ts": "2026-11-07T16:44:01.051204Z",
+      "ts": "2026-11-07T17:18:29.046775Z",
       "node": "narrator",
       "status": "started",
       "payload": {}
     },
     {
-      "run_id": "03451000-20261107T164400667114Z-1acd5d",
+      "run_id": "03451000-20261107T171828615671Z-b5bd2d",
       "site": "03451000",
       "seq": 4,
-      "ts": "2026-11-07T16:44:17.810742Z",
+      "ts": "2026-11-07T17:18:43.676257Z",
       "node": "narrator",
       "status": "completed",
       "payload": {
-        "narration": "Published flows appear to be running about 7% too low across recent field checks. Because this exceeds the gauge's normal scatter of 4.8%, it is worth watching rather than assuming nothing is wrong. Routine site visits show no structural problems or shifts in the riverbed, so the station remains dependable overall. Continue using the published data for regular operations, but review the next field measurement to see if this slight drift persists. Trust score 94/100 (Trusted).",
+        "narration": "This gauge can be trusted for normal operations. Published flows are tracking well, running about 7% higher than the rating predicts, which is close to the site's normal 4.8% scatter. Field checks are regular and current, with the last visit 36 days ago, giving high confidence that the rating remains sound. Continue using the published flows for day-to-day operations. Trust score 94/100 (Trusted).",
         "final": null,
         "model": "vertex:gemini-3.8-flash",
-        "input_tokens": 885,
-        "output_tokens": 113,
-        "seconds": 16.76
+        "input_tokens": 843,
+        "output_tokens": 107,
+        "seconds": 6.86
       }
     },
     {
-      "run_id": "03451000-20261107T164400667114Z-1acd5d",
+      "run_id": "03451000-20261107T171828615671Z-b5bd2d",
       "site": "03451000",
       "seq": 5,
-      "ts": "2026-11-07T16:44:17.815622Z",
+      "ts": "2026-11-07T17:18:43.682963Z",
       "node": "run",
       "status": "completed",
       "payload": {
-        "narration": "Published flows appear to be running about 7% too low across recent field checks. Because this exceeds the gauge's normal scatter of 4.8%, it is worth watching rather than assuming nothing is wrong. Routine site visits show no structural problems or shifts in the riverbed, so the station remains dependable overall. Continue using the published data for regular operations, but review the next field measurement to see if this slight drift persists. Trust score 94/100 (Trusted).",
+        "narration": "This gauge can be trusted for normal operations. Published flows are tracking well, running about 7% higher than the rating predicts, which is close to the site's normal 4.8% scatter. Field checks are regular and current, with the last visit 36 days ago, giving high confidence that the rating remains sound. Continue using the published flows for day-to-day operations. Trust score 94/100 (Trusted).",
         "final": null,
-        "input_tokens": 885,
-        "output_tokens": 113,
+        "input_tokens": 843,
+        "output_tokens": 107,
         "llm_calls": 1,
         "fallbacks_used": 0,
-        "wall_seconds": 17.15
+        "wall_seconds": 15.07
       }
     }
   ]
