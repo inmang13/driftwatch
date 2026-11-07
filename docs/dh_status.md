@@ -1,4 +1,4 @@
-# DH status: DONE (2026-11-07, 14:00)
+# DH status: round 2 DONE (2026-11-07, 14:22); round 1 DONE 14:00
 
 Branch `pi/dh-test`, pushed. It is based on `main` at d30143c (after PR #9). No PR is open; Grace merges.
 Built in a separate worktree (`/srv/arx/work/dw-dh`), so the shared checkout at `/srv/arx/work/driftwatch` (on `pi/m1`) was not touched.
@@ -14,6 +14,13 @@ Built in a separate worktree (`/srv/arx/work/dw-dh`), so the shared checkout at 
 - `make test`: 113 passed (96 before; 17 new).
 - `make demo`: green offline. The fallback verdicts are the same as on `main`.
 - Results: docs/dh_results.md. Decisions: docs/decision_log.md, entries "dh 1" to "dh 4".
+
+## Round 2
+- Magnitude gate max(10, 1.5 × reference MdAPE), applied to both series; failing change points are merged.
+- Auto reference = the most recent stable period ending at least 8 measurements before the latest one. The ≥ 15 measurements over ≥ 2 years floor is kept; that was a judgment call. The holdout is recorded in the Report.
+- Eno null rerun at 20 / 40 / 80 visits: 18 / 40 / 56 % without the gate, 2 / 8 / 12 % with it.
+- `make test` 117 passed; `make demo` green.
+- **Open for Grace:** the auto rule turns Swannanoa, Watauga and Eno Stale, because it falls back to decades-old windows (docs/dh_results.md, Surprise 1). A suggested fix is in that doc but not built.
 
 ## Files touched
 `driftwatch/modules/rating_curve/{segmentation,report,pairing}.py`, `driftwatch/core/schemas.py` (fields added only), `tests/test_segmentation.py`, `tests/test_report.py`, `docs/decision_log.md` (appended), `docs/dh_results.md`, `docs/dh_status.md`. Nothing under `driftwatch/agents/` or `driftwatch/api/`.
