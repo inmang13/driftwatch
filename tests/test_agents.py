@@ -180,3 +180,19 @@ def test_wrong_sign_mismatch_label_is_relabelled(monkeypatch, tmp_path):
     assert first["objection"] == "other"  # datum_change fits either sign
     guards = [e.payload.get("guard") for e in replay(out["trace_path"]) if e.node == "skeptic"]
     assert any(g and "relabelled" in g for g in guards)
+
+
+def test_queue_receives_the_same_events_as_the_trace(tmp_path):
+    import asyncio
+
+    async def go():
+        q = asyncio.Queue()
+        out = await graph.run_agents(SWANNANOA, "fallback", q, tmp_path)
+        got = []
+        while not q.empty():
+            got.append(q.get_nowait())
+        return out, got
+
+    out, got = asyncio.run(go())
+    assert got == list(replay(out["trace_path"]))
+    assert [e.seq for e in got] == list(range(len(got)))

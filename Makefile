@@ -31,7 +31,7 @@ report:
 
 # LLM empty -> the CLI reads LLM from .env / the shell. make run SITE=03455000 LLM=fallback
 run:
-	$(PY) -m driftwatch.cli run --site $(SITE) --llm "$(LLM)"
+	$(PY) -m driftwatch.cli run --site $(SITE) --llm=$(LLM)
 
 serve:
 	@echo not yet: make serve
@@ -42,9 +42,10 @@ test:
 evals:
 	@echo not yet: make evals
 
-# Demo must pass offline: the agent runs are pinned to the deterministic fallback.
+# Demo must pass offline: agent runs pinned to the fallback; traces go to traces/demo (gitignored)
+# so they never shadow the committed Gemini traces that Replay uses.
 demo:
 	$(PY) -m driftwatch.cli report --site 03459500 --source snapshot
 	$(PY) -m driftwatch.cli report --site 03451000 --source snapshot
-	$(PY) -m driftwatch.cli run --site 03459500 --llm fallback
-	$(PY) -m driftwatch.cli run --site 03451000 --llm fallback
+	$(PY) -m driftwatch.cli run --site 03459500 --llm fallback --trace-dir traces/demo
+	$(PY) -m driftwatch.cli run --site 03451000 --llm fallback --trace-dir traces/demo

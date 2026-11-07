@@ -21,3 +21,4 @@ venv/
 logs/
 reports/*.tmp
 traces/*.tmp
+traces/demo/

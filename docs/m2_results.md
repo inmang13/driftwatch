@@ -17,8 +17,8 @@ first, because the scour note contradicts the sign. The skeptic then objects on 
 evidence and the ranker switches to fill. That run is deterministic.
 
 The options for the video and demo:
-1. **Replay the fallback Hepco trace** for the skeptic moment. It is honest, since it is a real
-   run, but it shows the rules and not Gemini.
+1. **Replay the fallback Hepco trace** (`traces/fallback/03459500-*.json`) for the skeptic
+   moment. It is honest, since it is a real run, but it shows the rules and not Gemini.
 2. **Pitch Hepco as "the AI didn't fall for the scour note"**: Gemini rules out scour and the
    skeptic confirms with the channel numbers. No objection is shown.
 3. Make the skeptic tougher in `driftwatch/agents/prompts/skeptic.md`. I would not do this just to
@@ -27,10 +27,14 @@ The options for the video and demo:
 My recommendation: **option 2 for the live run, with option 1 as the replay for the "skeptic"
 beat.** In the voice-over, say which one is which.
 
+**This also affects an eval case.** The planned M5 eval "Hepco → skeptic objects" (playbook C6,
+plan §6) will fail in the Gemini column. Decide whether it becomes a fallback-only check or changes
+to "final cause is not scour", which passes in both columns.
+
 How I got here: on the first Gemini pass the ranker prompt quoted Hepco's exact case ("a scour
 note with a negative residual does not support scour"), and the ranker could also see the channel
 numbers. I removed both, so the channel check now belongs to the skeptic, as it does in the
-fallback. Gemini still picks fill. The result holds without the hint.
+fallback. Gemini still picks fill. That is one run at temperature 0, so it is not proof that it always will.
 
 ## Gemini run, per gauge
 
@@ -51,7 +55,7 @@ the M1 engine.
 | 02085000 | Eno at Hillsborough | Trusted (91) | none | — | — | 885 + 118 | 9.5 s |
 
 All 8 together: about 27,000 input and 3,300 output tokens, a little under 3 minutes end to end.
-Gemini latency swings a lot: the same ranker call took 11 s on one run and 71 s on another.
+Gemini latency swings a lot: Mills' ranker call took 71 s on one pass and 15 s on the next.
 
 **What the skeptic said** (it accepted every time):
 - **Hepco:** fill fits the negative sign. Speed fell 22 % while area changed only 11 %, which is

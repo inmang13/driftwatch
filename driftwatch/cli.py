@@ -52,6 +52,14 @@ async def _run_sites(sites, llm_mode, trace_dir) -> None:
         )
         print(out["narration"])
         print(f"trace: {out['trace_path']}")
+        if t["fallbacks_used"]:
+            errs = [u.get("llm_error") or u.get("rejected") for u in out.get("usage", [])]
+            first = next((e for e in errs if e), "")
+            print(
+                f"WARNING {site}: {t['fallbacks_used']} node(s) fell back to the rules; "
+                f"first reason: {first}",
+                file=sys.stderr,
+            )
     return 0
 
 
