@@ -35,7 +35,7 @@ from driftwatch.agents import trace as tr
 from driftwatch.agents.fallbacks import cause_status, confidence_word
 from driftwatch.modules.rating_curve import causes, pairing, rating
 from driftwatch.modules.rating_curve import report as rc_report
-from driftwatch.modules.rating_curve.usgs import SITES
+from driftwatch.modules.rating_curve.usgs import SITES, SNAPSHOT_DIR, load_snapshot
 from driftwatch.modules.registry import load_registry
 
 load_dotenv()  # LLM / credentials from .env; never overrides the shell
@@ -237,6 +237,14 @@ def _report_payload(site: str) -> dict[str, Any]:
             curve.append({"stage_ft": h, "discharge_cfs": float(rating.predict_q(rel, h))})
     inputs = rc_report.trust_inputs(ds, rel, rep.drift, ds.fetched_at)
     recent = list(inputs.recent_residual_pct)
+    channel = None
+    if split is not None:
+        from driftwatch.agents.tools import channel_geometry_trend  # same numbers the agents see
+
+        geo = channel_geometry_trend(site, split)
+        if geo.get("sufficient"):
+            channel = {k: geo[k] for k in ("area_change_pct", "velocity_change_pct", "at_stage_ft",
+                                           "n_before", "n_after")}
     return _clean(
         {
             "report": json.loads(rep.model_dump_json()),
@@ -250,6 +258,8 @@ def _report_payload(site: str) -> dict[str, Any]:
             "points": points,
             "curve": curve,
             "top_shift": json.loads(top.model_dump_json()) if top else None,
+            # cross-sectional area and water speed at the same stage, before vs after the change
+            "channel": channel,
             "helene": HELENE,
             "split_time": split.isoformat() if split else None,
         }
@@ -275,14 +285,43 @@ def gauges() -> list[dict[str, Any]]:
                 "band": rep.trust.band,
                 "score": rep.trust.score,
                 "replay": _trace_info(site),
+                **_location(site),
             }
         )
     return out
 
 
+@cache
+def _location(site: str) -> dict[str, Any]:
+    """Map position and drainage area from the snapshot's monitoring-locations record."""
+    snap = load_snapshot(site)
+    feats = snap.get("collections", {}).get("monitoring-locations") or [{}]
+    geo = (feats[0].get("geometry") or {}).get("coordinates") or [None, None]
+    area = feats[0].get("properties", {}).get("drainage_area")
+    return {"lon": geo[0], "lat": geo[1], "drainage_area_mi2": area}
+
+
 @app.get("/report/{site}")
 def report(site: str) -> dict[str, Any]:
     return _report_payload(_check_site(site))
+
+
+@cache
+def _map_layers(site: str) -> dict[str, Any] | None:
+    """Basin and main-stem flowlines snapshotted from USGS NLDI by scripts/fetch_nldi.py."""
+    path = SNAPSHOT_DIR / "nldi" / f"{site}.json"
+    if not path.exists():
+        return None
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    return {k: doc.get(k) for k in ("site", "basin", "upstream", "downstream", "upstream_km", "downstream_km")}
+
+
+@app.get("/map/{site}")
+def map_layers(site: str) -> dict[str, Any]:
+    layers = _map_layers(_check_site(site))
+    if layers is None:
+        raise HTTPException(404, f"no map layers for {site}; run: python scripts/fetch_nldi.py {site}")
+    return layers
 
 
 @app.get("/trace/{trace_id}")

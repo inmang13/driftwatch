@@ -13,7 +13,7 @@ SOURCE ?= snapshot
 SITE ?= 03459500
 LLM ?=
 
-.PHONY: install snapshot report run serve test evals demo
+.PHONY: install snapshot nldi basemap report run serve test evals demo
 
 $(PY):
 	$(PYTHON) -m venv .venv
@@ -25,6 +25,14 @@ install: $(PY)
 # Site list lives in driftwatch/modules/rating_curve/usgs.py (SITES). Refuses unless SOURCE=live (the fetcher enforces it): make snapshot SOURCE=live
 snapshot:
 	$(PY) -m driftwatch.modules.rating_curve.usgs --source $(SOURCE)
+
+# map layers (basin + main-stem rivers) from USGS NLDI; network, run only on request
+nldi:
+	$(PY) scripts/fetch_nldi.py
+
+# offline basemap tiles (USGS The National Map topo); network, run only on request
+basemap:
+	$(PY) scripts/fetch_basemap.py
 
 report:
 	$(PY) -m driftwatch.cli report --site $(SITE) --source $(SOURCE)
