@@ -1,5 +1,7 @@
 """M2 agent team, LLM=fallback, offline."""
 
+import re
+
 import pytest
 
 from driftwatch.agents import fallbacks, graph, llm, narration, tools
@@ -16,6 +18,7 @@ from driftwatch.agents.trace import TraceRecorder, load_trace, replay
 from driftwatch.modules.rating_curve import causes
 
 HEPCO, NEWPORT, ASHEVILLE, SWANNANOA = "03459500", "03455000", "03451500", "03451000"
+MILLS = "03446000"
 
 
 @pytest.fixture(scope="module")
@@ -446,9 +449,13 @@ def test_narration_rules_hold_for_the_fallback(runs, site):
     r = runs[site]
     text, nf = r["narration"], _nf(r)
     assert text.startswith(narration.Q_SENTENCE)  # (1) opens on Q = V x A
-    assert "Q = V × A" in text and "water speed times cross-sectional area" in text
+    assert "Q = V × A" in text and "water velocity times cross-sectional area" in text
+    assert "same flow" not in text and "speed" not in text
     assert nf["note"] and nf["note"]["meaning"] in text  # (2) the fixed note meaning, verbatim
-    assert "Area changed" in text and "so flow at the same level changed about" in text  # (3)
+    assert "After the change, at that stage, area" in text  # (3)
+    assert re.search(r"[+\u2212-]\d+ %", text) is None  # directions in words, no signed numbers
+    assert f"at a stage of {nf['at_stage_ft']:.2f} ft" in text  # ... named in the level sentence
+    assert re.search(r"so the flow rate there (rose|fell) about \d+ %", text)
     # (4) Helene only when it falls between the last visit and the change visit
     assert nf["helene"] is (site != ASHEVILLE)
     assert ("Hurricane Helene (2024-09-27) passed between" in text) is nf["helene"]
@@ -465,19 +472,20 @@ def test_newport_facts_and_sentences(runs):
     nf, text = _nf(r), r["narration"]
     assert nf["change_date"] == "2024-10-28"
     assert nf["level_change_ft"] == 0.71 and nf["level_word"] == "higher"
-    assert "0.71 ft higher for the same flow" in text
+    assert "For a given flow rate, the river stands 0.71 ft higher than the curve" in text
     assert nf["at_stage_ft"] == 2.7  # channel_geometry_trend's at_stage_ft
     assert nf["flow_change_pct"] == -42 and nf["flow_change_cfs"] < 0
     # (1 + 0.252) x (1 - 0.583) - 1 = -47.8 %: same sign, 5.6 points from -42.2 -> agrees
     assert nf["check_pct"] == pytest.approx(-47.8, abs=0.2) and nf["check_agrees"] is True
-    assert "Area changed +25 % and speed -58 %" in text
-    assert "which agrees with the -42 % change" in text
+    assert "at that stage, area rose 25 % and velocity fell 58 %" in text
+    assert "so the flow rate there fell about 48 %" in text
+    assert "which agrees with the 42 % drop in measured flow rate" in text
     assert nf["note"]["note"] == "Fill control changed" and nf["note"]["agrees_with_data"]
     assert "disagrees with the data" not in text
     assert nf["helene"] is True  # 2024-08-19 < 2024-09-27 < 2024-10-28 (the change visit)
     assert (
         "Hurricane Helene (2024-09-27) passed between the 2024-08-19 and 2024-10-28 visits; the "
-        "only gaugings during the storm were rated Poor, the largest 91,700 cfs on 2024-09-28."
+        "storm gaugings were rated Poor, the largest 91,700 cfs on 2024-09-28."
     ) in text
     assert "DriftWatch's agents" in text
 
@@ -487,8 +495,9 @@ def test_hepco_note_disagrees_and_no_measured_flood(runs):
     nf, text = _nf(r), r["narration"]
     assert nf["note"]["note"] == "Scour control changed"
     assert nf["note"]["agrees_with_data"] is False and "That disagrees with the data." in text
-    assert "0.33 ft higher for the same flow" in text
-    assert nf["check_agrees"] is True and "which agrees with the -26 % change" in text
+    assert "0.33 ft higher than the curve predicts" in text
+    assert nf["check_agrees"] is True and "which agrees with the 26 % drop" in text
+    assert "area fell 11 % and velocity fell 22 %" in text
     assert (
         "Hurricane Helene (2024-09-27) passed between the 2024-08-22 and 2024-12-17 visits; no "
         "gauging was made during the storm."
@@ -499,9 +508,10 @@ def test_hepco_note_disagrees_and_no_measured_flood(runs):
 def test_asheville_check_does_not_back_up_and_conclusion_stays_open(runs):
     r = runs[ASHEVILLE]
     nf, text = _nf(r), r["narration"]
-    assert nf["level_word"] == "lower" and "0.27 ft lower for the same flow" in text
+    assert nf["level_word"] == "lower" and "0.27 ft lower than the curve predicts" in text
     # (1.077)(1.017) - 1 = +9.5 % vs a +46.2 % step: 37 points apart -> does not back up
-    assert nf["check_agrees"] is False and "which does not back up the +46 % change" in text
+    assert nf["check_agrees"] is False and "which does not back up the 46 % rise" in text
+    assert "area rose 8 % and velocity rose 2 %" in text
     assert "That disagrees with the data." in text  # Debris raises the level; data sit above
     assert "no measured high flow explains it" in text
     # open cause: outside the labelled note sentences, no mechanism word
@@ -545,7 +555,11 @@ BAD_SAMPLES = [
     "The team found fill." + END,
     "The amount of water fell." + END,
     "**Finding:** drift." + END,
-    "The river rose 0.33ft for the same flow." + END,
+    "The river rose 0.33ft for a given flow rate." + END,
+    "The river stands higher for the same flow." + END,
+    "Water speed fell." + END,
+    "Area changed -11 % at the gauge." + END,
+    "Flow rose by +440 cfs." + END,
 ]
 
 
@@ -559,7 +573,7 @@ def test_banned_pattern_check_passes_fallbacks_and_rejects_bad_samples(runs):
     bad = runs[HEPCO]["narration"].replace("; a rating curve", " — and, importantly, a curve")
     assert narration.check_text(bad, nf, "disagreement")
     # a moral after the rating sentence is rejected too
-    moral = runs[HEPCO]["narration"] + " Rivers deserve care."
+    moral = runs[HEPCO]["narration"] + " Care."
     assert "must end with" in narration.check_text(moral, nf, "disagreement")
 
 
@@ -616,11 +630,11 @@ def test_cached_lead_reaches_narration_and_trace(monkeypatch, tmp_path):
 
     url = "https://example.org/pigeon-river-bridge"
     doc = {
-        "site": HEPCO,
+        "site": MILLS,
         "items": [
             {
                 "kind": "construction",
-                "claim": "NCDOT replaced a bridge over the Pigeon River in Haywood County.",
+                "claim": "NCDOT replaced a bridge over the Mills River in Henderson County.",
                 "date": "2024-11",
                 "url": url,
                 "source_title": "NCDOT project page",
@@ -629,15 +643,16 @@ def test_cached_lead_reaches_narration_and_trace(monkeypatch, tmp_path):
             {"kind": "other", "claim": "No URL here.", "url": None, "source_title": "x"},
         ],
     }
-    (tmp_path / f"{HEPCO}.json").write_text(json.dumps(doc), encoding="utf-8")
+    (tmp_path / f"{MILLS}.json").write_text(json.dumps(doc), encoding="utf-8")
     monkeypatch.setattr(context, "CONTEXT_DIR", tmp_path)
-    assert len(context.load(HEPCO)["items"]) == 1  # items without a URL are dropped
-    out = graph.run_sync(HEPCO, "fallback", tmp_path / "tr")
+    assert len(context.load(MILLS)["items"]) == 1  # items without a URL are dropped
+    # Mills: the three Stale narrations run ~195 words, so the template drops a lead there
+    out = graph.run_sync(MILLS, "fallback", tmp_path / "tr")
     text = out["narration"]
     assert "Possible lead: NCDOT replaced a bridge" in text and "(NCDOT project page)." in text
     assert narration.word_count(text) <= narration.MAX_WORDS
     nf = narration.narration_facts(out["facts"], out["facts"]["event_context"]["items"])
-    assert narration.check_text(text, nf, "disagreement") is None
+    assert narration.check_text(text, nf, fallbacks.narration_status(out["final"])) is None
     ev = [e for e in replay(out["trace_path"]) if e.node == "evidence_collector"]
     assert any(url in json.dumps(e.payload) for e in ev)
 

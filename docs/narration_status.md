@@ -99,26 +99,24 @@ its evidence step still lists them. The current Hepco trace (below) was recorded
 
 ## LLM=gemini narrations (Replay defaults)
 
-`traces/replay_defaults.json` points at these runs. The Newport and Hepco runs below were redone
-after the Helene rule change, and Asheville is unchanged. All three texts are Gemini 3.8 Flash
-narrations (none fell back to the template), read from each trace's narrator payload.
+`traces/replay_defaults.json` points at these runs from 22:06, made after the wording change
+(flow rate and velocity; no "same flow"; directions in words). All three have the Skeptic on
+`openrouter:openai/gpt-5.4-mini`, checked in each trace's skeptic events. All three narrations
+are Gemini 3.8 Flash's text; none fell back to the template.
+- Newport: passed on the first attempt.
+- Hepco: see "Hepco: needs Grace's call" below. The Hepco text in this section is the 22:06 run,
+  which is not the Replay default. Its first attempt was rejected ("the first sentence must
+  state Q = V × A") and the retry passed.
+- Asheville: the first attempt was rejected ("224 words > 200"); the retry passed.
 
-**The Skeptic did not run on OpenRouter for Newport and Hepco.** OpenRouter returned 402 ("can
-only afford 1970 tokens"), so the Skeptic used the deterministic rules in both runs. The ranker
-and narrator were still Gemini. Asheville's run (earlier) had the OpenRouter Skeptic.
+**French Broad River near Newport (03455000-20261108T030614225662Z.json):**
+Flow rate equals water velocity times cross-sectional area (Q = V × A); a rating curve assumes this holds at every stage. Since the 2024-10-28 visit, measurements at the French Broad River near Newport, USGS 03455000, sit 46 % below the rating, so published flows run that much too high. For a given flow rate, the river stands 0.71 ft higher than the curve predicts; at a stage of 2.70 ft it carries about 1,350 cfs (42 %) less than the curve's 3,210 cfs. The hydrographer noted "Fill control changed" on 2024-10-28. In the note's terms, gravel built up on the control (the riffle just downstream that sets the water level), so water backs up at the gauge: deeper, more area, much lower velocity. After the change, at that stage, area rose 25 % and velocity fell 58 %, so the flow rate there fell about 48 %, which agrees with the 42 % drop in measured flow rate. Hurricane Helene (2024-09-27) passed between the 2024-08-19 and 2024-10-28 visits; the storm gaugings were rated Poor, the largest 91,700 cfs on 2024-09-28. DriftWatch's agents rank fill / aggradation first (83 %); the Skeptic accepted it. Double-check: Survey the control and apply a negative shift. Rating confidence 30/100 (Stale).
 
-- Newport: the first narration attempt was rejected ("222 words > 200"); the retry passed.
-- Hepco: the first narration attempt was rejected ("212 words > 200"); the retry passed.
-- Asheville: passed on the first attempt.
+**Pigeon River near Hepco (03459500-20261108T030614224292Z.json):**
+Flow rate equals water velocity times cross-sectional area (Q = V × A); the curve assumes this holds at each stage. Since the 2024-12-17 visit, measurements at the Pigeon River near Hepco, USGS 03459500, sit 33 % below the rating, so published flows run too high. For a given flow rate, the river stands 0.33 ft higher than the curve predicts; at 2.33 ft stage it carries 150 cfs (26 %) less than the curve's 570 cfs. The hydrographer noted "Scour control changed" on 2024-12-17. In the note's terms, the control (the riffle just downstream that sets the water level) eroded, so a given flow rate passes at a lower water level. That disagrees with the data. After the change, at that stage, area fell 11 % and velocity fell 22 %, so the flow rate there fell about 31 %, which agrees with the 26 % drop in measured flow rate. Hurricane Helene (2024-09-27) passed between the 2024-08-22 and 2024-12-17 visits; no gauging was made during the storm. No field note confirms what changed, so the cause remains open. Double-check: Measure flow and run levels from the reference marks to the gauge before adjusting the rating. Rating confidence 24/100 (Stale).
 
-**French Broad River near Newport (03455000-20261108T022812744607Z.json):**
-Flow equals water speed times cross-sectional area (Q = V × A), assumed at each level. Since 2024-10-28, measurements at the French Broad River near Newport, USGS 03455000, sit 46 % below the rating, standing 0.71 ft higher for the same flow: at 2.70 ft it carries 1,350 cfs (42 %) below 3,210 cfs. The hydrographer noted "Fill control changed" on 2024-10-28. In the note's terms, gravel built up on the control (the riffle just downstream that sets the water level), so water backs up at the gauge: deeper, more area, much slower. Area changed +25 % and speed -58 %, so flow at the same level changed about -48 %, which agrees with the -42 % change. Hurricane Helene (2024-09-27) passed between the 2024-08-19 and 2024-10-28 visits; the only gaugings during the storm were rated Poor, the largest 91,700 cfs on 2024-09-28. Possible lead: A USGS water-supply paper documented hydrologic streamflow records for streamgage 03455000 on the French Broad River in Cocke County (Surface water supply of the United States, 1960, Part 3-B, Cumberland and). DriftWatch's agents rank fill first (82 %); the Skeptic agreed. Double-check: Survey the control and shift negatively until measurements agree. Rating confidence 30/100 (Stale).
-
-**Pigeon River near Hepco (03459500-20261108T022812744003Z.json):**
-Flow equals water speed times cross-sectional area (Q = V × A), which the curve assumes holds at each stage. Since the 2024-12-17 visit, measurements at the Pigeon River near Hepco, USGS 03459500, sat 33 % below the rating. The river stands 0.33 ft higher for the same flow, carrying 150 cfs (26 %) less at 2.33 ft. The hydrographer noted "Scour control changed" on 2024-12-17. In the note's terms, the control (the riffle just downstream that sets the water level) eroded, so the same flow passes at a lower level. That disagrees with the data. Area changed -11 % and speed -22 %, so flow at the same level changed about -31 %, which agrees with the -26 % change. Hurricane Helene (2024-09-27) passed between the 2024-08-22 and 2024-12-17 visits; no gauging was made during the storm. Possible lead: Duke Energy opened floodgates at Walters Dam to release surging Pigeon River waters during Hurricane Helene (Walters hydro plant turns 100: Dam, powerhouse withstood Helene's onslaught). DriftWatch's agents rank fill first (35 %); the Skeptic is under 60 % sure. Double-check: Survey the control for deposited gravel and check the gauge datum against the reference mark. Rating confidence 24/100 (Stale).
-
-**French Broad River at Asheville (03451500-20261108T014651933246Z.json):**
-Flow equals water speed times cross-sectional area (Q = V × A), which the curve assumes holds at each level. Since 2025-07-23, measurements at the French Broad River at Asheville, USGS 03451500, sat 41 % above the rating, so published flows run too low. The river stands 0.27 ft lower for the same flow: at 1.51 ft it carries 440 cfs (46 %) above the curve's 960 cfs. On 2025-07-23, the hydrographer noted "Debris - Light". In the note's terms, debris blocked the control (the riffle just downstream that sets the water level), raising the level until it clears. That disagrees with the data. Area changed +8 % and speed +2 %, so flow at the same level changed about +10 %, which does not back up the +46 % change. Between the 2025-06-03 and 2025-07-23 visits, no measured high flow explains it. Possible lead: Officials updated bridge construction plans across the French Broad River in Buncombe County for the Interstate 26 Connector project (I-26 Connector Plans Take Major Step Forward). No field note confirms what changed, so the cause remains open. Double-check: Measure flow and run levels from reference marks to the gauge before adjusting the rating. Rating confidence 46/100 (Stale).
+**French Broad River at Asheville (03451500-20261108T030614228331Z.json):**
+Flow rate equals water velocity times cross-sectional area (Q = V × A); curves assume this holds at each stage. Since 2025-07-23, measurements at the French Broad River at Asheville, USGS 03451500, sit 41 % above the rating, leaving published flows too low. For a given flow rate, the river stands 0.27 ft lower, carrying 440 cfs (46 %) more at 1.51 ft than the curve's 960 cfs. The hydrographer noted "Debris - Light" on 2025-07-23. In the note's terms, debris blocked the control (the riffle just downstream that sets the water level), raising the level until it clears. That disagrees with the data. After the change, at that stage, area rose 8 % and velocity rose 2 %, so the flow rate there rose about 10 %, which does not back up the 46 % rise in measured flow rate. No measured high flow explains it. Possible lead: Officials updated bridge construction plans across the French Broad River in Buncombe County for the Interstate 26 Connector project (I-26 Connector Plans Take Major Step Forward). No note confirms what changed, so the cause remains open. Double-check: Measure flow and run levels before adjusting the rating. Rating confidence 46/100 (Stale).
 
 ### Worth a look
 - Hepco's ranked cause moves between Gemini runs: datum change (44 %) in the earlier run, fill
@@ -144,3 +142,44 @@ Flow equals water speed times cross-sectional area (Q = V × A), which the curve
   key belongs to. I discarded those two traces. `replay_defaults.json` still points at the
   21:22 runs listed above (Gemini narrator, rules Skeptic, with the Walters Dam lead in Hepco's
   text).
+
+## Update 2026-11-07 22:10: wording (Grace)
+
+- Narration: "speed" became "velocity" and "flow" became "flow rate". "Same flow" is gone. The
+  level sentence now says what is compared ("For a given flow rate, the river stands X ft higher
+  than the curve predicts"), and the check sentence says before vs after ("After the change, at
+  that stage, area rose 8 % and velocity rose 2 %, so the flow rate there rose about 10 %, which
+  does not back up the 46 % rise in measured flow rate"). Directions are in words, never signed
+  numbers.
+- Guard: rejects "speed", "same flow" and signed numbers like "+8 %" or "-22 %".
+- Console (`console.html`, merged with main first):
+  - The "What happened" boxes now read "Change in water level for a given flow rate, vs the
+    curve", "Change in flow rate at X ft, vs the curve", "Change in cross-sectional area at X ft,
+    before vs after" and "Change in water velocity at X ft, before vs after". Values are in
+    words ("up 8 %", "440 cfs more").
+  - The check line reads "Flow rate = area × velocity. At X ft, after the change compared with
+    before, the area rose ...".
+  - I removed the console rule that rewrote "velocity" as "water speed", and changed the hero
+    caption's "same flow" and "speed" too.
+  - Not changed: the Education tab (`static/education.json` still says "speed"/"same flow" in 5
+    places), the triage row ("newest readings -33 % from the curve") and the trust explainer.
+  - I couldn't check the layout in a browser because the Chrome extension didn't respond. The
+    box labels are longer now, so they may wrap.
+- The 200-word cap is tight now. The fallbacks run 194–199 words, so the template drops a
+  "Possible lead" sentence at all three Stale gauges. Gemini can still fit one by tightening.
+  That doesn't matter today, because none of the three has a usable lead.
+
+## Hepco: needs Grace's call (2026-11-07 22:20)
+
+**With the Skeptic back on OpenRouter, Hepco no longer produces a Disagreement.** In both new
+runs (`03459500-20261108T030614224292Z.json` and `03459500-20261108T031518546663Z.json`) the
+Skeptic objected once, then accepted fill on its second pass (74 % and 84 % sure). With no
+Disagreement and no field note backing fill, Hepco's cause status is "open". The narration
+still quotes the Scour note and says it disagrees with the data. `tests/test_api.py` expects
+Hepco's Replay trace to be the Disagreement case, so for now `replay_defaults.json` keeps Hepco
+on the earlier Disagreement run (`03459500-20261108T022812744003Z.json`: rules Skeptic, old
+wording). Newport and Asheville use the new runs. To switch Hepco, point `replay_defaults.json`
+at either new trace and update the Hepco test expectation (`test_trace_by_id_and_by_site`).
+
+Newest Hepco narration (`03459500-20261108T031518546663Z.json`, Skeptic on OpenRouter):
+Flow rate equals water velocity times cross-sectional area (Q = V × A); the curve assumes this holds at each stage. Since the 2024-12-17 visit, measurements at the Pigeon River near Hepco, USGS 03459500, sit 33 % below the rating, so published flows run too high. For a given flow rate, the river stands 0.33 ft higher than the curve predicts; at 2.33 ft it carries about 150 cfs (26 %) less than the curve's 570 cfs. The hydrographer noted "Scour control changed" on 2024-12-17. In the note's terms, the control (the riffle just downstream that sets the water level) eroded, so a given flow rate passes at a lower water level. That disagrees with the data. After the change, at that stage, area fell 11 % and velocity fell 22 %, so the flow rate there fell about 31 %, which agrees with the 26 % drop in measured flow rate. Hurricane Helene (2024-09-27) passed between the 2024-08-22 and 2024-12-17 visits; no gauging was made during the storm. No field note confirms what changed, so the cause remains open. Double-check: Measure flow and run levels from the reference marks to the gauge before adjusting the rating. Rating confidence 24/100 (Stale).

@@ -48,7 +48,7 @@ LABEL = {c.key: c.label for c in catalog.CAUSES} | {"inconclusive": "Inconclusiv
 NEXT_STEP = {
     "scour": "Survey the control and measure flow, then apply a positive shift until a new "
     "rating is built.",
-    "fill": "Survey the control and apply a negative shift until two more measurements agree.",
+    "fill": "Survey the control and apply a negative shift.",
     "debris": "Clear the control on the next visit and measure flow again.",
     "vegetation": "Check the control for growth on the next visit; expect it to fade after "
     "the growing season.",
@@ -249,8 +249,8 @@ NOTE_DISCOUNT = (
 
 # what to check on the next visit, by (what the note says, what the numbers say)
 RECOMMENDED_CHECK = {
-    ("scour", "fill"): "Survey the control for deposited gravel and check the gauge datum "
-    "against the reference mark.",
+    ("scour", "fill"): "Survey the control for gravel and check the datum against the reference "
+    "mark.",
     ("scour", "datum_change"): "Run levels from the reference marks to the gauge to confirm the "
     "datum, and survey the control for scour.",
     ("fill", "scour"): "Survey the control for scour and confirm the gauge datum against the "

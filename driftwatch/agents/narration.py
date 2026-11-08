@@ -23,29 +23,29 @@ from driftwatch.agents import tools
 
 MAX_WORDS = 200
 HELENE_DATE = datetime(2024, 9, 27, tzinfo=UTC)
-AGREE_POINTS = 15.0  # the area x speed check agrees when within this many % points of the step
+AGREE_POINTS = 15.0  # the area x velocity check agrees when within this many % points of the step
 
 Q_SENTENCE = (
-    "Flow equals water speed times cross-sectional area (Q = V × A); a rating curve assumes "
-    "this holds at each water level."
+    "Flow rate equals water velocity times cross-sectional area (Q = V × A); a rating curve "
+    "assumes this holds at every stage."
 )
 
 # Fixed meaning of each field note, keyed by how the note starts (lower case). Each entry: the
 # sentence the narration uses, and the residual sign the note implies (negative = measurements
-# below the rating, i.e. a higher water level for the same flow).
+# below the rating, i.e. a higher water level for a given flow rate).
 NOTE_MEANING: dict[str, tuple[str, str]] = {
     "fill control changed": (
         (
             "In the note's terms, gravel built up on the control (the riffle just downstream "
             "that sets the water level), so water backs up at the gauge: deeper, more area, much "
-            "slower."
+            "lower velocity."
         ),
         "negative",
     ),
     "scour control changed": (
         (
             "In the note's terms, the control (the riffle just downstream that sets the water "
-            "level) eroded, so the same flow passes at a lower level."
+            "level) eroded, so a given flow rate passes at a lower water level."
         ),
         "positive",
     ),
@@ -113,7 +113,7 @@ def narration_facts(facts: dict[str, Any], context: list[dict] | None = None) ->
     curve_cfs              the base rating's flow at at_stage_ft
     flow_change_cfs / _pct curve_cfs x top_shift.size_pct (signed; < 0 = less flow than the curve)
     area_change_pct, velocity_change_pct   evidence only
-    check_pct              ((1 + area%) x (1 + speed%) - 1) x 100
+    check_pct              ((1 + area%) x (1 + velocity%) - 1) x 100
     check_agrees           same sign as the step and within AGREE_POINTS of it
     flood                  largest measured flow between the last visit before and the first after
     helene                 the last visit before the change is before 2024-09-27 and the change
@@ -262,7 +262,7 @@ def helene_event(f: dict[str, Any]) -> str:
         # storm gaugings exist (rated Poor, left out of the drift test): saying "no gauging was
         # made" would contradict the peak, so the clause names them instead
         return (
-            f"{passed}; the only gaugings during the storm were rated {fl['rated']}, the largest "
+            f"{passed}; the storm gaugings were rated {fl['rated']}, the largest "
             f"{_fmt_cfs(fl['discharge_cfs'])} cfs on {fl['date']}."
         )
     return (
@@ -287,6 +287,19 @@ def _pct(x: float) -> str:
     return f"{x:+.0f} %"
 
 
+def moved(x: float) -> str:
+    """A signed % change as words: 'rose 8 %', 'fell 22 %', 'did not change'."""
+    n = round(abs(x))
+    if n == 0:
+        return "did not change"
+    return f"{'rose' if x > 0 else 'fell'} {n} %"
+
+
+def step_noun(x: float) -> str:
+    """'the 46 % rise' / 'the 26 % drop'."""
+    return f"the {round(abs(x))} % {'rise' if x > 0 else 'drop'}"
+
+
 def sentences(
     f: dict[str, Any],
     cause_label: str | None,
@@ -305,19 +318,22 @@ def sentences(
         )
         s["rating"] = f["rating_sentence"]
         return s
-    lead_in = f"Since the {f['change_date']} visit, field" if f["change_date"] else "Field"
+    lead_in = (
+        f"Since the {f['change_date']} visit, measurements" if f["change_date"] else "Measurements"
+    )
     s["measured"] = (
-        f"{lead_in} measurements at {name}, have sat {f['off_by_pct']} % "
+        f"{lead_in} at {name}, sit {f['off_by_pct']} % "
         f"{f['direction_phrase']}, so published flows run that much {f['published_flows']}."
     )
     s["level"] = None
     if f["level_change_ft"] is not None and f["curve_cfs"] is not None:
         less = "less" if f["flow_change_cfs"] < 0 else "more"
         s["level"] = (
-            f"The river now stands {f['level_change_ft']:.2f} ft {f['level_word']} for the same "
-            f"flow: at {f['at_stage_ft']:.2f} ft it carries about "
-            f"{_fmt_cfs(f['flow_change_cfs'])} cfs ({abs(f['flow_change_pct'])} %) {less} than "
-            f"the curve's {_fmt_cfs(f['curve_cfs'])} cfs."
+            f"For a given flow rate, the river stands {f['level_change_ft']:.2f} ft "
+            f"{f['level_word']} than the curve predicts; at a stage of {f['at_stage_ft']:.2f} ft "
+            f"it carries about {_fmt_cfs(f['flow_change_cfs'])} cfs "
+            f"({abs(f['flow_change_pct'])} %) {less} than the curve's "
+            f"{_fmt_cfs(f['curve_cfs'])} cfs."
         )
     n = f["note"]
     s["note"] = None
@@ -329,11 +345,16 @@ def sentences(
         s["note_meaning"] = f"{n['meaning']}{fits}"
     s["check"] = None
     if f["check_pct"] is not None and f["step_pct"] is not None:
+        at = f["at_stage_ft"] or 0.0
         verdict = "agrees with" if f["check_agrees"] else "does not back up"
         s["check"] = (
-            f"Area changed {_pct(f['area_change_pct'])} and speed "
-            f"{_pct(f['velocity_change_pct'])}, so flow at the same level changed about "
-            f"{_pct(f['check_pct'])}, which {verdict} the {_pct(f['step_pct'])} change."
+            # the level sentence already names the stage (same at_stage_ft); point back to it
+            f"After the change, at "
+            f"{'that stage' if s.get('level') else f'a stage of {at:.2f} ft'}, "
+            f"area {moved(f['area_change_pct'])} and velocity "
+            f"{moved(f['velocity_change_pct'])}, so the flow rate there "
+            f"{moved(f['check_pct']).replace(' ', ' about ', 1)}, which {verdict} "
+            f"{step_noun(f['step_pct'])} in measured flow rate."
         )
     lo, hi = f["window"] or (None, None)
     if f["helene"]:
@@ -401,7 +422,7 @@ BANNED_PHRASES = re.compile(
     r"|\bnotably\b|\bin other words\b"
     r"|\bdelv\w*|\bcrucial\w*|\bpivotal\b|\brobust\w*|\bseamless\w*|\bleverag\w*|\blandscapes?\b"
     r"|\btapestr\w*|\btestament\b|\bunderscor\w*|\bnavigat\w*|\brealms?\b|\bjourneys?\b"
-    r"|\bamount of water\b|\bthe team\b",
+    r"|\bamount of water\b|\bthe team\b|\bsame flow\b|\bspeed\b",
     re.IGNORECASE,
 )
 # a list of exactly three adjectives: 'X, Y(,) and Z' where each word has an adjective suffix
@@ -409,6 +430,7 @@ _ADJ = r"[a-z]+(?:ive|ous|ful|able|ible|al|ic|ent|ant|less|ary|ory|ish|y)"
 ADJ_TRIAD = re.compile(rf"\b{_ADJ},\s+{_ADJ},?\s+and\s+{_ADJ}\b", re.IGNORECASE)
 MARKUP = re.compile(r"\*\*|__|^\s*#|^\s*[-*•]\s|\n\s*[-*•]\s|\n\s*#", re.MULTILINE)
 UNSPACED_UNIT = re.compile(r"\d(?:cfs|ft|%)")
+SIGNED_NUMBER = re.compile(r"(?<![\w-])[+−-]\d[\d,.]*\s?(?:%|cfs|ft)")
 
 
 def banned(text: str) -> str | None:
@@ -425,6 +447,8 @@ def banned(text: str) -> str | None:
         return f"list of three adjectives {m.group(0)!r}"
     if MARKUP.search(text):
         return "heading, bullet or bold markup"
+    if m := SIGNED_NUMBER.search(text):
+        return f"signed number; say rose/fell instead ({m.group(0)!r})"
     if m := UNSPACED_UNIT.search(text):
         return f"unit not spaced from its number ({m.group(0)!r})"
     return None
