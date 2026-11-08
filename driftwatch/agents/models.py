@@ -90,5 +90,5 @@ class Narration(BaseModel):
     )
     cause_or_disagreement: str = Field(description="the cause sentence, or the disagreement")
     action: str = Field(description="one concrete next step")
-    score_sentence: str = Field(description="the given score_display sentence, verbatim")
-    text: str = Field(description="<= 120 words for a utility manager")
+    score_sentence: str = Field(description="the given rating sentence, verbatim")
+    text: str = Field(description="<= 200 words, one paragraph, report voice")

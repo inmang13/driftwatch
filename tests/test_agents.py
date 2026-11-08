@@ -2,7 +2,7 @@
 
 import pytest
 
-from driftwatch.agents import fallbacks, graph, llm, tools
+from driftwatch.agents import fallbacks, graph, llm, narration, tools
 from driftwatch.agents.models import (
     BestGuess,
     Disagreement,
@@ -134,7 +134,7 @@ def test_clean_ranking_adds_required_and_drops_duplicates():
 
 def test_narration_guard():
     facts = {"triage": {"score": 24.0}}
-    assert graph.narration_ok("word " * 121 + "24", facts)
+    assert graph.narration_ok("word " * (graph.MAX_WORDS + 1) + "24", facts)
     assert graph.narration_ok("Trust score 30/100.", facts) == "the trust score is missing"
     assert graph.narration_ok("Trust score 24/100 (Stale).", facts) is None
 
@@ -236,7 +236,7 @@ def test_hepco_fallback_disagrees_and_newport_does_not(runs):
     assert ev[-1].payload["disagreement"]["field_note"]["note"] == "Scour control changed"
     n = runs[NEWPORT]
     assert n["verdict"]["verdict"] == "accept" and n["final"]["disagreement"] is None
-    assert "Double-check" not in n["narration"]
+    assert "Skeptic under 60 %" not in n["narration"]  # no Disagreement sentence for Newport
 
 
 def test_narration_guard_requires_double_check_for_disagreement():
@@ -289,6 +289,10 @@ def test_fallback_ranker_scores_insufficient_data_with_few_visits():
 # --- structured narration (B), narrator facts (C), Disagreement parity (E) -----------------
 
 
+def _rating(t):
+    return f"Rating confidence {round(t['score'])}/100 ({t['band']})."
+
+
 def _facts(site):
     f = {"triage": graph.triage_facts(site)}
     if f["triage"]["band"] != "Trusted":
@@ -316,8 +320,8 @@ def test_llm_narration_with_wrong_direction_is_rejected(monkeypatch, tmp_path):
                 confidence_word="n/a",
                 cause_or_disagreement="No shift.",
                 action="Keep visiting.",
-                score_sentence=t["score_display"],
-                text=f"Measurements sit 7 % below the rating. {t['score_display']}",
+                score_sentence=_rating(t),
+                text=f"Measurements sit 7 % below the rating. {_rating(t)}",
             )
             return n, {"model": "fake"}
         raise RuntimeError("rules")
@@ -385,7 +389,8 @@ def test_open_cause_narration_names_no_mechanism(runs):
     text = r["narration"]
     assert "Double-check:" in text and fallbacks.OPEN_CHECK in text
     assert r["facts"]["triage"]["direction_phrase"] in text
-    assert fallbacks.MECHANISM_WORDS.search(text) is None
+    nf = narration.narration_facts(r["facts"])
+    assert fallbacks.MECHANISM_WORDS.search(narration.strip_labelled(text, nf)) is None
 
 
 def test_open_cause_hides_the_cause_from_the_narrator(runs):
@@ -406,14 +411,14 @@ def test_llm_open_narration_naming_a_cause_is_rejected(monkeypatch, tmp_path):
             t = facts["triage"]
             text = (
                 f"Recent field measurements sit 41 % {t['direction_phrase']}. This shift is "
-                f"likely due to scour. Double-check: {fallbacks.OPEN_CHECK} {t['score_display']}"
+                f"likely due to scour. Double-check: {fallbacks.OPEN_CHECK} {_rating(t)}"
             )
             n = Narration(
                 direction=t["direction_phrase"],
                 confidence_word="uncertain",
                 cause_or_disagreement="Likely due to scour.",
                 action=f"Double-check: {fallbacks.OPEN_CHECK}",
-                score_sentence=t["score_display"],
+                score_sentence=_rating(t),
                 text=text,
             )
             return n, {"model": "fake"}
@@ -423,4 +428,210 @@ def test_llm_open_narration_naming_a_cause_is_rejected(monkeypatch, tmp_path):
     out = graph.run_sync(ASHEVILLE, "gemini", tmp_path)
     ev = [e for e in replay(out["trace_path"]) if e.node == "narrator"][-1].payload
     assert "must not name a mechanism" in ev["rejected"]
-    assert fallbacks.MECHANISM_WORDS.search(out["narration"]) is None
+    nf = narration.narration_facts(out["facts"])
+    assert fallbacks.MECHANISM_WORDS.search(narration.strip_labelled(out["narration"], nf)) is None
+
+
+# --- report-voice narration: computed facts, rules (1)-(7), guard, retry, cached leads -----
+
+STALE3 = (NEWPORT, HEPCO, ASHEVILLE)
+
+
+def _nf(r):
+    return narration.narration_facts(r["facts"])
+
+
+@pytest.mark.parametrize("site", STALE3)
+def test_narration_rules_hold_for_the_fallback(runs, site):
+    r = runs[site]
+    text, nf = r["narration"], _nf(r)
+    assert text.startswith(narration.Q_SENTENCE)  # (1) opens on Q = V x A
+    assert "Q = V × A" in text and "water speed times cross-sectional area" in text
+    assert nf["note"] and nf["note"]["meaning"] in text  # (2) the fixed note meaning, verbatim
+    assert "Area changed" in text and "so flow at the same level changed about" in text  # (3)
+    assert "Helene" not in text  # (4) helene is false for all three
+    assert nf["helene"] is False
+    low = text.lower()
+    assert "the team" not in low and "amount of water" not in low  # (5)
+    assert narration.word_count(text) <= narration.MAX_WORDS  # (6)
+    assert text.endswith(f"Rating confidence {round(r['facts']['triage']['score'])}/100 (Stale).")
+    assert narration.banned(text) is None  # (7)
+    assert narration.check_text(text, nf, fallbacks.narration_status(r["final"])) is None
+
+
+def test_newport_facts_and_sentences(runs):
+    r = runs[NEWPORT]
+    nf, text = _nf(r), r["narration"]
+    assert nf["change_date"] == "2024-10-28"
+    assert nf["level_change_ft"] == 0.71 and nf["level_word"] == "higher"
+    assert "0.71 ft higher for the same flow" in text
+    assert nf["at_stage_ft"] == 2.7  # channel_geometry_trend's at_stage_ft
+    assert nf["flow_change_pct"] == -42 and nf["flow_change_cfs"] < 0
+    # (1 + 0.252) x (1 - 0.583) - 1 = -47.8 %: same sign, 5.6 points from -42.2 -> agrees
+    assert nf["check_pct"] == pytest.approx(-47.8, abs=0.2) and nf["check_agrees"] is True
+    assert "Area changed +25 % and speed -58 %" in text
+    assert "which agrees with the -42 % change" in text
+    assert nf["note"]["note"] == "Fill control changed" and nf["note"]["agrees_with_data"]
+    assert "disagrees with the data" not in text
+    assert "91,700 cfs on 2024-09-28" in text  # flood_context, not Helene (31 days > 30)
+    assert "DriftWatch's agents" in text
+
+
+def test_hepco_note_disagrees_and_no_measured_flood(runs):
+    r = runs[HEPCO]
+    nf, text = _nf(r), r["narration"]
+    assert nf["note"]["note"] == "Scour control changed"
+    assert nf["note"]["agrees_with_data"] is False and "That disagrees with the data." in text
+    assert "0.33 ft higher for the same flow" in text
+    assert nf["check_agrees"] is True and "which agrees with the -26 % change" in text
+    assert "no measured high flow explains it" in text
+    assert "Skeptic" in text and "Double-check:" in text
+
+
+def test_asheville_check_does_not_back_up_and_conclusion_stays_open(runs):
+    r = runs[ASHEVILLE]
+    nf, text = _nf(r), r["narration"]
+    assert nf["level_word"] == "lower" and "0.27 ft lower for the same flow" in text
+    # (1.077)(1.017) - 1 = +9.5 % vs a +46.2 % step: 37 points apart -> does not back up
+    assert nf["check_agrees"] is False and "which does not back up the +46 % change" in text
+    assert "That disagrees with the data." in text  # Debris raises the level; data sit above
+    assert "no measured high flow explains it" in text
+    # open cause: outside the labelled note sentences, no mechanism word
+    assert fallbacks.MECHANISM_WORDS.search(narration.strip_labelled(text, nf)) is None
+    assert fallbacks.MECHANISM_WORDS.search(text)  # ... the note itself does carry one
+
+
+def test_helene_branch_and_check_threshold_on_synthetic_shift(runs):
+    facts = {**runs[NEWPORT]["facts"]}
+    t = dict(facts["triage"])
+    t["top_shift"] = {**t["top_shift"], "time": "2024-10-20T12:00:00Z"}  # 23 days after
+    facts["triage"] = t
+    nf = narration.narration_facts(facts)
+    assert nf["helene"] is True
+    s = narration.sentences(nf, "fill / aggradation", "corroborated", "Survey it.", 0.44)
+    assert "Hurricane Helene" in s["event"]
+    t["top_shift"] = {**t["top_shift"], "time": "2024-10-28T20:03:25Z", "size_pct": -20.0}
+    nf = narration.narration_facts(facts)
+    assert nf["helene"] is False  # 31 days after 2024-09-27
+    assert nf["check_agrees"] is False  # -47.8 vs -20.0: 27.8 points apart
+    t["top_shift"] = {**t["top_shift"], "size_pct": 30.0}
+    assert narration.narration_facts(facts)["check_agrees"] is False  # opposite sign
+
+
+END = " Rating confidence 24/100 (Stale)."
+BAD_SAMPLES = [
+    "The gauge drifted — badly." + END,
+    "The gauge drifted – badly." + END,
+    "This is not just drift." + END,
+    "It is not scour, but fill." + END,
+    "Overall, the rating is off." + END,
+    "Notably, the rating is off." + END,
+    "This is a crucial finding." + END,
+    "We delve into the residuals." + END,
+    "The rating is off!" + END,
+    "Why did the rating drift?" + END,
+    "The flood was historic, dramatic, and catastrophic." + END,
+    "The team found fill." + END,
+    "The amount of water fell." + END,
+    "**Finding:** drift." + END,
+    "The river rose 0.33ft for the same flow." + END,
+]
+
+
+def test_banned_pattern_check_passes_fallbacks_and_rejects_bad_samples(runs):
+    for s in STALE3:
+        assert narration.banned(runs[s]["narration"]) is None, s
+    for bad in BAD_SAMPLES:
+        assert narration.banned(bad), bad
+    # a deliberately bad full narration: right facts, wrong voice
+    nf = _nf(runs[HEPCO])
+    bad = runs[HEPCO]["narration"].replace("; a rating curve", " — and, importantly, a curve")
+    assert narration.check_text(bad, nf, "disagreement")
+    # a moral after the rating sentence is rejected too
+    moral = runs[HEPCO]["narration"] + " Rivers deserve care."
+    assert "must end with" in narration.check_text(moral, nf, "disagreement")
+
+
+def test_guard_holds_open_cause_rule_outside_the_note(runs):
+    r = runs[ASHEVILLE]
+    nf, text = _nf(r), r["narration"]
+    assert narration.check_text(text, nf, "open") is None
+    worse = text.replace("so the cause remains open.", "so scour is likely.")
+    assert "must not name a mechanism" in narration.check_text(worse, nf, "open")
+
+
+def _llm_narration(r, text):
+    t = r["facts"]["triage"]
+    return Narration(
+        direction=t["direction_phrase"],
+        confidence_word=graph.expected_confidence_word(r["final"]),
+        cause_or_disagreement="x",
+        action="Double-check: x",
+        score_sentence=_rating(t),
+        text=text,
+    )
+
+
+@pytest.mark.parametrize("bad_times", [1, 2])
+def test_narrator_retries_once_then_uses_the_template(runs, monkeypatch, tmp_path, bad_times):
+    r = runs[HEPCO]
+    good = r["narration"].replace("Since the 2024-12-17 visit, field", "Since 2024-12-17, field")
+    bad = r["narration"].replace("; a rating curve", " — a rating curve")
+    calls = []
+    monkeypatch.setattr(llm, "backend", lambda role, mode: (object(), "fake"))
+
+    async def fake(role, mode, schema, system, user):
+        if schema is Narration:
+            calls.append(user)
+            text = bad if len(calls) <= bad_times else good
+            return _llm_narration(r, text), {"model": "fake"}
+        raise RuntimeError("rules")
+
+    monkeypatch.setattr(llm, "structured", fake)
+    out = graph.run_sync(HEPCO, "gemini", tmp_path)
+    ev = [e for e in replay(out["trace_path"]) if e.node == "narrator"][-1].payload
+    assert len(calls) == 2 and "previous text was rejected" in calls[1]
+    assert ev["attempts"][0]["why"].startswith("dash used as punctuation")
+    if bad_times == 1:
+        assert out["narration"] == good and "rejected" not in ev
+    else:
+        assert out["narration"] == r["narration"] and ev["rejected"]
+
+
+def test_cached_lead_reaches_narration_and_trace(monkeypatch, tmp_path):
+    import json
+
+    from driftwatch.agents import context
+
+    url = "https://example.org/pigeon-river-bridge"
+    doc = {
+        "site": HEPCO,
+        "items": [
+            {
+                "kind": "construction",
+                "claim": "NCDOT replaced a bridge over the Pigeon River in Haywood County.",
+                "date": "2024-11",
+                "url": url,
+                "source_title": "NCDOT project page",
+                "retrieved_at": "2026-11-07T00:00:00Z",
+            },
+            {"kind": "other", "claim": "No URL here.", "url": None, "source_title": "x"},
+        ],
+    }
+    (tmp_path / f"{HEPCO}.json").write_text(json.dumps(doc), encoding="utf-8")
+    monkeypatch.setattr(context, "CONTEXT_DIR", tmp_path)
+    assert len(context.load(HEPCO)["items"]) == 1  # items without a URL are dropped
+    out = graph.run_sync(HEPCO, "fallback", tmp_path / "tr")
+    text = out["narration"]
+    assert "Possible lead: NCDOT replaced a bridge" in text and "(NCDOT project page)." in text
+    assert narration.word_count(text) <= narration.MAX_WORDS
+    nf = narration.narration_facts(out["facts"], out["facts"]["event_context"]["items"])
+    assert narration.check_text(text, nf, "disagreement") is None
+    ev = [e for e in replay(out["trace_path"]) if e.node == "evidence_collector"]
+    assert any(url in json.dumps(e.payload) for e in ev)
+
+
+def test_no_context_file_means_no_lead(runs):
+    for s in STALE3:
+        assert runs[s]["facts"]["event_context"] is None
+        assert "Possible lead" not in runs[s]["narration"]
