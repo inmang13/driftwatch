@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 from driftwatch.api import app as api
 
 REPO = Path(__file__).resolve().parents[1]
-HEPCO_RUN4 = "03459500-20261108T022812744003Z"  # replay default (m2-narration Gemini run)
+HEPCO_RUN4 = "03459500-20261108T033244636752Z"  # replay default (m2-narration Gemini run)
 
 
 def sse_events(text: str) -> list[tuple[str, dict]]:

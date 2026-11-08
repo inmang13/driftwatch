@@ -169,7 +169,7 @@ Flow rate equals water velocity times cross-sectional area (Q = V × A); curves 
   "Possible lead" sentence at all three Stale gauges. Gemini can still fit one by tightening.
   That doesn't matter today, because none of the three has a usable lead.
 
-## Hepco: needs Grace's call (2026-11-07 22:20)
+## Hepco: needs Grace's call (2026-11-07 22:20), resolved by rule (b) below
 
 **With the Skeptic back on OpenRouter, Hepco no longer produces a Disagreement.** In both new
 runs (`03459500-20261108T030614224292Z.json` and `03459500-20261108T031518546663Z.json`) the
@@ -183,3 +183,27 @@ at either new trace and update the Hepco test expectation (`test_trace_by_id_and
 
 Newest Hepco narration (`03459500-20261108T031518546663Z.json`, Skeptic on OpenRouter):
 Flow rate equals water velocity times cross-sectional area (Q = V × A); the curve assumes this holds at each stage. Since the 2024-12-17 visit, measurements at the Pigeon River near Hepco, USGS 03459500, sit 33 % below the rating, so published flows run too high. For a given flow rate, the river stands 0.33 ft higher than the curve predicts; at 2.33 ft it carries about 150 cfs (26 %) less than the curve's 570 cfs. The hydrographer noted "Scour control changed" on 2024-12-17. In the note's terms, the control (the riffle just downstream that sets the water level) eroded, so a given flow rate passes at a lower water level. That disagrees with the data. After the change, at that stage, area fell 11 % and velocity fell 22 %, so the flow rate there fell about 31 %, which agrees with the 26 % drop in measured flow rate. Hurricane Helene (2024-09-27) passed between the 2024-08-22 and 2024-12-17 visits; no gauging was made during the storm. No field note confirms what changed, so the cause remains open. Double-check: Measure flow and run levels from the reference marks to the gauge before adjusting the rating. Rating confidence 24/100 (Stale).
+
+## Update 2026-11-07 22:35: Disagreement rule (b), opener removed (Grace)
+
+- **Rule (b):** a Disagreement is emitted whenever the note at the change visit maps (through
+  `causes.cause_for_note`) to a cause whose expected residual sign is opposite to the final
+  cause's, whatever the Skeptic's confidence. Rule (a), under 0.6 sure plus a contradicting
+  control note, still applies. `Disagreement.rule` records which one fired, and (b) wins when
+  both hold.
+  - For rule (b), `why_they_disagree` is `narration.note_vs_data` and `recommended_check` is the
+    Skeptic's.
+  - The narration conclusion reads: "DriftWatch's agents rank fill first (N %); the
+    hydrographer's note says scour; the two disagree, so the cause is not settled."
+- **Asheville changed too.** Its change-visit note, "Debris - Light", maps to debris, which
+  lowers readings, and its final cause, scour, raises them. So under rule (b) Asheville is now a
+  Disagreement instead of open. This follows the rule as written. Asheville's Replay trace
+  (22:06) was made before the rule and still shows "open". To get the new behaviour on Asheville,
+  rerun it, or limit rule (b) to "control changed" notes to keep it open. The open-cause tests
+  now use Asheville with rule (b) switched off.
+- **The Q = V × A opener is removed** as filler. The narrations now open on what was measured.
+- **Hepco Replay default** is now `03459500-20261108T033244636752Z.json`: Skeptic on OpenRouter
+  (objected, then disagreed at 45 %, so rule (a) would also have fired), Gemini narration first
+  try, 192 words:
+
+Since the 2024-12-17 visit, measurements at the Pigeon River near Hepco, USGS 03459500, sit 33 % below the rating, so published flows run that much too high. For a given flow rate, the river stands 0.33 ft higher than the curve predicts; at a stage of 2.33 ft it carries about 150 cfs (26 %) less than the curve's 570 cfs. The hydrographer noted "Scour control changed" on 2024-12-17. In the note's terms, the control (the riffle just downstream that sets the water level) eroded, so a given flow rate passes at a lower water level. That disagrees with the data. After the change, at that stage, area fell 11 % and velocity fell 22 %, so the flow rate there fell about 31 %, which agrees with the 26 % drop in measured flow rate. Hurricane Helene (2024-09-27) passed between the 2024-08-22 and 2024-12-17 visits; no gauging was made during the storm. DriftWatch's agents rank fill first (45 %); the hydrographer's note says scour; the two disagree, so the cause is not settled. Double-check: Survey the control section and downstream reach for deposited sediment or debris, and recheck the gauge datum against reference marks. Rating confidence 24/100 (Stale).
