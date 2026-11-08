@@ -210,15 +210,22 @@ def narration_facts(facts: dict[str, Any], context: list[dict] | None = None) ->
 
 
 LEAD_ORDER = ("construction", "dam", "usgs_report", "storm", "other")
+OLD_REPORT_BEFORE = 2015  # a USGS report dated before this year is too old to be a lead
 
 
 def pick_lead(items: list[dict] | None, helene: bool) -> dict | None:
     """One cached web item for the 'Possible lead' sentence: construction, then dam, then USGS
-    report, storm, other. A claim that names Helene is skipped unless the change date is in the
-    Helene window (rule 4), and so is one whose sentence would trip the voice guard."""
+    report, storm, other. Skipped: items a reviewer marked `reviewed: false`; USGS reports dated
+    before 2015 (OLD_REPORT_BEFORE; undated reports are kept); a claim naming Helene unless
+    `helene` is true (rule 4); and one whose sentence would trip the voice guard."""
     ok = []
     for it in items or []:
         if not it.get("url") or not it.get("claim") or not it.get("source_title"):
+            continue
+        if it.get("reviewed") is False:
+            continue
+        year = re.match(r"\s*(\d{4})", str(it.get("date") or ""))
+        if it.get("kind") == "usgs_report" and year and int(year.group(1)) < OLD_REPORT_BEFORE:
             continue
         if not helene and "helene" in (it["claim"] + it["source_title"]).lower():
             continue

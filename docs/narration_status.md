@@ -128,3 +128,19 @@ Flow equals water speed times cross-sectional area (Q = V × A), which the curve
   would be better; the search found one (Newport Bypass), but its page blocks automated reads.
 - Newport's Gemini text dropped "so published flows run that much too high". The guard
   doesn't require that clause.
+
+## Update 2026-11-07 (late): lead review, OpenRouter still blocked
+
+- `data/context/03455000.json`: the 1960 USGS water-supply paper is marked `reviewed: false`,
+  reason "not about the change". `data/context/03459500.json`: the Walters Dam item is marked
+  `reviewed: false`, reason "dam is downstream of the gauge". Both stay in `items` with the flag.
+- `pick_lead` now skips any item marked `reviewed: false` (the flag would do nothing
+  otherwise), and skips `usgs_report` items dated before 2015 (`OLD_REPORT_BEFORE`). Undated
+  reports are kept. Result: **Newport and Hepco have no lead** (Newport's other two reports are
+  1990 and 2003). Asheville's lead (I-26 Connector, a construction item) is unaffected.
+- **The Skeptic still can't reach OpenRouter.** Reruns at 21:43 both got 402 ("can only afford
+  1970 tokens"). The key reports a $10 limit with $9.84 remaining, but the account's
+  `total_credits` is 0 and the key is flagged free tier, so the credit isn't on the account this
+  key belongs to. I discarded those two traces. `replay_defaults.json` still points at the
+  21:22 runs listed above (Gemini narrator, rules Skeptic, with the Walters Dam lead in Hepco's
+  text).

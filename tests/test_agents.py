@@ -731,3 +731,39 @@ def test_guard_requires_q_sentence_check_verdict_and_event_wording(runs):
     assert "no measured high flow" in narration.check_text(vague, nfa, "open")
     no_peak = n["narration"].replace("91,700 cfs", "a big flow")
     assert "verbatim" in narration.check_text(no_peak, nfn, "corroborated")  # Helene sentence
+
+
+def test_pick_lead_skips_unreviewed_and_old_usgs_reports():
+    def item(kind, date, **kw):
+        return {
+            "kind": kind,
+            "date": date,
+            "claim": f"A {kind} item on the Pigeon River.",
+            "url": "https://x.org",
+            "source_title": "Page",
+            **kw,
+        }
+
+    assert narration.pick_lead([item("usgs_report", "2014-12")], helene=False) is None
+    assert narration.pick_lead([item("usgs_report", "1961")], helene=False) is None
+    assert narration.pick_lead([item("usgs_report", "2015")], helene=False)["date"] == "2015"
+    assert narration.pick_lead([item("usgs_report", "")], helene=False) is not None  # undated
+    assert (
+        narration.pick_lead([item("storm", "1940-08-30")], helene=False) is not None
+    )  # only reports
+    bad = item("dam", "2024-09-27", reviewed=False, reason="dam is downstream of the gauge")
+    assert narration.pick_lead([bad], helene=True) is None
+    ok = item("dam", "2024-09-27", reviewed="title checked against the claim by hand")
+    assert narration.pick_lead([ok], helene=True) is ok
+
+
+def test_committed_context_gives_no_lead_for_newport_or_hepco():
+    """After review: Newport's 1960 paper and Hepco's Walters Dam item are reviewed: false, and
+    Newport's other two reports predate 2015, so neither site has a lead."""
+    import json
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1] / "data" / "context"
+    for site in (NEWPORT, HEPCO):
+        items = json.loads((root / f"{site}.json").read_text(encoding="utf-8"))["items"]
+        assert narration.pick_lead(items, helene=True) is None, site

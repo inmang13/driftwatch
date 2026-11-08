@@ -20,7 +20,8 @@
       "url": "https://smokymountainnews.com/outdoors/outdoor-latest/walters-hydro-plant-turns-100-dam-powerhouse-withstood-helene-s-onslaught/",
       "source_title": "Walters hydro plant turns 100: Dam, powerhouse withstood Helene's onslaught",
       "retrieved_at": "2026-11-08T01:26:53+00:00",
-      "reviewed": "title checked against the claim by hand, 2026-11-07"
+      "reviewed": false,
+      "reason": "dam is downstream of the gauge"
     }
   ],
   "dropped": [],

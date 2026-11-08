@@ -20,7 +20,8 @@
       "url": "https://pubs.usgs.gov/wsp/1706/report.pdf",
       "source_title": "Surface water supply of the United States, 1960, Part 3-B, Cumberland and",
       "retrieved_at": "2026-11-08T01:29:45+00:00",
-      "reviewed": "title checked against the claim by hand, 2026-11-07"
+      "reviewed": false,
+      "reason": "not about the change"
     },
     {
       "kind": "usgs_report",
