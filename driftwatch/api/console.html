@@ -162,10 +162,25 @@ table.score td.pts { text-align: right; font-family: var(--mono); white-space: n
 /* finding as plain questions */
 h3.q { font: 600 18px/24px var(--sans); margin: 0 0 8px; padding-top: 12px; border-top: 2px solid var(--ink); }
 .qblock + .qblock { margin-top: 20px; }
-.tbar { display: flex; height: 40px; border: 2px solid var(--ink); margin: 8px 0 12px; }
-.tbar span { display: flex; align-items: center; justify-content: center; min-width: 0; overflow: hidden;
-  font: 500 13px/20px var(--mono); white-space: nowrap; background: var(--sky); border-left: 2px solid var(--ink); }
-.tbar span.keep { background: var(--measured); color: var(--on-measured); border-left: 0; justify-content: flex-start; padding-left: 8px; }
+/* trust dial: 0-100 half circle, three band arcs, needle at the score */
+.dial-wrap { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin: 4px 0 12px; }
+.dial { width: 200px; height: auto; flex: none; }
+.dial text { font: 500 11px var(--mono); fill: var(--ink-muted); }
+.dial text.score { font: 600 28px var(--sans); fill: var(--ink); }
+.dial-say { flex: 1; min-width: 200px; font-size: 14px; line-height: 21px; }
+.dial-say .st-word { display: block; font-size: 15px; margin-bottom: 4px; }
+.dial-say p { margin: 0 0 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 500 13px/20px var(--mono); border: 1.5px solid var(--ink); background: var(--paper-sunk); padding: 1px 7px; }
+sup.fn { font: 500 10px var(--mono); margin-left: 1px; }
+sup.fn a { color: var(--measured); text-decoration: none; }
+sup.fn a:hover { text-decoration: underline; }
+.gloss dt.hl { background: var(--bed); }
+table.checks { border-collapse: collapse; width: 100%; font-size: 13px; line-height: 19px; margin-top: 8px; }
+table.checks th { text-align: left; font: 500 11px/16px var(--mono); text-transform: uppercase; color: var(--ink-label);
+  padding: 4px 6px; border-bottom: 2px solid var(--ink); white-space: nowrap; }
+table.checks td { border-top: 1px solid var(--rule); padding: 6px; vertical-align: top; }
+table.checks td.n { font-family: var(--mono); text-align: right; white-space: nowrap; }
 ul.lost { list-style: none; margin: 0; padding: 0; font-size: 13px; line-height: 20px; }
 ul.lost li { display: flex; gap: 12px; border-top: 1px solid var(--rule); padding: 6px 0; }
 ul.lost .pts { width: 40px; flex: none; text-align: right; font-family: var(--mono); font-weight: 500; }
@@ -262,10 +277,11 @@ h3.about-h { font: 600 18px/24px var(--sans); margin: 28px 0 8px; padding-top: 1
 
   <section id="plots" class="panel">
     <div class="toolbar">
-      <span class="fig-tag">Rating curve<sup><a href="#fn-curve" onclick="return openNote('fn-curve')" aria-label="Footnote 1: the rating curve equation">1</a></sup><span class="mono" id="eq"></span></span>
+      <span class="fig-tag">Rating curve<sup class="fn"><a href="#fn-curve" onclick="return openNote('fn-curve')" aria-label="Technical note 1">1</a>,<a href="#fn-baseline" onclick="return openNote('fn-baseline')" aria-label="Technical note 2">2</a></sup><span class="mono" id="eq"></span></span>
     </div>
     <div id="scatter"></div>
     <p class="note" id="misfit-note" hidden></p>
+    <div class="toolbar"><span class="fig-tag">Distance from the curve<sup class="fn"><a href="#fn-residual" onclick="return openNote('fn-residual')" aria-label="Technical note 7">7</a>,<a href="#fn-helene" onclick="return openNote('fn-helene')" aria-label="Technical note 5">5</a>,<a href="#fn-peak" onclick="return openNote('fn-peak')" aria-label="Technical note 6">6</a></sup></span></div>
     <div id="timeline"></div>
     <details id="table-view"><summary>Table view</summary><div class="scroll" id="table-body"></div></details>
   </section>
@@ -384,6 +400,11 @@ const DEDUCTION_PLAIN = {
   staleness: () => "No field visit in over 90 days.",
   insufficient_data: () => "Fewer than 4 field measurements in the past year.",
 };
+// one-line verdict and short chip labels for the brief next to the dial
+const VERDICT = { Trusted: "use the published flow as is.", Watch: "check before relying on the published flow.",
+  Stale: "don't use the published flow without checking." };
+const DEDUCTION_SHORT = { residual: "misses curve", staleness: "old visit", quality: "Fair/Poor grades",
+  field_notes: "field note", insufficient_data: "few measurements" };
 const DEDUCTION_FREE = { residual: "readings close to the curve", field_notes: "no field-note flags",
   quality: "good measurement quality", staleness: "a recent visit", insufficient_data: "enough measurements" };
 const PERIOD = {
@@ -747,7 +768,7 @@ function readoutsHTML(d) {
     check = `<p class="qcheck"><strong>Flow = area × speed.</strong> At the same water level the area is ×${a.toFixed(2)} and the
       speed ×${v.toFixed(2)}, so the flow is ×${(a * v).toFixed(2)} (${pct((a * v - 1) * 100)}).</p>`;
   }
-  return `<p class="when"><span class="lbl">Date of change</span> <span class="mono">${fmtDate(top.time)}</span></p>
+  return `<p class="when"><span class="lbl">Date of change${fn("changedate", "auto")}</span> <span class="mono">${fmtDate(top.time)}</span></p>
     <div class="readouts">${parts.join("")}</div>${check}`;
 }
 // slow-drift sentence from the stored report; only when the trend test calls it significant
@@ -759,37 +780,35 @@ function trendHTML(d) {
 }
 function detailsHTML(d) {
   if (!d) return "";
-  const rel = d.report.relationship, sh = d.report.drift.shifts;
+  const rel = d.report.relationship;
   const top = d.top_shift;
   return `<details id="tech-details"><summary>Technical details</summary><dl class="gloss">
     <dt id="fn-curve"><sup>1</sup> Rating curve</dt><dd><span class="mono">Q = ${num(rel.a, 1)} · (H − ${num(rel.e, 2)})<sup>${num(rel.b, 2)}</sup></span>,
       fit to ${rel.n} field measurements from ${rel.reference_start} to ${rel.reference_end} (the baseline). Q is flow in cfs
       and H is the water level in ft. ${num(rel.e, 2)} ft is the level where flow stops, and ${num(rel.b, 2)} sets how fast flow
       grows as the water rises. To track drift, DriftWatch keeps those two fixed and lets only the ${num(rel.a, 1)} slide.</dd>
-    <dt>The baseline only draws the curve</dt><dd>DriftWatch fits the rating curve to a baseline period
+    <dt id="fn-baseline"><sup>2</sup> The baseline only draws the curve</dt><dd>DriftWatch fits the rating curve to a baseline period
       (${rel.reference_start} to ${rel.reference_end} here). That period sets what "normal" looks like.
       It doesn't tell the tool when to look for a change.</dd>
-    <dt>The change date comes from the data</dt><dd>A change-point search (PELT, from the ruptures library) runs over every
+    <dt id="fn-changedate"><sup>3</sup> The change date comes from the data</dt><dd>A change-point search (PELT, from the ruptures library) runs over every
       field measurement from the start of the baseline to today. It isn't told about Helene and splits the record
       wherever the readings step away from the curve and stay there.
       ${top ? `Here it found ${fmtDate(top.time)}.` : "Here it found no lasting change."}
       Across the 8 gauges it picked 2024-10-28 (Newport), 2024-12-17 (Hepco) and 2025-07-23 (Asheville),
       so a change ten months after the storm shows up on its own date.</dd>
-    <dt>Tested without a hand-picked baseline</dt><dd>DriftWatch also has an automatic mode that picks the baseline
+    <dt id="fn-auto"><sup>4</sup> Tested without a hand-picked baseline</dt><dd>DriftWatch also has an automatic mode that picks the baseline
       from the search itself: the latest steady period, minus the newest 8 measurements, which become the test.
       It found the same change dates at Newport, Hepco and Asheville and gave the same verdicts at 7 of 8 gauges.
       Mills River is the exception: Potential drift with the 2012 to 2024 baseline, Trusted with a 91-year one,
       because the long window treats its recent low readings as normal scatter. The console uses the fixed
       baseline.</dd>
-    <dt>The Helene line</dt><dd>The red line on the plot marks Helene's landfall (${esc(d.helene)}) for reference only.
+    <dt id="fn-helene"><sup>5</sup> The Helene line</dt><dd>The red line on the plot marks Helene's landfall (${esc(d.helene)}) for reference only.
       The search never sees it.</dd>
-    <dt>Helene-peak measurements</dt><dd>Measurements rated Poor and taken 2024-09-26 to 28 (mostly indirect
+    <dt id="fn-peak"><sup>6</sup> Helene-peak measurements</dt><dd>Measurements rated Poor and taken 2024-09-26 to 28 (mostly indirect
       flood estimates) stay on the plots as hollow points but are left out of the search.</dd>
-    <dt>Residual</dt><dd>How far readings sit from the curve: (measured flow − curve flow) / curve flow. Positive means more water than the curve says.</dd>
-    <dt>Reference window</dt><dd>The period we trust as the baseline: ${rel.reference_start} to ${rel.reference_end}.</dd>
-    <dt>Shift</dt><dd>A change in the channel: a lasting step in the residuals. ${sh.length
-      ? sh.map((s) => `${fmtDate(s.time)}: ${pct(s.size_pct)} (${num(s.size_ft, 3)} ft, ${s.n_after} measurements after)`).join("; ")
-      : "None found."}</dd>
+    <dt id="fn-residual"><sup>7</sup> Distance from the curve</dt><dd>How far a measurement sits from the curve:
+      (measured flow − curve flow) / curve flow, in %. Positive means more water than the curve says. The plot under the
+      rating curve shows it for every measurement over time.</dd>
   </dl></details>`;
 }
 function renderCard(f, label) {
@@ -807,7 +826,7 @@ function renderCard(f, label) {
       <dt>Double-check</dt><dd>${esc(plain(g.recommended_check))}</dd></dl>`;
   } else if (f.cause_status === "open") causeHTML = `<dl class="rows">
       <dt>Lead (unconfirmed)</dt><dd>${causeLink(f.cause, "status open")} fits best so far
-        (confidence ${conf(f.confidence)}), but no field note since the baseline period backs it.
+        (confidence ${conf(f.confidence)}), but no field note since the baseline period${fn("baseline")} backs it.
         Treat it as a lead, not a finding; the agents are still checking.</dd>
       <dt>Skeptic</dt><dd>${esc(plain(f.skeptic_argument) || "[none]")}</dd></dl>`;
   else causeHTML = `<dl class="rows">
@@ -821,26 +840,39 @@ function renderCard(f, label) {
     const ds = trust.deductions;
     const arith = `100 ${ds.map((x) => `− ${num(x.points)}`).join(" ")} = ${num(trust.score)}, shown as ` +
       `${Math.round(trust.score)}/100`;
+    const byName = Object.fromEntries(ds.map((x) => [x.name, x]));
+    const row = (name, limit, rule) => {
+      const x = byName[name];
+      return `<tr><td><strong>${esc(DEDUCTION_LABEL[name].replace(/^./, (c) => c.toUpperCase()))}</strong></td><td class="n">−${limit}</td>
+        <td class="n">${x ? (x.points ? "−" + num(x.points) : "0") : "[none]"}</td>
+        <td>${rule}</td></tr>`;
+    };
     scoreHTML = `<details><summary>How the trust score works</summary>
-      <p class="small">Every gauge starts at 100. Five checks can each take away points, up to a cap, and every
-        check is listed even when it costs nothing. 80 and up is Trusted, 50 to 79 is Potential drift and
-        under 50 is Drifted.</p>
-      <dl class="rows small">
-        <dt>Distance from the curve</dt><dd>Up to 50. Take the newest measurements (usually 8) and their middle value: how
-          far, in %, measured flow sits from the curve. Subtract this gauge's normal scatter (how far baseline measurements
-          typically missed its own curve). Each % beyond that costs 2 points.</dd>
-        <dt>Time since last visit</dt><dd>Up to 20. Nothing for 90 days, then rising to 20 at a year.</dd>
-        <dt>Measurement quality</dt><dd>Up to 15. USGS hydrographers grade every measurement by how close they think it is
-          to the true flow: Excellent within 2 %, Good within 5 %, Fair within 8 %, Poor worse than 8 %. Good and Excellent
-          cost 0, Fair 1/3, unrated 1/2, Poor 1; the average over recent measurements, times 15.</dd>
-        <dt>Field notes</dt><dd>Up to 15. Open notes since the baseline that say the control changed, or that
-          flag debris, ice or plants on the latest visit.</dd>
-        <dt>Too few measurements</dt><dd>Up to 10. 2.5 for each measurement short of 4 in the last 12 months.</dd>
-      </dl>
-      <h3 class="lbl" style="margin-top:12px">This gauge's arithmetic</h3>
-      <div class="arith">${arith} <span class="st-word ${trust.band}"><span class="sw ${trust.band}"></span>${bw(trust.band)}</span></div>
-      <table class="score">${ds.map((x) => `<tr><td class="pts">${x.points ? "−" + num(x.points) : "0"}</td>
-        <td><strong>${esc(DEDUCTION_LABEL[x.name] || x.name.replace(/_/g, " "))}</strong> · ${esc(plain(x.reason))}</td></tr>`).join("")}</table></details>`;
+      <h3 class="lbl">What cost points here</h3>
+      ${lostListHTML(trust, d)}
+      <h3 class="lbl" style="margin-top:12px">The five checks</h3>
+      <p class="small">Every gauge starts at 100. Five checks can each take away up to a set number of points, and all five
+        are listed even when they cost nothing. 80 to 100 is Trusted, 50 to 79 is Potential drift, under 50 is Drifted.</p>
+      <table class="checks"><thead><tr><th>Check</th><th>Up to</th><th>Here</th><th>How points come off</th></tr></thead><tbody>
+        ${row("residual", 50, `${fn("residual")} Middle value of the newest measurements (usually 8): how far, in %, measured flow sits from
+          the curve. This gauge's normal scatter (how far baseline measurements missed its own curve) is free; each % beyond
+          it costs 2.`)}
+        ${row("staleness", 20, "Nothing for 90 days after the last field visit, then rising evenly to 20 at a year.")}
+        ${row("quality", 15, `USGS hydrographers grade each measurement by how close they think it is to the true flow:
+          Excellent within 2 %, Good 5 %, Fair 8 %, Poor worse. Average over recent measurements of Good 0, Fair 1/3,
+          unrated 1/2, Poor 1, times 15.`)}
+        ${row("field_notes", 15, `A note since the baseline saying the control changed costs the full 15. Debris, ice or
+          plants count only if noted on the latest visit (light 3, moderate 8, heavy 12), since the next clear visit ends them.`)}
+        ${row("insufficient_data", 10, "2.5 for each measurement short of 4 in the last 12 months.")}
+      </tbody></table>
+      <div class="arith" style="margin-top:10px">${arith} <span class="st-word ${trust.band}"><span class="sw ${trust.band}"></span>${bw(trust.band)}</span></div>
+      <h3 class="lbl" style="margin-top:12px">Why these numbers?</h3>
+      <p class="small">They're judgment calls made when the score was designed, not fitted to data. Distance from the
+        curve gets the biggest share because it's the only check that measures whether the curve is wrong; the other four
+        are warning signs that make a miss more likely or harder to catch. Its 50 points sit exactly on the line between
+        Potential drift and Drifted, so a miss on its own can't call a gauge Drifted: it takes a second sign, such as a
+        field note. At 2 points per %, a miss 25 % beyond normal scatter uses the whole 50. These numbers haven't yet been
+        checked against when USGS hydrographers actually redrew curves.</p></details>`;
   }
   renderHero(f, d);
   Plotly.purge?.($("map") || document.createElement("div"));
@@ -856,7 +888,7 @@ function renderCard(f, label) {
           ${f?.narration ? `<p class="narr">${esc(plain(f.narration))}</p>`
             : `<p class="narr">${esc(trust ? BAND_MEANING[trust.band] || "" : "")}</p>`}</div>
         <div class="qblock"><h3 class="q">Why we think so</h3>${causeHTML}</div>
-        ${trust ? `<div class="qblock"><h3 class="q">Why ${Math.round(trust.score)}, not 100?</h3>${trustBarHTML(trust, d)}${scoreHTML}</div>` : ""}
+        ${trust ? `<div class="qblock"><h3 class="q">How reliable is the curve?</h3>${trustDialHTML(trust, d)}${scoreHTML}</div>` : ""}
       </div>
       <div class="qblock map-block"><h3 class="q">Where the gauges are</h3>
         <div class="map-views" role="group" aria-label="Map view">
@@ -870,21 +902,42 @@ function renderCard(f, label) {
   drawMap();
 }
 
-/* trust as a bar: what's kept, and what each warning sign took away */
+/* trust as a dial: 0-100 half circle with the three bands, needle at the score; then what each warning sign took */
 const fmtPts = (p) => String(+Number(p).toFixed(1));
-function trustBarHTML(trust, d) {
-  const kept = Math.max(0, Math.round(trust.score));
+// numbered technical notes; fn("baseline") gives a superscript link that opens Technical details at that note
+const FN = { curve: 1, baseline: 2, changedate: 3, auto: 4, helene: 5, peak: 6, residual: 7 };
+const fn = (...keys) => `<sup class="fn">${keys.map((k) =>
+  `<a href="#fn-${k}" onclick="return openNote('fn-${k}')" aria-label="Technical note ${FN[k]}">${FN[k]}</a>`).join(",")}</sup>`;
+function trustDialHTML(trust, d) {
+  const s = Math.max(0, Math.min(100, trust.score));
+  const lost = trust.deductions.filter((x) => x.points > 0).sort((a, b) => b.points - a.points);
+  // arc from (20,100) over the top to (180,100); pathLength 100 so dash lengths are score units
+  const arc = "M20 100 A80 80 0 0 1 180 100";
+  const band = (from, to, v) => `<path d="${arc}" pathLength="100" fill="none" stroke="var(${v})" stroke-width="16"
+    stroke-dasharray="0 ${from} ${to - from} 200"/>`;
+  const pt = (v, r) => { const a = Math.PI * (1 - v / 100); return [100 + r * Math.cos(a), 100 - r * Math.sin(a)]; };
+  const [nx, ny] = pt(s, 70);
+  const tick = (v) => { const [x, y] = pt(v, 100); return `<text x="${x.toFixed(1)}" y="${(y + 4).toFixed(1)}" text-anchor="middle">${v}</text>`; };
+  const aria = `Trust dial at ${Math.round(s)} of 100, ${bw(trust.band)}. ` + lost.map((x) =>
+    `${fmtPts(x.points)} lost to ${DEDUCTION_LABEL[x.name] || x.name}`).join("; ");
+  return `<div class="dial-wrap">
+      <svg class="dial" viewBox="-8 -8 216 142" role="img" aria-label="${esc(aria)}">
+        ${band(0, 50, "--critical")}${band(50, 80, "--watch")}${band(80, 100, "--good")}
+        ${tick(0)}${tick(50)}${tick(80)}${tick(100)}
+        <line x1="100" y1="100" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="var(--ink)" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="100" cy="100" r="6" fill="var(--ink)"/>
+        <text class="score" x="100" y="130" text-anchor="middle">${Math.round(s)}</text>
+      </svg>
+      <div class="dial-say"><p><strong>${bw(trust.band)}</strong>: ${esc(VERDICT[trust.band] || "")}</p>
+        ${lost.length ? `<div class="chips">${lost.map((x) => `<span class="chip">−${fmtPts(x.points)} ${esc(DEDUCTION_SHORT[x.name] || x.name)}</span>`).join("")}</div>` : ""}</div>
+    </div>`;
+}
+// the longer version of the chips, for the dropdown
+function lostListHTML(trust, d) {
   const lost = trust.deductions.filter((x) => x.points > 0).sort((a, b) => b.points - a.points);
   const free = trust.deductions.filter((x) => !(x.points > 0));
-  const aria = `Trust bar: ${kept} kept; ` + lost.map((x) =>
-    `${fmtPts(x.points)} lost to ${DEDUCTION_LABEL[x.name] || x.name}`).join("; ");
-  return `<p class="small" style="margin:0">Every gauge starts with full trust. Each warning sign takes some away.</p>
-    <div class="tbar" role="img" aria-label="${esc(aria)}">
-      <span class="keep" style="flex:${kept} 1 0">${kept >= 12 ? `${kept} kept` : ""}</span>
-      ${lost.map((x) => `<span style="flex:${x.points} 1 0">${x.points >= 8 ? "−" + fmtPts(x.points) : ""}</span>`).join("")}
-    </div>
-    <ul class="lost">${lost.map((x) => `<li><span class="pts">−${fmtPts(x.points)}</span>
-      <span>${esc((DEDUCTION_PLAIN[x.name] || (() => DEDUCTION_LABEL[x.name] || x.name))(d))}</span></li>`).join("")}</ul>
+  return `${lost.length ? `<ul class="lost">${lost.map((x) => `<li><span class="pts">−${fmtPts(x.points)}</span>
+      <span>${esc((DEDUCTION_PLAIN[x.name] || (() => DEDUCTION_LABEL[x.name] || x.name))(d))}</span></li>`).join("")}</ul>` : ""}
     ${free.length ? `<p class="caption">Nothing lost for: ${free.map((x) => esc(DEDUCTION_FREE[x.name] || x.name.replace(/_/g, " "))).join(", ")}.</p>` : ""}`;
 }
 
@@ -1200,7 +1253,8 @@ async function goEdu(id) {
 }
 function openNote(id) {
   const el = document.getElementById(id);
-  if (el) { el.closest("details").open = true; el.scrollIntoView({ block: "center" }); }
+  if (el) { el.closest("details").open = true; el.scrollIntoView({ block: "center" });
+    el.classList.add("hl"); setTimeout(() => el.classList.remove("hl"), 1600); }
   return false;
 }
 function showTab(t) {
