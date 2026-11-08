@@ -13,7 +13,7 @@
       "name": "French Broad River at Asheville",
       "change": "Step up of 46 % (0.27 ft) first measured 2025-07-23, with no field note; scour is DriftWatch's leading guess, not a confirmed cause."
     },
-    "what_we_check": "We check whether channel area grew more than water speed after the step, whether a field note mentions scour, and how far the trust score drops."
+    "what_we_check": "We check whether channel area grew more than water velocity after the step, whether a field note mentions scour, and how far the trust score drops."
   },
   {
     "id": "fill",
@@ -29,7 +29,7 @@
       "name": "French Broad River near Newport",
       "change": "Step down of 42 % (0.71 ft) first measured 2024-10-28, after Hurricane Helene; the field note reads 'Fill control changed'."
     },
-    "what_we_check": "We check whether water speed fell much more than channel area, whether a field note mentions fill, and how far the trust score drops."
+    "what_we_check": "We check whether water velocity fell much more than channel area, whether a field note mentions fill, and how far the trust score drops."
   },
   {
     "id": "debris",
@@ -73,7 +73,7 @@
       "name": "Pigeon River near Hepco",
       "change": "Step down of 26 % (0.33 ft) first measured 2024-12-17, after Hurricane Helene; the field note says scour, which would push the other way, so the cause is still in dispute."
     },
-    "what_we_check": "We check whether the step starts right after a known flood, compare channel area against water speed, read the field notes, and show how far the trust score drops."
+    "what_we_check": "We check whether the step starts right after a known flood, compare channel area against water velocity, read the field notes, and show how far the trust score drops."
   },
   {
     "id": "datum_change",
@@ -85,7 +85,7 @@
     "how_long": "Permanent until the curve or the gauge reading is corrected.",
     "typical_size": "[unknown]",
     "real_example": null,
-    "what_we_check": "We check for a step with no matching change in channel area or water speed, look in the field notes for gauge work, and show the trust score."
+    "what_we_check": "We check for a step with no matching change in channel area or water velocity, look in the field notes for gauge work, and show the trust score."
   },
   {
     "id": "dam",
@@ -97,7 +97,7 @@
     "how_long": "A step at the construction or removal date, then changes that can continue for years.",
     "typical_size": "[unknown]",
     "real_example": null,
-    "what_we_check": "We check for a step at a known construction date, compare channel area against water speed before and after, read the field notes, and show the trust score."
+    "what_we_check": "We check for a step at a known construction date, compare channel area against water velocity before and after, read the field notes, and show the trust score."
   },
   {
     "id": "gradual_drift",
