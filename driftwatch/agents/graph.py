@@ -10,7 +10,8 @@ evidence_collector no LLM: runs the four tools in tools.py.
 hypothesis_ranker LLM (or fallback): ranked causes, always incl. datum_change and inconclusive.
 skeptic           LLM on a different family (or fallback): accept, or a typed objection.
                   A third objection does not loop again; it goes to the narrator as unresolved.
-narrator          LLM (or fallback): <= 120 words for a utility manager.
+narrator          LLM (or fallback): <= 200 words, report voice; facts and fixed sentences
+                  come from narration.py, and the guard there checks the text.
 
 Any LLM failure (exception, unparsable output, a guard below) falls back to the deterministic
 node for that step; the trace payload records it. The loop count lives in the state, so no
@@ -29,7 +30,7 @@ from typing import Any, TypedDict
 import numpy as np
 from langgraph.graph import END, START, StateGraph
 
-from driftwatch.agents import fallbacks, llm, tools
+from driftwatch.agents import context, fallbacks, llm, narration, tools
 from driftwatch.agents.models import (
     CAUSE_KEYS,
     REQUIRED_CAUSES,
@@ -42,7 +43,7 @@ from driftwatch.agents.trace import TraceRecorder
 from driftwatch.modules.rating_curve import report as rc_report
 
 MAX_LOOPS = 2  # skeptic objections that send the ranker round again
-MAX_WORDS = 120
+MAX_WORDS = narration.MAX_WORDS
 
 
 class AgentState(TypedDict, total=False):
@@ -120,6 +121,8 @@ def collect_evidence(site: str, triage: dict[str, Any]) -> dict[str, Any]:
         "field_notes": tools.field_notes(site),
         "flood_context": tools.flood_context(site, split),
         "site_metadata": tools.site_metadata(site),
+        # cached web leads (make context); never searched at run time
+        "event_context": context.load(site),
     }
 
 
@@ -175,7 +178,27 @@ def narrator_final(final: dict | None) -> dict | None:
     return final
 
 
-def narrator_view(facts: dict[str, Any], final: dict | None = None) -> dict[str, Any]:
+def _cause_label(final: dict | None) -> str | None:
+    if not final:
+        return None
+    if final.get("disagreement"):
+        return fallbacks.LABEL[final["disagreement"]["best_guess"]["cause"]].lower()
+    if final.get("cause_status") == "open":
+        return None
+    return fallbacks.LABEL[final["cause"]].lower()
+
+
+def _cause_conf(final: dict | None) -> float | None:
+    if not final or final.get("cause_status") == "open":
+        return None
+    if final.get("disagreement"):
+        return final["disagreement"]["best_guess"]["confidence"]
+    return final.get("confidence")
+
+
+def narrator_view(
+    facts: dict[str, Any], final: dict | None = None, nf: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Everything the narrator may say, and nothing else. Direction is words, size is unsigned:
     signed residuals, signed shift sizes and the score-deduction prose are left out so the model
     can neither infer (and flip) the direction nor pick up claims that aren't facts."""
@@ -187,6 +210,31 @@ def narrator_view(facts: dict[str, Any], final: dict | None = None) -> dict[str,
         v["measurements_since_shift"] = t["top_shift"]["n_after"]
     if final:
         v["cause_status"] = final.get("cause_status")
+    if nf is not None:
+        # computed facts for the narration; the signed shift is given as words + unsigned size
+        keep = (
+            "river_name",
+            "county",
+            "rating_sentence",
+            "change_date",
+            "level_change_ft",
+            "level_word",
+            "at_stage_ft",
+            "flow_change_pct",
+            "area_change_pct",
+            "velocity_change_pct",
+            "check_pct",
+            "check_agrees",
+            "flood",
+            "window",
+            "helene",
+            "note",
+            "lead",
+        )
+        v["narration_facts"] = {k: nf[k] for k in keep if nf.get(k) is not None}
+        if nf.get("curve_cfs") is not None:
+            v["narration_facts"]["curve_cfs"] = round(nf["curve_cfs"])
+            v["narration_facts"]["flow_change_cfs_unsigned"] = round(abs(nf["flow_change_cfs"]))
     return v
 
 
@@ -199,25 +247,35 @@ def expected_confidence_word(final: dict | None) -> str:
 
 
 def narration_ok(
-    n: Narration | str, facts: dict[str, Any], final: dict | None = None
+    n: Narration | str,
+    facts: dict[str, Any],
+    final: dict | None = None,
+    nf: dict[str, Any] | None = None,
 ) -> str | None:
-    """None if the narration can be used, else why not. A plain string is checked for length,
-    score and Double-check only (used for the fallback text in tests)."""
+    """None if the narration can be used, else why not. With full triage facts the text also
+    goes through narration.check_text (banned patterns, 200 words, the closing rating sentence,
+    the open-cause rule). A plain string with minimal facts is checked for length, score and
+    Double-check only."""
     text = n if isinstance(n, str) else n.text
     t = facts["triage"]
-    words = len(text.split())
+    words = narration.word_count(text)
     if words > MAX_WORDS:
         return f"{words} words > {MAX_WORDS}"
     s = t["score"]
     if not re.search(rf"\b({round(s)}|{s:.1f})\b", text):
         return "the trust score is missing"
+    status = fallbacks.narration_status(final)
     if final and final.get("disagreement") and "double-check" not in text.lower():
         return "a Disagreement must end with 'Double-check: ...'"
-    if final and final.get("cause_status") == "open":
-        if "double-check" not in text.lower():
-            return "an open cause must give 'Double-check: ...'"
-        if m := fallbacks.MECHANISM_WORDS.search(text):
-            return f"an open cause must not name a mechanism ('{m.group(0)}')"
+    if final and final.get("cause_status") == "open" and "double-check" not in text.lower():
+        return "an open cause must give 'Double-check: ...'"
+    if nf is None and "site" in t:
+        nf = narration.narration_facts(facts, (facts.get("event_context") or {}).get("items"))
+    if nf is not None:
+        if bad := narration.check_text(text, nf, status):
+            return bad
+    elif status == "open" and (m := fallbacks.MECHANISM_WORDS.search(text)):
+        return f"an open cause must not name a mechanism ('{m.group(0)}')"
     if isinstance(n, str):
         return None
     for field in ("direction", "confidence_word", "cause_or_disagreement", "action"):
@@ -225,8 +283,9 @@ def narration_ok(
             return f"field {field} is empty"
     if n.direction.strip() != t["direction_phrase"] or t["direction_phrase"] not in text:
         return f"direction must be '{t['direction_phrase']}' and appear verbatim in the text"
-    if n.score_sentence.strip() != t["score_display"] or t["score_display"] not in text:
-        return "score_sentence must be the score_display sentence and appear verbatim in the text"
+    closing = nf["rating_sentence"] if nf else t["score_display"]
+    if n.score_sentence.strip() != closing or closing not in text:
+        return f"score_sentence must be '{closing}' and appear verbatim in the text"
     want = expected_confidence_word(final)
     if n.confidence_word.strip().lower() != want:
         return f"confidence_word must be '{want}'"
@@ -393,29 +452,53 @@ def build_graph(rec: TraceRecorder):
             notes = facts.get("field_notes", {}).get("distinct_notes") or []
             final["cause_status"] = fallbacks.cause_status(final, notes)
         meta: dict[str, Any] = {"model": "fallback"}
-        fb = fallbacks.narrate(facts, final)
+        ctx = (facts.get("event_context") or {}).get("items")
+        nf = narration.narration_facts(facts, ctx)
+        fb = fallbacks.narrate(facts, final, nf)
         parts, text = fb.model_dump(), fb.text
         if state["llm"] != "fallback":  # backend is built inside the try below
+            status = fallbacks.narration_status(final)
+            check = parts["action"] if parts["action"].startswith("Double-check") else None
+            fixed = narration.sentences(
+                nf,
+                _cause_label(final),
+                status,
+                check[len("Double-check: ") :] if check else None,
+                _cause_conf(final),
+            )
+            user = llm.prompt(
+                "narrator_input",
+                facts=_dump(narrator_view(facts, final, nf)),
+                final=_dump(narrator_final(final)),
+                sentences=_dump({k: v for k, v in fixed.items() if v}),
+            )
+            rejected: list[dict[str, str]] = []
             try:
-                n, meta = await llm.structured(
-                    "narrator",
-                    state["llm"],
-                    Narration,
-                    llm.prompt("narrator"),
-                    llm.prompt(
-                        "narrator_input",
-                        facts=_dump(narrator_view(facts, final)),
-                        final=_dump(narrator_final(final)),
-                    ),
-                )
-                bad = narration_ok(n, facts, final)
-                if bad:
-                    meta["rejected"] = bad
-                    meta["rejected_text"] = n.text
-                else:
-                    parts, text = n.model_dump(), n.text.strip()
+                for attempt in (1, 2):  # a guard hit gets one retry, then the template
+                    ask = user
+                    if rejected:
+                        ask += (
+                            "\n\nYour previous text was rejected: "
+                            f"{rejected[-1]['why']}. Rewrite it and fix that."
+                        )
+                    n, meta = await llm.structured(
+                        "narrator", state["llm"], Narration, llm.prompt("narrator"), ask
+                    )
+                    bad = narration_ok(n, facts, final, nf)
+                    if not bad:
+                        parts, text = n.model_dump(), n.text.strip()
+                        break
+                    rejected.append({"attempt": attempt, "why": bad, "text": n.text})
+                if rejected:
+                    meta["attempts"] = rejected
+                    if len(rejected) == 2:
+                        meta["rejected"] = rejected[-1]["why"]
+                        meta["rejected_text"] = rejected[-1]["text"]
             except Exception as e:  # noqa: BLE001
                 meta = _llm_failed(e)
+                if rejected:
+                    meta["attempts"] = rejected
+        meta["narration_facts"] = nf
         rec.emit(
             "narrator", "completed", {"narration": text, "parts": parts, "final": final, **meta}
         )

@@ -46,12 +46,10 @@ SUGGESTION_BONUS = 2
 LABEL = {c.key: c.label for c in catalog.CAUSES} | {"inconclusive": "Inconclusive"}
 
 NEXT_STEP = {
-    "scour": "Schedule a field measurement and a control survey, then apply a positive shift "
-    "until a new rating is built.",
-    "fill": "Schedule a field visit to survey the control and apply a negative shift; plan a "
-    "rating revision if the next two measurements agree.",
-    "debris": "Ask the field crew to clear the control on the next visit and re-measure; "
-    "treat published flows as high until then.",
+    "scour": "Survey the control and measure flow, then apply a positive shift until a new "
+    "rating is built.",
+    "fill": "Survey the control and apply a negative shift until two more measurements agree.",
+    "debris": "Clear the control on the next visit and measure flow again.",
     "vegetation": "Check the control for growth on the next visit; expect it to fade after "
     "the growing season.",
     "datum_change": "Pull the gauge's levels and maintenance history and re-run levels to the "
@@ -251,8 +249,8 @@ NOTE_DISCOUNT = (
 
 # what to check on the next visit, by (what the note says, what the numbers say)
 RECOMMENDED_CHECK = {
-    ("scour", "fill"): "Survey the control section for deposited gravel and confirm the gauge "
-    "datum against the reference mark.",
+    ("scour", "fill"): "Survey the control for deposited gravel and check the gauge datum "
+    "against the reference mark.",
     ("scour", "datum_change"): "Run levels from the reference marks to the gauge to confirm the "
     "datum, and survey the control for scour.",
     ("fill", "scour"): "Survey the control for scour and confirm the gauge datum against the "
@@ -310,8 +308,8 @@ def disagreement(facts: dict[str, Any], ranking: Ranking, confidence: float) -> 
 # An "open" cause (ranked, but no field note since the reference window backs it): the narration
 # states the drift, the direction and this check, and never names a mechanism (decision log, M3).
 OPEN_CHECK = (
-    "Schedule a field measurement and run levels from the reference marks to the gauge to find "
-    "what changed before the rating is adjusted."
+    "Measure flow and run levels from the reference marks to the gauge before adjusting the "
+    "rating."
 )
 MECHANISM_WORDS = re.compile(
     r"\b(scour\w*|fill\w*|debris|vegetation|growth|datum|rebuil\w*|aggrad\w*|degrad\w*|"
@@ -339,67 +337,55 @@ def confidence_word(conf: float) -> str:
     return "confident" if conf >= 0.8 else "likely" if conf >= 0.4 else "uncertain"
 
 
-def narrate(facts: dict[str, Any], final: dict[str, Any] | None) -> Narration:
-    t = facts["triage"]
-    name = t.get("site_name") or t["site"]
-    score = t["score_display"]
-    direction = t["direction_phrase"]
-    off = f"{t['off_by_pct']:.0f} % {direction}"
-
-    def done(word: str, cause: str, action: str, what: str) -> Narration:
-        return Narration(
-            direction=direction,
-            confidence_word=word,
-            cause_or_disagreement=cause,
-            action=action,
-            score_sentence=score,
-            text=" ".join(x for x in (what, cause, action, score) if x),
-        )
-
+def narration_status(final: dict[str, Any] | None) -> str:
     if final is None:
-        return done(
-            "n/a",
-            "No lasting shift since the storm, so published flows can be used as is.",
-            "No action beyond the regular visit schedule.",
-            f"{name}: recent field measurements average {off}.",
+        return "none"
+    return "disagreement" if final.get("disagreement") else final.get("cause_status") or "open"
+
+
+def narrate(
+    facts: dict[str, Any], final: dict[str, Any] | None, nf: dict[str, Any] | None = None
+) -> Narration:
+    """The template narration: the fixed sentences from narration.py in report order."""
+    from driftwatch.agents import narration  # narration imports this module lazily too
+
+    t = facts["triage"]
+    nf = nf or narration.narration_facts(facts, (facts.get("event_context") or {}).get("items"))
+    status = narration_status(final)
+    word, label, conf, check = "n/a", None, None, None
+    if status == "disagreement":
+        bg = final["disagreement"]["best_guess"]
+        word, label, conf = "uncertain", LABEL[bg["cause"]].lower(), bg["confidence"]
+        check = final["disagreement"]["recommended_check"]
+    elif status == "open":
+        word, check = "uncertain", OPEN_CHECK
+    elif status == "corroborated":
+        label, conf = LABEL[final["cause"]].lower(), final["confidence"]
+        word = confidence_word(conf)
+        check = NEXT_STEP[final["cause"]]
+    s = narration.sentences(nf, label, status, check, conf)
+    if status == "corroborated":
+        extra = ""
+        if final.get("first_cause") and final["first_cause"] != final["cause"]:
+            extra = (
+                f" The Skeptic's objection moved the first ranking "
+                f"({LABEL[final['first_cause']].lower()}) down."
+            )
+        if final.get("unresolved"):
+            s["conclusion"] = (
+                f"DriftWatch's agents rank {label} first at {conf * 100:.0f} %, although the "
+                "Skeptic still disputes it, so the cause is unconfirmed."
+            )
+        s["conclusion"] += extra
+    text = narration.join(s)
+    return Narration(
+        direction=t["direction_phrase"],
+        confidence_word=word,
+        cause_or_disagreement=" ".join(
+            x for x in (s.get("note"), s.get("note_meaning"), s.get("conclusion")) if x
         )
-    shift = t.get("top_shift")
-    since = f" (the shift began {shift['time'][:10]})" if shift else ""
-    what = (
-        f"{name}: recent field measurements{since} sit {off}, so published flows are about "
-        f"that much {t['published_flows']}."
-    )
-    d = final.get("disagreement")
-    if d:
-        bg = d["best_guess"]
-        return done(
-            "uncertain",
-            f"Best guess: {LABEL[bg['cause']].lower()} ({bg['confidence'] * 100:.0f} %, "
-            f"uncertain). The field note says \"{d['field_note']['note']}\" "
-            f"({d['field_note']['date']}). Why they disagree: {d['why_they_disagree']}",
-            f"Double-check: {d['recommended_check']}",
-            what,
-        )
-    if final.get("cause_status") == "open":
-        return done(
-            "uncertain",
-            "The cause is open: no field note confirms what changed.",
-            f"Double-check: {OPEN_CHECK}",
-            what,
-        )
-    cause = final["cause"]
-    conf = final["confidence"]
-    word = confidence_word(conf)
-    objected = (
-        f" A second check overturned the first guess ({LABEL[final['first_cause']].lower()})."
-        if final.get("first_cause") and final["first_cause"] != cause
-        else ""
-    )
-    if final.get("unresolved"):
-        objected += " A reviewer still disputes it, so treat the cause as unconfirmed."
-    return done(
-        word,
-        f"Most likely cause: {LABEL[cause].lower()}, {word} ({conf * 100:.0f} %).{objected}",
-        f"Next: {NEXT_STEP[cause]}",
-        what,
+        or s["measured"],
+        action=s.get("double_check") or "No action beyond the regular visit schedule.",
+        score_sentence=nf["rating_sentence"],
+        text=text,
     )
