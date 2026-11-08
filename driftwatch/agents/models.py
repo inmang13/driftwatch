@@ -52,8 +52,9 @@ class FieldNoteRef(BaseModel):
 
 
 class Disagreement(BaseModel):
-    """The skeptic's answer when it is under 0.6 sure and a hydrographer's control note says
-    something else: show both sides and what to check, instead of a plain accept."""
+    """Shown when the Skeptic is under 0.6 sure and a control note says something else (rule a),
+    or when the change-visit note's cause has the opposite sign to the final cause (rule b):
+    both sides and what to check, instead of a plain accept."""
 
     best_guess: BestGuess
     field_note: FieldNoteRef
@@ -62,6 +63,11 @@ class Disagreement(BaseModel):
         "channel numbers show"
     )
     recommended_check: str = Field(description="one concrete thing for the next site visit")
+    rule: Literal["low_confidence", "note_sign"] | None = Field(
+        default=None,
+        description="set by code: low_confidence = Skeptic under 0.6 with a contradicting note; "
+        "note_sign = the change-visit note's cause has the opposite sign to the final cause",
+    )
 
 
 class SkepticVerdict(BaseModel):

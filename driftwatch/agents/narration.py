@@ -25,10 +25,6 @@ MAX_WORDS = 200
 HELENE_DATE = datetime(2024, 9, 27, tzinfo=UTC)
 AGREE_POINTS = 15.0  # the area x velocity check agrees when within this many % points of the step
 
-Q_SENTENCE = (
-    "Flow rate equals water velocity times cross-sectional area (Q = V × A); a rating curve "
-    "assumes this holds at every stage."
-)
 
 # Fixed meaning of each field note, keyed by how the note starts (lower case). Each entry: the
 # sentence the narration uses, and the residual sign the note implies (negative = measurements
@@ -73,6 +69,13 @@ def _fmt_cfs(q: float) -> str:
 
 def _date(s: str | None) -> str | None:
     return s[:10] if s else None
+
+
+def _note_cause(note: str) -> str | None:
+    from driftwatch.modules.rating_curve import causes as catalog
+
+    c = catalog.cause_for_note(note)
+    return c.key if c else None
 
 
 def note_lookup(note: str | None) -> tuple[str, str] | None:
@@ -204,6 +207,7 @@ def narration_facts(facts: dict[str, Any], context: list[dict] | None = None) ->
             "meaning": meaning,
             "implies": sign,
             "agrees_with_data": sign == data_sign,
+            "cause": _note_cause(v["note"]),
         }
     f["lead"] = pick_lead(context, f["helene"])
     return f
@@ -300,16 +304,32 @@ def step_noun(x: float) -> str:
     return f"the {round(abs(x))} % {'rise' if x > 0 else 'drop'}"
 
 
+def short_cause(key: str | None) -> str:
+    """'fill', 'scour', 'datum change': the catalog key in plain words."""
+    return (key or "").replace("_", " ")
+
+
+def note_vs_data(note_sign: str, direction_phrase: str) -> str:
+    """The note-vs-data sentence: what the note implies against where the data sit."""
+    want = {"positive": "above", "negative": "below"}.get(note_sign, "off")
+    return (
+        f"That disagrees with the data: the note implies measurements {want} the rating, but "
+        f"they sit {direction_phrase}."
+    )
+
+
 def sentences(
     f: dict[str, Any],
     cause_label: str | None,
     status: str,
     check: str | None,
     confidence: float | None = None,
+    disagreement_rule: str | None = None,
+    final_key: str | None = None,
 ) -> dict[str, str | None]:
     """The fixed sentences of a narration, by role. None when the fact behind it is missing."""
     name = f"{f['river_name']}, USGS {f['site']}"
-    s: dict[str, str | None] = {"q": Q_SENTENCE}
+    s: dict[str, str | None] = {}
     if status == "none":
         s["measured"] = (
             f"Field measurements at {name}, have averaged {f['off_by_pct']} % "
@@ -373,6 +393,12 @@ def sentences(
         s["lead"] = lead_sentence(f["lead"])
     if status == "open":
         s["conclusion"] = "No field note confirms what changed, so the cause remains open."
+    elif status == "disagreement" and disagreement_rule == "note_sign" and f.get("note"):
+        s["conclusion"] = (
+            f"DriftWatch's agents rank {short_cause(final_key)} first "
+            f"({confidence * 100:.0f} %); the hydrographer's note says "
+            f"{short_cause(f['note']['cause'])}; the two disagree, so the cause is not settled."
+        )
     elif status == "disagreement":
         s["conclusion"] = (
             f"DriftWatch's agents rank {cause_label} first ({confidence * 100:.0f} %), but the "
@@ -389,7 +415,6 @@ def sentences(
 
 
 ORDER = (
-    "q",
     "measured",
     "level",
     "note",
@@ -468,11 +493,8 @@ def strip_labelled(text: str, f: dict[str, Any] | None) -> str:
 
 
 def _structure(text: str, f: dict[str, Any]) -> str | None:
-    """Rules (1), (3), (4) for a gauge with a final call: the opening Q = V x A sentence, the
+    """Rules (3), (4) for a gauge with a final call: the
     check sentence's verdict words, and the event wording."""
-    first = re.split(r"(?<=\.)\s+", text.strip(), maxsplit=1)[0]
-    if "Q = V × A" not in first:
-        return "the first sentence must state Q = V × A"
     if f.get("check_pct") is not None and f.get("step_pct") is not None:
         want = "which agrees with" if f["check_agrees"] else "which does not back up"
         if want not in text:

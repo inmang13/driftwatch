@@ -27,6 +27,15 @@ def runs(tmp_path_factory):
     return {s: graph.run_sync(s, "fallback", d) for s in (HEPCO, NEWPORT, ASHEVILLE, SWANNANOA)}
 
 
+@pytest.fixture(scope="module")
+def asheville_open(tmp_path_factory):
+    """Asheville with rule (b) switched off: the open-cause example (scour ranked, no note backs
+    it). With rule (b) on, its 'Debris - Light' change-visit note makes it a Disagreement."""
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(fallbacks, "note_at_change", lambda facts: None)
+        return graph.run_sync(ASHEVILLE, "fallback", tmp_path_factory.mktemp("open"))
+
+
 def test_graph_compiles(tmp_path):
     g = graph.build_graph(TraceRecorder("x", "fallback", out_dir=tmp_path))
     assert set(g.get_graph().nodes) >= {
@@ -378,17 +387,23 @@ def test_fallback_and_llm_disagreements_share_one_type(monkeypatch, tmp_path):
             "date": "2024-12-17",
         }
     )
-    assert b["why_they_disagree"] == "LLM words."
+    # rule (b) holds for Hepco: why is the computed note-vs-data sentence; check is the LLM's
+    assert b["rule"] == a["rule"] == "note_sign"
+    assert b["why_they_disagree"] == a["why_they_disagree"]
+    assert b["recommended_check"] == "LLM check."
 
 
-def test_cause_status_open_for_asheville_corroborated_for_newport(runs):
-    assert runs[ASHEVILLE]["final"]["cause_status"] == "open"  # scour, only Debris notes
+def test_cause_status_open_for_asheville_corroborated_for_newport(runs, asheville_open):
+    # rule (b): the change-visit note (Debris, lowers readings) opposes scour (raises them)
+    assert runs[ASHEVILLE]["final"]["cause_status"] == "disagreement"
+    assert runs[ASHEVILLE]["final"]["disagreement"]["rule"] == "note_sign"
+    assert asheville_open["final"]["cause_status"] == "open"  # scour, only Debris notes
     assert runs[NEWPORT]["final"]["cause_status"] == "corroborated"  # "Fill control changed"
     assert runs[HEPCO]["final"]["cause_status"] == "disagreement"
 
 
-def test_open_cause_narration_names_no_mechanism(runs):
-    r = runs[ASHEVILLE]
+def test_open_cause_narration_names_no_mechanism(asheville_open):
+    r = asheville_open
     text = r["narration"]
     assert "Double-check:" in text and fallbacks.OPEN_CHECK in text
     assert r["facts"]["triage"]["direction_phrase"] in text
@@ -396,8 +411,8 @@ def test_open_cause_narration_names_no_mechanism(runs):
     assert fallbacks.MECHANISM_WORDS.search(narration.strip_labelled(text, nf)) is None
 
 
-def test_open_cause_hides_the_cause_from_the_narrator(runs):
-    r = runs[ASHEVILLE]
+def test_open_cause_hides_the_cause_from_the_narrator(runs, asheville_open):
+    r = asheville_open
     seen = graph.narrator_final(r["final"])
     assert seen == {"cause_status": "open", "recommended_check": fallbacks.OPEN_CHECK}
     assert graph.narrator_view(r["facts"], r["final"])["cause_status"] == "open"
@@ -405,6 +420,7 @@ def test_open_cause_hides_the_cause_from_the_narrator(runs):
 
 
 def test_llm_open_narration_naming_a_cause_is_rejected(monkeypatch, tmp_path):
+    monkeypatch.setattr(fallbacks, "note_at_change", lambda facts: None)  # keep it open
     monkeypatch.setattr(llm, "backend", lambda role, mode: (object(), "fake"))
     facts = _facts(ASHEVILLE)
 
@@ -448,8 +464,7 @@ def _nf(r):
 def test_narration_rules_hold_for_the_fallback(runs, site):
     r = runs[site]
     text, nf = r["narration"], _nf(r)
-    assert text.startswith(narration.Q_SENTENCE)  # (1) opens on Q = V x A
-    assert "Q = V × A" in text and "water velocity times cross-sectional area" in text
+    assert "Q = V × A" not in text  # (1) dropped: the opener was filler (Grace)
     assert "same flow" not in text and "speed" not in text
     assert nf["note"] and nf["note"]["meaning"] in text  # (2) the fixed note meaning, verbatim
     assert "After the change, at that stage, area" in text  # (3)
@@ -502,11 +517,12 @@ def test_hepco_note_disagrees_and_no_measured_flood(runs):
         "Hurricane Helene (2024-09-27) passed between the 2024-08-22 and 2024-12-17 visits; no "
         "gauging was made during the storm."
     ) in text
-    assert "Skeptic" in text and "Double-check:" in text
+    assert "the hydrographer's note says scour; the two disagree" in text
+    assert "Double-check:" in text
 
 
-def test_asheville_check_does_not_back_up_and_conclusion_stays_open(runs):
-    r = runs[ASHEVILLE]
+def test_asheville_check_does_not_back_up_and_conclusion_stays_open(asheville_open):
+    r = asheville_open
     nf, text = _nf(r), r["narration"]
     assert nf["level_word"] == "lower" and "0.27 ft lower than the curve predicts" in text
     # (1.077)(1.017) - 1 = +9.5 % vs a +46.2 % step: 37 points apart -> does not back up
@@ -570,15 +586,15 @@ def test_banned_pattern_check_passes_fallbacks_and_rejects_bad_samples(runs):
         assert narration.banned(bad), bad
     # a deliberately bad full narration: right facts, wrong voice
     nf = _nf(runs[HEPCO])
-    bad = runs[HEPCO]["narration"].replace("; a rating curve", " — and, importantly, a curve")
+    bad = runs[HEPCO]["narration"].replace(". For a given", " — and, importantly, for a given")
     assert narration.check_text(bad, nf, "disagreement")
     # a moral after the rating sentence is rejected too
     moral = runs[HEPCO]["narration"] + " Care."
     assert "must end with" in narration.check_text(moral, nf, "disagreement")
 
 
-def test_guard_holds_open_cause_rule_outside_the_note(runs):
-    r = runs[ASHEVILLE]
+def test_guard_holds_open_cause_rule_outside_the_note(asheville_open):
+    r = asheville_open
     nf, text = _nf(r), r["narration"]
     assert narration.check_text(text, nf, "open") is None
     worse = text.replace("so the cause remains open.", "so scour is likely.")
@@ -600,8 +616,9 @@ def _llm_narration(r, text):
 @pytest.mark.parametrize("bad_times", [1, 2])
 def test_narrator_retries_once_then_uses_the_template(runs, monkeypatch, tmp_path, bad_times):
     r = runs[HEPCO]
-    good = r["narration"].replace("Since the 2024-12-17 visit, field", "Since 2024-12-17, field")
-    bad = r["narration"].replace("; a rating curve", " — a rating curve")
+    good = r["narration"].replace("Since the 2024-12-17 visit,", "Since 2024-12-17,")
+    bad = r["narration"].replace(". For a given", " — for a given")
+    assert good != r["narration"] and bad != r["narration"]
     calls = []
     monkeypatch.setattr(llm, "backend", lambda role, mode: (object(), "fake"))
 
@@ -738,12 +755,10 @@ def test_context_text_hygiene():
 def test_guard_requires_q_sentence_check_verdict_and_event_wording(runs):
     h, n, a = runs[HEPCO], runs[NEWPORT], runs[ASHEVILLE]
     nfh, nfn, nfa = _nf(h), _nf(n), _nf(a)
-    no_q = h["narration"].replace(" (Q = V × A)", "")
-    assert "Q = V × A" in narration.check_text(no_q, nfh, "disagreement")
     flipped = h["narration"].replace("which agrees with", "which matches")
     assert "which agrees with" in narration.check_text(flipped, nfh, "disagreement")
     vague = a["narration"].replace("so no measured high flow explains it", "so nothing shows")
-    assert "no measured high flow" in narration.check_text(vague, nfa, "open")
+    assert "no measured high flow" in narration.check_text(vague, nfa, "disagreement")
     no_peak = n["narration"].replace("91,700 cfs", "a big flow")
     assert "verbatim" in narration.check_text(no_peak, nfn, "corroborated")  # Helene sentence
 
@@ -782,3 +797,48 @@ def test_committed_context_gives_no_lead_for_newport_or_hepco():
     for site in (NEWPORT, HEPCO):
         items = json.loads((root / f"{site}.json").read_text(encoding="utf-8"))["items"]
         assert narration.pick_lead(items, helene=True) is None, site
+
+
+# --- Disagreement rule (b): change-visit note vs final cause, opposite signs ----------------
+
+
+def test_rule_b_hepco_fallback_is_a_note_sign_disagreement(runs):
+    r = runs[HEPCO]
+    d = r["final"]["disagreement"]
+    assert r["final"]["cause_status"] == "disagreement" and d["rule"] == "note_sign"
+    assert d["best_guess"]["cause"] == r["final"]["cause"] == "fill"
+    assert d["field_note"] == {"note": "Scour control changed", "date": "2024-12-17"}
+    assert d["why_they_disagree"] == narration.note_vs_data("positive", "below the rating")
+    assert d["recommended_check"]
+    assert (
+        "DriftWatch's agents rank fill first (40 %); the hydrographer's note says scour; the two "
+        "disagree, so the cause is not settled."
+    ) in r["narration"]
+
+
+def test_rule_b_fires_even_when_the_skeptic_is_sure(runs):
+    facts = runs[HEPCO]["facts"]
+    top = Ranking(hypotheses=[Hypothesis(cause="fill", confidence=0.95, sign_matches=True)])
+    d = fallbacks.disagreement(facts, top, confidence=0.95)  # rule (a) would not fire
+    assert d is not None and d.rule == "note_sign"
+
+
+def test_rule_b_newport_note_and_cause_agree(runs):
+    assert runs[NEWPORT]["final"]["disagreement"] is None
+    facts = runs[NEWPORT]["facts"]
+    assert fallbacks.note_at_change(facts)["cause"] == "fill"
+    top = Ranking(hypotheses=[Hypothesis(cause="fill", confidence=0.95, sign_matches=True)])
+    assert fallbacks.disagreement(facts, top, confidence=0.95) is None
+
+
+def test_rule_b_synthetic_scour_note_and_scour_final_is_none(runs):
+    facts = runs[HEPCO]["facts"]  # change-visit note: "Scour control changed"
+    top = Ranking(hypotheses=[Hypothesis(cause="scour", confidence=0.9, sign_matches=True)])
+    assert fallbacks.note_at_change(facts)["cause"] == "scour"
+    assert fallbacks.disagreement(facts, top, confidence=0.9) is None
+    # and rule (a) still fires below 0.6 when a control note names another cause
+    other = Ranking(
+        hypotheses=[Hypothesis(cause="datum_change", confidence=0.3, sign_matches=True)]
+    )
+    d = fallbacks.disagreement(facts, other, confidence=0.3)
+    assert d is not None and d.rule == "low_confidence"

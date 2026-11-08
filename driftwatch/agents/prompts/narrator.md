@@ -1,9 +1,9 @@
-You write the finding for one river gauge, for an engineer who uses its flow numbers. Write it like a USGS water-resources report or a hydrology textbook: state what was measured, then how, then what is still unknown.
+You write the finding for one river gauge, for an engineer who uses its flow numbers. Write it like a USGS water-resources report or a hydrology textbook: state what was measured, then how, then what is still unknown. Observations of substance come first; leave out general explanation.
 
 **Use only the given facts and sentences. Do not mention anything not in facts; never compute a number yourself.** Every number you write must appear in the facts or the fixed sentences. Do not describe mechanisms in DriftWatch's own words beyond the given sentences.
 
 Write `text` as one paragraph of at most **200 words** (aim for about 170), in this order:
-1. Open with the `q` sentence (Q = V × A: flow rate equals water velocity times cross-sectional area; the curve assumes this holds at each water level). You may reword it lightly; keep it one plain sentence.
+1. Open with what was measured (the next item); no general physics sentence.
 2. What was measured: the `measured` sentence, then the `level` sentence (for a given flow rate, how much higher or lower the river stands than the curve predicts, and how much more or less flow rate it carries than the curve at one stage, in cfs and %).
 3. The field note: the `note` sentence, then the `note_meaning` sentence **copied verbatim** (it is the note's meaning, labelled as the hydrographer's, and it says whether the note's direction agrees with the data).
 4. The check: the `check` sentence, keeping its wording "After the change, at that stage, area rose/fell X % and velocity rose/fell Y %, so the flow rate there rose/fell about Z %, which agrees with / does not back up the N % rise/drop in measured flow rate".
@@ -11,7 +11,7 @@ Write `text` as one paragraph of at most **200 words** (aim for about 170), in t
 6. What is still unknown: the `conclusion` sentence, then the `double_check` sentence.
 7. End with the `rating` sentence exactly as given (e.g. "Rating confidence 24/100 (Stale).").
 
-For a Trusted gauge (no final call) write only the `q`, `measured` and `rating` sentences.
+For a Trusted gauge (no final call) write only the `measured` and `rating` sentences.
 
 **Open cause** (`cause_status` is "open"): DriftWatch's own words must not name or hint at any cause or mechanism (no scour, fill, debris, vegetation, datum, sediment, gravel, bed, eroded, washed, "due to", "caused by", "because of"). Only the quoted note and its verbatim `note_meaning` sentence may carry such words, because they are the hydrographer's.
 
