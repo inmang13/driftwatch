@@ -133,8 +133,10 @@ def _text(content: Any) -> str:
     return "".join(c.get("text", "") for c in content if isinstance(c, dict))
 
 
-def _resolve(uri: str) -> tuple[str | None, str | None]:
-    """Follow the grounding redirect to the real page; return (final url, page <title>)."""
+def _resolve(uri: str) -> tuple[str | None, str | None, str]:
+    """Follow the grounding redirect to the real page; return (final url, page <title>, page
+    text). The text is what the river/county filter checks, so a claim the model wrote can't
+    vouch for itself. PDFs and blocked pages give empty text and are dropped by that filter."""
     import httpx
 
     headers = {"User-Agent": "Mozilla/5.0 (DriftWatch context cache)"}
@@ -142,15 +144,15 @@ def _resolve(uri: str) -> tuple[str | None, str | None]:
         with httpx.Client(follow_redirects=True, timeout=20, headers=headers) as c:
             r = c.get(uri)
             url = str(r.url)
-            title = None
-            if "html" in r.headers.get("content-type", ""):
-                m = re.search(
-                    r"<title[^>]*>(.*?)</title>", r.text[:300000], re.DOTALL | re.IGNORECASE
-                )
+            title, text = None, ""
+            if r.status_code == 200 and "html" in r.headers.get("content-type", ""):
+                page = r.text[:600000]
+                m = re.search(r"<title[^>]*>(.*?)</title>", page, re.DOTALL | re.IGNORECASE)
                 title = m.group(1).strip() if m else None
-            return url, title
+                text = re.sub(r"<[^>]+>", " ", page)
+            return url, title, text
     except Exception:  # noqa: BLE001 - unreachable page: keep nothing from it
-        return None, None
+        return None, None, ""
 
 
 def _about_site(t: dict[str, Any], *texts: str) -> bool:
@@ -169,7 +171,7 @@ def search_site(site: str) -> dict[str, Any]:
     items: list[dict[str, Any]] = []
     dropped: list[dict[str, Any]] = []
     seen_urls: set[str] = set()
-    resolved: dict[str, tuple[str | None, str | None]] = {}
+    resolved: dict[str, tuple[str | None, str | None, str]] = {}
     for hint, q in queries(t):
         msg = ASK.format(question=q, river=t["river"], county=t["county"])
         r = chat.invoke(msg, tools=[VertexTool(google_search={})])
@@ -196,8 +198,8 @@ def search_site(site: str) -> dict[str, Any]:
             web = (chunks[idx[0]] or {}).get("web") or {}
             uri = web.get("uri")
             if uri not in resolved:
-                resolved[uri] = _resolve(uri) if uri else (None, None)
-            url, page_title = resolved[uri]
+                resolved[uri] = _resolve(uri) if uri else (None, None, "")
+            url, page_title, page_text = resolved[uri]
             if not url:
                 dropped.append({"claim": claim, "why": "source link did not resolve"})
                 continue
@@ -206,7 +208,7 @@ def search_site(site: str) -> dict[str, Any]:
             ):
                 page_title = None  # a block page, not the source's title
             title = clean_title(page_title or web.get("title") or "")
-            if not _about_site(t, claim, title):
+            if not _about_site(t, title, page_text):  # the page, not the model's claim
                 dropped.append({"claim": claim, "url": url, "why": "not about this river/county"})
                 continue
             if url in seen_urls:

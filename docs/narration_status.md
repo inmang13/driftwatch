@@ -47,14 +47,18 @@ Both phases are done and pushed. `make test` passes (176 tests), `make demo` pas
   Three queries are built in code from the river, place, county, state and the visit window:
   storms/floods, dams/construction near the gauge, and USGS reports. A finding is kept only if a
   grounding chunk supports it. The grounding redirect is resolved to the real URL and the page's
-  own `<title>` is fetched. Items that don't name the river or county are dropped. Claims and
-  titles are cleaned of dashes, `| ? !` and parentheses.
+  own `<title>` is fetched. Items whose page (title plus text) doesn't name the river or county
+  are dropped. Claims and titles are cleaned of dashes, `| ? !` and parentheses.
+- **Fixed after the files were made:** the first version of that filter tested the model's own
+  claim, so it let everything through. It now tests the fetched page, which also drops PDFs and
+  blocked pages (no text). The committed JSONs were made before this fix and then checked by
+  hand (below), so a rerun of `make context` will keep fewer items.
 - The evidence collector adds an `event_context` tool result, so the trace carries the URLs. The
   console has no code change; it shows the new step as a plain "event_context" row.
 - Lead choice (`narration.pick_lead`): construction, then dam, then USGS report, then storm. A
   claim naming Helene is skipped outside the Helene window (rule 4). Tests point
   `context.CONTEXT_DIR` at an empty dir, so they never see the committed files.
-- Results: **Hepco has no usable lead.** All three of its remaining items name Helene.
+- Results: **Hepco has no usable lead.** Its one remaining item (Walters Dam) names Helene.
   **Newport's lead** is the Cocke County evacuation story. **Asheville's lead** is the I-26
   Connector bridge plans.
 
@@ -65,19 +69,25 @@ Both phases are done and pushed. `make test` passes (176 tests), `make demo` pas
 | 03459500 | Contractors mobilized to replace an I-40 bridge over the Pigeon River near Exit 15 | Title "All lanes of I-40 in Pigeon River Gorge now open" is about lanes reopening |
 | 03459500 | Helene caused historic flooding along the Pigeon River, washing out I-40 (USACE PN) | PDF returns Access Denied, so there was no title to check |
 | 03451500 | Contractors began in-water cofferdam construction ... for a municipal pipeline replacement | Title is a "$75M pump station upgrade", not a pipeline replacement |
+| 03459500 | Helene caused catastrophic flooding along the Pigeon River in Haywood County (thispendentworld.com) | The page never names the Pigeon River or Haywood County; it's a general Helene blog post |
+| 03459500 | The USGS deployed crews to repair damaged streamgages along the Pigeon River (USGS news) | National news release; the page never names the Pigeon River or Haywood County |
 
 Domain-only titles on PDFs ("usgs.gov", "americanrivers.org") were replaced with the document's
 real title from its USGS Pubs landing page or the PDF's first page. PDFs were checked with
 `pdftotext`: each one names its station or river. Each kept item has a `reviewed` field.
-**Weak but kept:** two blog/aggregator sources (thispendentworld.com for Hepco, atmostorm.com for
-Mills). Their titles match their claims, but neither is a primary source.
+**Weak but kept:** atmostorm.com for Mills, an aggregator page. Its title matches its claim, but
+it isn't a primary source. The Hepco Gemini trace was recorded before the last two removals, so
+its evidence step still lists them; the narration used no lead for Hepco.
 
 ## LLM=gemini narrations (Replay defaults)
 
 `traces/replay_defaults.json` now points at these runs. Gemini 3.8 Flash ran the ranker and the
-narrator; the Skeptic ran on OpenRouter gpt-5.4-mini. Newport and Asheville each had one
-rejection ("> 200 words") on their first narration attempt in an earlier run and passed on the
-retry. In these final runs all three passed the guard.
+narrator; the Skeptic ran on OpenRouter gpt-5.4-mini. All three texts below are Gemini's (none
+fell back to the template), read from each trace's narrator payload:
+- Hepco: the first attempt was rejected ("unit not spaced from its number ('1%')"); the retry
+  passed.
+- Newport: the first attempt was rejected ("204 words > 200"); the retry passed.
+- Asheville: passed on the first attempt.
 
 **French Broad River near Newport (03455000-20261108T014651910592Z.json):**
 Flow equals water speed times cross-sectional area (Q = V × A); the curve assumes this holds at each stage. Since the 2024-10-28 visit, measurements at the French Broad River near Newport, USGS 03455000, sit 46 % below the rating; published flows run too high. The river stands 0.71 ft higher for the same flow: at 2.70 ft it carries 1,350 cfs (42 %) less than 3,210 cfs. The hydrographer noted "Fill control changed" on 2024-10-28. In the note's terms, gravel built up on the control (the riffle just downstream that sets the water level), so water backs up at the gauge: deeper, more area, much slower. Area changed +25 % and speed -58 %, so flow at the same level changed about -48 %, which agrees with the -42 % change. Between the 2024-08-19 and 2024-10-28 visits, flow reached 91,700 cfs on 2024-09-28. Possible lead: Cocke County ordered downtown Newport evacuated due to erroneous reports of a catastrophic dam failure during historic flooding (Flood top story of 2024). DriftWatch's agents rank fill first (83 %); the Skeptic accepted it. Double-check: Survey the control and apply a negative shift until two measurements agree. Rating confidence 30/100 (Stale).
