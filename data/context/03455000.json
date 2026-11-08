@@ -14,15 +14,6 @@
   "note": "Leads from a web search, cached; each is a lead to check, never a cause.",
   "items": [
     {
-      "kind": "dam",
-      "claim": "Cocke County ordered downtown Newport evacuated due to erroneous reports of a catastrophic dam failure during historic flooding.",
-      "date": "2024-09-27",
-      "url": "https://www.newportplaintalk.com/news/article_3e1dce46-c49d-11ef-8d8c-3fd416c9b280.html",
-      "source_title": "Flood top story of 2024",
-      "retrieved_at": "2026-11-08T01:27:17+00:00",
-      "reviewed": "title checked against the claim by hand, 2026-11-07"
-    },
-    {
       "kind": "usgs_report",
       "claim": "A USGS water-supply paper documented hydrologic streamflow records for streamgage 03455000 on the French Broad River in Cocke County.",
       "date": "1961",
@@ -73,6 +64,17 @@
       "claim": "TDOT advanced bridge construction across the French Broad River and its flood channel for the Newport Bypass in Cocke County.",
       "url": "https://www.wbir.com/article/news/local/tdot-newport-bypass-construction/51-c3a19815-842f-4035-b028-1f00e767ac5f",
       "why": "page returns 403 Access Denied; its title could not be read to check the claim"
+    },
+    {
+      "kind": "dam",
+      "claim": "Cocke County ordered downtown Newport evacuated due to erroneous reports of a catastrophic dam failure during historic flooding.",
+      "date": "2024-09-27",
+      "url": "https://www.newportplaintalk.com/news/article_3e1dce46-c49d-11ef-8d8c-3fd416c9b280.html",
+      "source_title": "Flood top story of 2024",
+      "retrieved_at": "2026-11-08T01:27:17+00:00",
+      "reviewed": false,
+      "reason": "not about the rating",
+      "why": "not about the rating"
     }
   ]
 }

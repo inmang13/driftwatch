@@ -449,8 +449,9 @@ def test_narration_rules_hold_for_the_fallback(runs, site):
     assert "Q = V × A" in text and "water speed times cross-sectional area" in text
     assert nf["note"] and nf["note"]["meaning"] in text  # (2) the fixed note meaning, verbatim
     assert "Area changed" in text and "so flow at the same level changed about" in text  # (3)
-    assert "Helene" not in text  # (4) helene is false for all three
-    assert nf["helene"] is False
+    # (4) Helene only when it falls between the last visit and the change visit
+    assert nf["helene"] is (site != ASHEVILLE)
+    assert ("Hurricane Helene (2024-09-27) passed between" in text) is nf["helene"]
     low = text.lower()
     assert "the team" not in low and "amount of water" not in low  # (5)
     assert narration.word_count(text) <= narration.MAX_WORDS  # (6)
@@ -473,7 +474,11 @@ def test_newport_facts_and_sentences(runs):
     assert "which agrees with the -42 % change" in text
     assert nf["note"]["note"] == "Fill control changed" and nf["note"]["agrees_with_data"]
     assert "disagrees with the data" not in text
-    assert "91,700 cfs on 2024-09-28" in text  # flood_context, not Helene (31 days > 30)
+    assert nf["helene"] is True  # 2024-08-19 < 2024-09-27 < 2024-10-28 (the change visit)
+    assert (
+        "Hurricane Helene (2024-09-27) passed between the 2024-08-19 and 2024-10-28 visits; the "
+        "only gaugings during the storm were rated Poor, the largest 91,700 cfs on 2024-09-28."
+    ) in text
     assert "DriftWatch's agents" in text
 
 
@@ -484,7 +489,10 @@ def test_hepco_note_disagrees_and_no_measured_flood(runs):
     assert nf["note"]["agrees_with_data"] is False and "That disagrees with the data." in text
     assert "0.33 ft higher for the same flow" in text
     assert nf["check_agrees"] is True and "which agrees with the -26 % change" in text
-    assert "no measured high flow explains it" in text
+    assert (
+        "Hurricane Helene (2024-09-27) passed between the 2024-08-22 and 2024-12-17 visits; no "
+        "gauging was made during the storm."
+    ) in text
     assert "Skeptic" in text and "Double-check:" in text
 
 
@@ -501,18 +509,21 @@ def test_asheville_check_does_not_back_up_and_conclusion_stays_open(runs):
     assert fallbacks.MECHANISM_WORDS.search(text)  # ... the note itself does carry one
 
 
-def test_helene_branch_and_check_threshold_on_synthetic_shift(runs):
+def test_helene_old_window_case_and_check_threshold_on_synthetic_shift(runs):
+    """The old rule (change date within 30 days after 2024-09-27). A change dated 23 days after
+    the storm used to count by date alone; under the visit rule it counts only if it was first
+    measured at the first visit after the storm, and 2024-10-20 is not that visit (2024-10-28)."""
     facts = {**runs[NEWPORT]["facts"]}
     t = dict(facts["triage"])
     t["top_shift"] = {**t["top_shift"], "time": "2024-10-20T12:00:00Z"}  # 23 days after
     facts["triage"] = t
     nf = narration.narration_facts(facts)
-    assert nf["helene"] is True
+    assert nf["helene"] is False  # old rule: True
     s = narration.sentences(nf, "fill / aggradation", "corroborated", "Survey it.", 0.44)
-    assert "Hurricane Helene" in s["event"]
+    assert "Helene" not in s["event"]
     t["top_shift"] = {**t["top_shift"], "time": "2024-10-28T20:03:25Z", "size_pct": -20.0}
     nf = narration.narration_facts(facts)
-    assert nf["helene"] is False  # 31 days after 2024-09-27
+    assert nf["helene"] is True  # old rule: False (31 days after 2024-09-27)
     assert nf["check_agrees"] is False  # -47.8 vs -20.0: 27.8 points apart
     t["top_shift"] = {**t["top_shift"], "size_pct": 30.0}
     assert narration.narration_facts(facts)["check_agrees"] is False  # opposite sign
@@ -656,13 +667,45 @@ def test_pick_lead_prefers_construction_and_skips_helene_outside_the_window():
     assert narration.pick_lead(None, helene=False) is None
 
 
+def test_helene_visit_rule():
+    hb = narration.helene_between
+    assert hb("2024-08-22", "2024-12-17", "2024-12-17")  # Hepco: storm between, change visit
+    assert hb("2024-08-19", "2024-10-28", "2024-10-28")  # Newport
+    assert not hb("2025-06-03", "2025-07-23", "2025-07-23")  # Asheville: both after
+    assert not hb("2024-09-30", "2024-11-05", "2024-11-05")  # last visit already after the storm
+    assert not hb("2024-08-01", "2024-09-20", "2024-09-20")  # change visit before the storm
+    assert not hb("2024-08-19", "2024-10-28", "2024-12-01")  # change not at the first visit after
+    assert not hb(None, "2024-10-28", "2024-10-28") and not hb("2024-08-19", None, None)
+
+
+def test_helene_event_sentence_without_a_storm_gauging(runs):
+    nf = {**_nf(runs[NEWPORT]), "flood": None}
+    s = narration.sentences(nf, "fill / aggradation", "corroborated", "Survey it.", 0.44)
+    assert s["event"] == (
+        "Hurricane Helene (2024-09-27) passed between the 2024-08-19 and 2024-10-28 visits; no "
+        "gauging was made during the storm."
+    )
+    nf["flood"] = {
+        "date": "2024-10-01",
+        "discharge_cfs": 12345,
+        "rated": "Fair",
+        "storm_gauging": False,
+    }
+    s = narration.sentences(nf, "fill / aggradation", "corroborated", "Survey it.", 0.44)
+    assert "no gauging was made during the storm" in s["event"] and "12,300 cfs" in s["event"]
+
+
 def test_guard_rejects_helene_outside_the_window(runs):
-    r = runs[HEPCO]
+    r = runs[ASHEVILLE]
     nf = _nf(r)
     text = r["narration"].replace(
         "No gauging falls", "Hurricane Helene struck earlier. No gauging falls"
     )
-    assert "Helene may be named only" in narration.check_text(text, nf, "disagreement")
+    assert "Helene may be named only" in narration.check_text(text, nf, "open")
+    hepco = runs[HEPCO]["narration"].replace(
+        "Hurricane Helene (2024-09-27) passed", "A storm passed"
+    )
+    assert "verbatim" in narration.check_text(hepco, _nf(runs[HEPCO]), "disagreement")
 
 
 def test_context_text_hygiene():
@@ -678,13 +721,13 @@ def test_context_text_hygiene():
 
 
 def test_guard_requires_q_sentence_check_verdict_and_event_wording(runs):
-    h, n = runs[HEPCO], runs[NEWPORT]
-    nfh, nfn = _nf(h), _nf(n)
+    h, n, a = runs[HEPCO], runs[NEWPORT], runs[ASHEVILLE]
+    nfh, nfn, nfa = _nf(h), _nf(n), _nf(a)
     no_q = h["narration"].replace(" (Q = V × A)", "")
     assert "Q = V × A" in narration.check_text(no_q, nfh, "disagreement")
     flipped = h["narration"].replace("which agrees with", "which matches")
     assert "which agrees with" in narration.check_text(flipped, nfh, "disagreement")
-    vague = h["narration"].replace("so no measured high flow explains it", "so nothing shows")
-    assert "no measured high flow" in narration.check_text(vague, nfh, "disagreement")
+    vague = a["narration"].replace("so no measured high flow explains it", "so nothing shows")
+    assert "no measured high flow" in narration.check_text(vague, nfa, "open")
     no_peak = n["narration"].replace("91,700 cfs", "a big flow")
-    assert "largest measured flow" in narration.check_text(no_peak, nfn, "corroborated")
+    assert "verbatim" in narration.check_text(no_peak, nfn, "corroborated")  # Helene sentence

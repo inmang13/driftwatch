@@ -23,7 +23,6 @@ from driftwatch.agents import tools
 
 MAX_WORDS = 200
 HELENE_DATE = datetime(2024, 9, 27, tzinfo=UTC)
-HELENE_WINDOW_DAYS = 30
 AGREE_POINTS = 15.0  # the area x speed check agrees when within this many % points of the step
 
 Q_SENTENCE = (
@@ -117,7 +116,9 @@ def narration_facts(facts: dict[str, Any], context: list[dict] | None = None) ->
     check_pct              ((1 + area%) x (1 + speed%) - 1) x 100
     check_agrees           same sign as the step and within AGREE_POINTS of it
     flood                  largest measured flow between the last visit before and the first after
-    helene                 change date within 30 days after 2024-09-27
+    helene                 the last visit before the change is before 2024-09-27 and the change
+                           visit (the first tested visit after it) is after it, i.e. the change
+                           was first measured at the first visit after the storm
     note                   the field note explained, its date, meaning and whether it fits the data
     """
     t = facts["triage"]
@@ -161,8 +162,6 @@ def narration_facts(facts: dict[str, Any], context: list[dict] | None = None) ->
         f["level_change_ft"] = round(abs(shift["size_ft"]), 2)
         f["level_word"] = "higher" if shift["size_ft"] < 0 else "lower"
         f["step_pct"] = round(shift["size_pct"], 1)
-        days = (datetime.fromisoformat(cd + "T00:00:00+00:00") - HELENE_DATE).days
-        f["helene"] = 0 <= days <= HELENE_WINDOW_DAYS
         h0 = ch.get("at_stage_ft") if ch.get("sufficient") else None
         if h0 is None:
             h0 = _post_change_stage(site, shift["time"])
@@ -187,7 +186,13 @@ def narration_facts(facts: dict[str, Any], context: list[dict] | None = None) ->
         ]
         pk = fc.get("peak")
         if pk:
-            f["flood"] = {"date": _date(pk["time"]), "discharge_cfs": pk["discharge_cfs"]}
+            f["flood"] = {
+                "date": _date(pk["time"]),
+                "discharge_cfs": pk["discharge_cfs"],
+                "rated": pk.get("rated"),
+                "storm_gauging": bool(pk.get("helene_excluded")),
+            }
+        f["helene"] = helene_between(*f["window"], f["change_date"])
     visits = (facts.get("field_notes") or {}).get("visits") or []
     v = _pick_note(visits, f["change_date"])
     if v:
@@ -227,6 +232,36 @@ def pick_lead(items: list[dict] | None, helene: bool) -> dict | None:
 
 def lead_sentence(lead: dict) -> str:
     return f"Possible lead: {lead['claim'].rstrip('.')} ({lead['source_title']})."
+
+
+def helene_between(lo: str | None, hi: str | None, change_date: str | None) -> bool:
+    """True when Helene (2024-09-27) falls between the last visit before the change (lo) and the
+    change visit (hi), so the change was first measured at the first visit after the storm."""
+    if not (lo and hi and change_date) or hi != change_date:
+        return False
+    storm = HELENE_DATE.date().isoformat()
+    return lo < storm < hi
+
+
+def helene_event(f: dict[str, Any]) -> str:
+    """The fixed Helene event sentence (used verbatim by the template and required by the
+    guard)."""
+    lo, hi = f["window"]
+    passed = f"Hurricane Helene (2024-09-27) passed between the {lo} and {hi} visits"
+    fl = f["flood"]
+    if not fl:
+        return f"{passed}; no gauging was made during the storm."
+    if fl["storm_gauging"]:
+        # storm gaugings exist (rated Poor, left out of the drift test): saying "no gauging was
+        # made" would contradict the peak, so the clause names them instead
+        return (
+            f"{passed}; the only gaugings during the storm were rated {fl['rated']}, the largest "
+            f"{_fmt_cfs(fl['discharge_cfs'])} cfs on {fl['date']}."
+        )
+    return (
+        f"{passed}; no gauging was made during the storm, and the largest flow gauged between "
+        f"the visits was {_fmt_cfs(fl['discharge_cfs'])} cfs on {fl['date']}."
+    )
 
 
 def _river_name(site_name: str) -> str:
@@ -295,10 +330,7 @@ def sentences(
         )
     lo, hi = f["window"] or (None, None)
     if f["helene"]:
-        s["event"] = (
-            f"The change appeared within {HELENE_WINDOW_DAYS} days after Hurricane Helene "
-            "(2024-09-27)."
-        )
+        s["event"] = helene_event(f)
     elif f["flood"]:
         between = f" between the {lo} and {hi} visits" if lo and hi else ""
         s["event"] = (
@@ -414,6 +446,14 @@ def _structure(text: str, f: dict[str, Any]) -> str | None:
         want = "which agrees with" if f["check_agrees"] else "which does not back up"
         if want not in text:
             return f"the check sentence must say '{want}'"
+    if f.get("helene"):
+        want = helene_event(f)
+        if want not in text:
+            return f"the Helene event sentence must appear verbatim: '{want}'"
+    if f.get("change_date") and f.get("helene") and f.get("flood"):
+        q = f"{_fmt_cfs(f['flood']['discharge_cfs'])} cfs"
+        if q not in text:
+            return f"the event sentence must give the largest measured flow ({q})"
     if f.get("change_date") and not f.get("helene"):
         if f.get("flood"):
             q = f"{_fmt_cfs(f['flood']['discharge_cfs'])} cfs"
@@ -436,7 +476,7 @@ def check_text(text: str, f: dict[str, Any] | None, status: str | None = None) -
     if bad := banned(text):
         return bad
     if f is not None and not f.get("helene") and "helene" in text.lower():
-        return "Helene may be named only when the change date is within 30 days after it"
+        return "Helene may be named only when it falls between the last visit and the change visit"
     if status == "open" and (m := MECHANISM_WORDS.search(strip_labelled(text, f))):
         return f"an open cause must not name a mechanism ('{m.group(0)}')"
     if f is not None and status not in (None, "none") and (bad := _structure(text, f)):

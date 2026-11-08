@@ -17,18 +17,33 @@ Both phases are done and pushed. `make test` passes (176 tests), `make demo` pas
   fallbacks run 179–185 words.
 - Guard rules: 200 words; ends on the rating sentence; banned words and patterns (rule 7, plus
   "the team" and "amount of water"); the open-cause rule, checked after removing the labelled
-  note sentences and the lead; the note meaning must appear verbatim; Helene only inside its
-  window; the first sentence must state Q = V × A; the check verdict words must appear; the
-  event sentence must give the measured peak or "no measured high flow explains it".
+  note sentences and the lead; the note meaning must appear verbatim; Helene named only when
+  `helene` is true, and then the Helene event sentence verbatim; the first sentence must state
+  Q = V × A; the check verdict words must appear; otherwise the event sentence must give the
+  measured peak or "no measured high flow explains it".
 - `evals/run_evals.py`: the Asheville "no mechanism words" check now skips the labelled note
   sentences, as the spec allows. `tests/test_api.py` pins the new Hepco replay default.
 
 ### Things to know
-- **Helene is never named for the three sites.** The rule is "change date within 30 days after
-  2024-09-27". Newport's change date is 2024-10-28, 31 days after, so Newport uses its flood
-  context instead ("91,700 cfs on 2024-09-28"). Hepco (2024-12-17) and Asheville (2025-07-23)
-  are well outside the window. A synthetic test covers the Helene branch. If you want Newport to
-  say Helene, widen the window to 31+ days. That's a one-line change (`HELENE_WINDOW_DAYS`).
+- **Helene rule (changed 2026-11-07, replaces the 30-day window):** `helene` is true when the
+  last visit before the change is before 2024-09-27 and the change visit (the first tested visit
+  after it) is after it. "Tested" means the visits the drift test uses, so the Poor storm
+  gaugings left out of the test don't count as visits. Newport (2024-08-19 / 2024-10-28) and
+  Hepco (2024-08-22 / 2024-12-17) are true. Asheville (2025-06-03 / 2025-07-23) is false.
+- **Event sentence when `helene` is true:**
+  - No gauging in the gap (Hepco): "Hurricane Helene (2024-09-27) passed between the 2024-08-22
+    and 2024-12-17 visits; no gauging was made during the storm."
+  - **Newport differs from the spec on purpose.** Its gap holds two storm gaugings (2024-09-27
+    and 2024-09-28, both rated Poor and left out of the drift test). "No gauging was made during
+    the storm" next to the 91,700 cfs peak would contradict itself, so the clause names them
+    instead: "...; the only gaugings during the storm were rated Poor, the largest 91,700 cfs on
+    2024-09-28." To use your wording, change one line in `narration.helene_event`.
+  - A non-storm gauging in the gap gets "...; no gauging was made during the storm, and the
+    largest flow gauged between the visits was X cfs on D." No current site hits this case.
+- The Helene sentence is fixed text. The prompt tells Gemini to copy it verbatim and the guard
+  checks it word for word, because Gemini paraphrased it ("without storm gaugings") before that.
+- Tests: the old-window synthetic test is kept (its cases flip: 23 days after is now false, the
+  real 31-day Newport change is now true), and a new `test_helene_visit_rule` covers the rule.
 - 15-point check: Newport −47.8 % vs −42.2 % (agrees), Hepco −30.9 % vs −25.6 % (agrees),
   Asheville +9.5 % vs +46.2 % (does not back up).
 - Which field note gets explained: the note at the change visit if it has a fixed meaning, else
@@ -56,11 +71,13 @@ Both phases are done and pushed. `make test` passes (176 tests), `make demo` pas
 - The evidence collector adds an `event_context` tool result, so the trace carries the URLs. The
   console has no code change; it shows the new step as a plain "event_context" row.
 - Lead choice (`narration.pick_lead`): construction, then dam, then USGS report, then storm. A
-  claim naming Helene is skipped outside the Helene window (rule 4). Tests point
+  claim naming Helene is skipped unless `helene` is true (rule 4). Tests point
   `context.CONTEXT_DIR` at an empty dir, so they never see the committed files.
-- Results: **Hepco has no usable lead.** Its one remaining item (Walters Dam) names Helene.
-  **Newport's lead** is the Cocke County evacuation story. **Asheville's lead** is the I-26
-  Connector bridge plans.
+- Leads used now: Hepco gets the Walters Dam item (allowed, since `helene` is true for
+  Hepco). Newport gets the 1960 USGS water-supply paper. Asheville gets the I-26 Connector
+  bridge plans.
+- The Cocke County evacuation item was taken out of `data/context/03455000.json` and moved to
+  `removed_on_review` with `reviewed: false`, reason "not about the rating".
 
 ### Items I removed after checking each URL's title against its claim
 | Site | Claim (as the model wrote it) | Why removed |
@@ -71,39 +88,43 @@ Both phases are done and pushed. `make test` passes (176 tests), `make demo` pas
 | 03451500 | Contractors began in-water cofferdam construction ... for a municipal pipeline replacement | Title is a "$75M pump station upgrade", not a pipeline replacement |
 | 03459500 | Helene caused catastrophic flooding along the Pigeon River in Haywood County (thispendentworld.com) | The page never names the Pigeon River or Haywood County; it's a general Helene blog post |
 | 03459500 | The USGS deployed crews to repair damaged streamgages along the Pigeon River (USGS news) | National news release; the page never names the Pigeon River or Haywood County |
+| 03455000 | Cocke County ordered downtown Newport evacuated due to erroneous reports of a dam failure | Not about the rating (Grace, 2026-11-07); marked `reviewed: false` |
 
 Domain-only titles on PDFs ("usgs.gov", "americanrivers.org") were replaced with the document's
 real title from its USGS Pubs landing page or the PDF's first page. PDFs were checked with
 `pdftotext`: each one names its station or river. Each kept item has a `reviewed` field.
 **Weak but kept:** atmostorm.com for Mills, an aggregator page. Its title matches its claim, but
 it isn't a primary source. The Hepco Gemini trace was recorded before the last two removals, so
-its evidence step still lists them; the narration used no lead for Hepco.
+its evidence step still lists them. The current Hepco trace (below) was recorded after them.
 
 ## LLM=gemini narrations (Replay defaults)
 
-`traces/replay_defaults.json` now points at these runs. Gemini 3.8 Flash ran the ranker and the
-narrator; the Skeptic ran on OpenRouter gpt-5.4-mini. All three texts below are Gemini's (none
-fell back to the template), read from each trace's narrator payload:
-- Hepco: the first attempt was rejected ("unit not spaced from its number ('1%')"); the retry
-  passed.
-- Newport: the first attempt was rejected ("204 words > 200"); the retry passed.
+`traces/replay_defaults.json` points at these runs. The Newport and Hepco runs below were redone
+after the Helene rule change, and Asheville is unchanged. All three texts are Gemini 3.8 Flash
+narrations (none fell back to the template), read from each trace's narrator payload.
+
+**The Skeptic did not run on OpenRouter for Newport and Hepco.** OpenRouter returned 402 ("can
+only afford 1970 tokens"), so the Skeptic used the deterministic rules in both runs. The ranker
+and narrator were still Gemini. Asheville's run (earlier) had the OpenRouter Skeptic.
+
+- Newport: the first narration attempt was rejected ("222 words > 200"); the retry passed.
+- Hepco: the first narration attempt was rejected ("212 words > 200"); the retry passed.
 - Asheville: passed on the first attempt.
 
-**French Broad River near Newport (03455000-20261108T014651910592Z.json):**
-Flow equals water speed times cross-sectional area (Q = V × A); the curve assumes this holds at each stage. Since the 2024-10-28 visit, measurements at the French Broad River near Newport, USGS 03455000, sit 46 % below the rating; published flows run too high. The river stands 0.71 ft higher for the same flow: at 2.70 ft it carries 1,350 cfs (42 %) less than 3,210 cfs. The hydrographer noted "Fill control changed" on 2024-10-28. In the note's terms, gravel built up on the control (the riffle just downstream that sets the water level), so water backs up at the gauge: deeper, more area, much slower. Area changed +25 % and speed -58 %, so flow at the same level changed about -48 %, which agrees with the -42 % change. Between the 2024-08-19 and 2024-10-28 visits, flow reached 91,700 cfs on 2024-09-28. Possible lead: Cocke County ordered downtown Newport evacuated due to erroneous reports of a catastrophic dam failure during historic flooding (Flood top story of 2024). DriftWatch's agents rank fill first (83 %); the Skeptic accepted it. Double-check: Survey the control and apply a negative shift until two measurements agree. Rating confidence 30/100 (Stale).
+**French Broad River near Newport (03455000-20261108T022812744607Z.json):**
+Flow equals water speed times cross-sectional area (Q = V × A), assumed at each level. Since 2024-10-28, measurements at the French Broad River near Newport, USGS 03455000, sit 46 % below the rating, standing 0.71 ft higher for the same flow: at 2.70 ft it carries 1,350 cfs (42 %) below 3,210 cfs. The hydrographer noted "Fill control changed" on 2024-10-28. In the note's terms, gravel built up on the control (the riffle just downstream that sets the water level), so water backs up at the gauge: deeper, more area, much slower. Area changed +25 % and speed -58 %, so flow at the same level changed about -48 %, which agrees with the -42 % change. Hurricane Helene (2024-09-27) passed between the 2024-08-19 and 2024-10-28 visits; the only gaugings during the storm were rated Poor, the largest 91,700 cfs on 2024-09-28. Possible lead: A USGS water-supply paper documented hydrologic streamflow records for streamgage 03455000 on the French Broad River in Cocke County (Surface water supply of the United States, 1960, Part 3-B, Cumberland and). DriftWatch's agents rank fill first (82 %); the Skeptic agreed. Double-check: Survey the control and shift negatively until measurements agree. Rating confidence 30/100 (Stale).
 
-**Pigeon River near Hepco (03459500-20261108T014651914025Z.json):**
-Flow equals water speed times cross-sectional area (Q = V × A); the curve assumes this holds at each water level. Since the 2024-12-17 visit, field measurements at the Pigeon River near Hepco, USGS 03459500, have sat 33 % below the rating, so published flows run that much too high. The river now stands 0.33 ft higher for the same flow: at 2.33 ft it carries about 150 cfs (26 %) less than the curve's 570 cfs. The hydrographer noted "Scour control changed" on 2024-12-17. In the note's terms, the control (the riffle just downstream that sets the water level) eroded, so the same flow passes at a lower level. That disagrees with the data. Area changed -11 % and speed -22 %, so flow at the same level changed about -31 %, which agrees with the -26 % change. No gauging falls between the 2024-08-22 and 2024-12-17 visits, so no measured high flow explains it. DriftWatch's agents rank datum change / gauge rebuild first (44 %), but the Skeptic is under 60 % sure. Double-check: Resurvey the control section and benchmark/datum references at the gauge, and inspect for deposited material or downstream obstruction that could explain the 22.1 % velocity drop. Rating confidence 24/100 (Stale).
+**Pigeon River near Hepco (03459500-20261108T022812744003Z.json):**
+Flow equals water speed times cross-sectional area (Q = V × A), which the curve assumes holds at each stage. Since the 2024-12-17 visit, measurements at the Pigeon River near Hepco, USGS 03459500, sat 33 % below the rating. The river stands 0.33 ft higher for the same flow, carrying 150 cfs (26 %) less at 2.33 ft. The hydrographer noted "Scour control changed" on 2024-12-17. In the note's terms, the control (the riffle just downstream that sets the water level) eroded, so the same flow passes at a lower level. That disagrees with the data. Area changed -11 % and speed -22 %, so flow at the same level changed about -31 %, which agrees with the -26 % change. Hurricane Helene (2024-09-27) passed between the 2024-08-22 and 2024-12-17 visits; no gauging was made during the storm. Possible lead: Duke Energy opened floodgates at Walters Dam to release surging Pigeon River waters during Hurricane Helene (Walters hydro plant turns 100: Dam, powerhouse withstood Helene's onslaught). DriftWatch's agents rank fill first (35 %); the Skeptic is under 60 % sure. Double-check: Survey the control for deposited gravel and check the gauge datum against the reference mark. Rating confidence 24/100 (Stale).
 
 **French Broad River at Asheville (03451500-20261108T014651933246Z.json):**
 Flow equals water speed times cross-sectional area (Q = V × A), which the curve assumes holds at each level. Since 2025-07-23, measurements at the French Broad River at Asheville, USGS 03451500, sat 41 % above the rating, so published flows run too low. The river stands 0.27 ft lower for the same flow: at 1.51 ft it carries 440 cfs (46 %) above the curve's 960 cfs. On 2025-07-23, the hydrographer noted "Debris - Light". In the note's terms, debris blocked the control (the riffle just downstream that sets the water level), raising the level until it clears. That disagrees with the data. Area changed +8 % and speed +2 %, so flow at the same level changed about +10 %, which does not back up the +46 % change. Between the 2025-06-03 and 2025-07-23 visits, no measured high flow explains it. Possible lead: Officials updated bridge construction plans across the French Broad River in Buncombe County for the Interstate 26 Connector project (I-26 Connector Plans Take Major Step Forward). No field note confirms what changed, so the cause remains open. Double-check: Measure flow and run levels from reference marks to the gauge before adjusting the rating. Rating confidence 46/100 (Stale).
 
 ### Worth a look
-- Hepco's final cause flipped from fill (the fallback) to **datum change** under Gemini (44 %). The
-  Skeptic's own recommended check (it writes the Double-check text) still points at deposited
-  material. The Disagreement path is working as designed, but the ranked cause moves between runs.
-- The Hepco Double-check quotes "22.1 % velocity drop". The Skeptic wrote that figure from the
-  channel facts (−22.1 %), not the narrator, but the guard doesn't check Skeptic-written numbers.
-- Newport's lead (the false dam-failure evacuation) is true and sourced, but it says nothing
-  about the rating. Construction leads would be better there; the search found one (Newport
-  Bypass), but its page blocks automated reads, so I removed it.
+- Hepco's ranked cause moves between Gemini runs: datum change (44 %) in the earlier run, fill
+  (35 %) in this one. The Disagreement path is working as designed.
+- Newport's new lead (a 1960 USGS water-supply paper) is real but says nothing about the
+  rating. Its title is cut at 12 words ("... Part 3-B, Cumberland and"). Construction leads
+  would be better; the search found one (Newport Bypass), but its page blocks automated reads.
+- Newport's Gemini text dropped "so published flows run that much too high". The guard
+  doesn't require that clause.

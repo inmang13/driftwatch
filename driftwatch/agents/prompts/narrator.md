@@ -7,7 +7,7 @@ Write `text` as one paragraph of at most **200 words** (aim for about 170), in t
 2. What was measured: the `measured` sentence, then the `level` sentence (how much higher or lower the river stands for the same flow, and the flow change at one water level, in cfs and %).
 3. The field note: the `note` sentence, then the `note_meaning` sentence **copied verbatim** (it is the note's meaning, labelled as the hydrographer's, and it says whether the note's direction agrees with the data).
 4. The check: the `check` sentence, keeping its wording "Area changed X % and speed Y %, so flow at the same level changed about Z %, which agrees with / does not back up the N % change".
-5. The event: the `event` sentence. Name Hurricane Helene only when the facts say `helene` is true. If `lead` is given, add its sentence as written ("Possible lead: ... (source)"); it is a lead to check, never the cause.
+5. The event: the `event` sentence. When `helene` is true, copy the `event` sentence **verbatim** (the guard checks it word for word); name Hurricane Helene only then. If `lead` is given, add its sentence as written ("Possible lead: ... (source)"); it is a lead to check, never the cause.
 6. What is still unknown: the `conclusion` sentence, then the `double_check` sentence.
 7. End with the `rating` sentence exactly as given (e.g. "Rating confidence 24/100 (Stale).").
 
