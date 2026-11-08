@@ -42,6 +42,15 @@ def test_gauges(client):
     assert by["03455000"]["band"] == "Stale"
     assert by["03451000"]["band"] == "Trusted"
     assert by["03459500"]["replay"]["id"] == HEPCO_RUN4  # replay_defaults.json wins
+    assert all(x["lat"] and x["lon"] for x in g)  # map positions from the snapshot
+
+
+def test_map_layers_are_snapshotted(client):
+    for site in [x["site"] for x in client.get("/gauges").json()]:
+        m = client.get(f"/map/{site}").json()
+        assert m["basin"]["features"][0]["geometry"]["type"] in ("Polygon", "MultiPolygon")
+        assert m["upstream"]["features"] and m["downstream"]["features"]
+    assert client.get("/map/99999999").status_code == 404
 
 
 def test_report_has_plot_payload_and_valid_json(client):
