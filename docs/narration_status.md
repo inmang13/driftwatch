@@ -207,3 +207,9 @@ Flow rate equals water velocity times cross-sectional area (Q = V × A); the cur
   try, 192 words:
 
 Since the 2024-12-17 visit, measurements at the Pigeon River near Hepco, USGS 03459500, sit 33 % below the rating, so published flows run that much too high. For a given flow rate, the river stands 0.33 ft higher than the curve predicts; at a stage of 2.33 ft it carries about 150 cfs (26 %) less than the curve's 570 cfs. The hydrographer noted "Scour control changed" on 2024-12-17. In the note's terms, the control (the riffle just downstream that sets the water level) eroded, so a given flow rate passes at a lower water level. That disagrees with the data. After the change, at that stage, area fell 11 % and velocity fell 22 %, so the flow rate there fell about 31 %, which agrees with the 26 % drop in measured flow rate. Hurricane Helene (2024-09-27) passed between the 2024-08-22 and 2024-12-17 visits; no gauging was made during the storm. DriftWatch's agents rank fill first (45 %); the hydrographer's note says scour; the two disagree, so the cause is not settled. Double-check: Survey the control section and downstream reach for deposited sediment or debris, and recheck the gauge datum against reference marks. Rating confidence 24/100 (Stale).
+
+## Update 2026-11-07 22:45: rule (b) counts only "control changed" notes (Grace)
+
+Rule (b) now uses the change-visit note only if its text contains "control changed". Asheville
+("Debris - Light") stays **open**, which matches its Replay trace. Hepco ("Scour control
+changed") stays a **Disagreement**. Covered by `test_rule_b_counts_only_control_changed_notes`.

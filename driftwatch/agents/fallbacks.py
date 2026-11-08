@@ -277,14 +277,15 @@ def skeptic_confidence(facts: dict[str, Any], ranking: Ranking) -> float:
 
 
 def note_at_change(facts: dict[str, Any]) -> dict[str, str] | None:
-    """The field note recorded at the change visit (top_shift date), if it maps to a cause."""
+    """The 'control changed' note recorded at the change visit (top_shift date), if it maps to
+    a cause. Other notes (Debris, Vegetation, ...) don't count for rule (b) (Grace, 2026-11-07)."""
     shift = facts.get("triage", {}).get("top_shift")
     if not shift:
         return None
     day = shift["time"][:10]
     for v in facts.get("field_notes", {}).get("visits", []):
         c = catalog.cause_for_note(v["note"])
-        if c and v["time"][:10] == day:
+        if c and v["time"][:10] == day and "control changed" in v["note"].lower():
             return {"note": v["note"], "date": day, "cause": c.key}
     return None
 
@@ -301,8 +302,8 @@ def disagreement(facts: dict[str, Any], ranking: Ranking, confidence: float) -> 
     """Disagreement for the final verdict, or None when the rules don't call for one.
 
     Rule (a): a 'control changed' note names another cause and the Skeptic is under 0.6 sure.
-    Rule (b): the note at the change visit maps to a cause whose expected residual sign is
-    opposite to the final cause's, whatever the Skeptic's confidence."""
+    Rule (b): the 'control changed' note at the change visit maps to a cause whose expected
+    residual sign is opposite to the final cause's, whatever the Skeptic's confidence."""
     top = ranking.top
     b = note_at_change(facts)
     if b and opposite_signs(b["cause"], top.cause):

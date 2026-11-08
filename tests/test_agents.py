@@ -394,10 +394,9 @@ def test_fallback_and_llm_disagreements_share_one_type(monkeypatch, tmp_path):
 
 
 def test_cause_status_open_for_asheville_corroborated_for_newport(runs, asheville_open):
-    # rule (b): the change-visit note (Debris, lowers readings) opposes scour (raises them)
-    assert runs[ASHEVILLE]["final"]["cause_status"] == "disagreement"
-    assert runs[ASHEVILLE]["final"]["disagreement"]["rule"] == "note_sign"
-    assert asheville_open["final"]["cause_status"] == "open"  # scour, only Debris notes
+    # rule (b) counts only 'control changed' notes, so Asheville's "Debris - Light" doesn't
+    assert runs[ASHEVILLE]["final"]["cause_status"] == "open"  # scour, only Debris notes
+    assert asheville_open["final"]["cause_status"] == "open"
     assert runs[NEWPORT]["final"]["cause_status"] == "corroborated"  # "Fill control changed"
     assert runs[HEPCO]["final"]["cause_status"] == "disagreement"
 
@@ -829,6 +828,20 @@ def test_rule_b_newport_note_and_cause_agree(runs):
     assert fallbacks.note_at_change(facts)["cause"] == "fill"
     top = Ranking(hypotheses=[Hypothesis(cause="fill", confidence=0.95, sign_matches=True)])
     assert fallbacks.disagreement(facts, top, confidence=0.95) is None
+
+
+def test_rule_b_counts_only_control_changed_notes(runs):
+    # Asheville: the change-visit note "Debris - Light" maps to debris (opposite sign to scour),
+    # but it is not a 'control changed' note, so rule (b) does not fire and the cause stays open
+    a = runs[ASHEVILLE]
+    assert fallbacks.note_at_change(a["facts"]) is None
+    assert a["final"]["cause_status"] == "open" and a["final"]["disagreement"] is None
+    top = Ranking(hypotheses=[Hypothesis(cause="scour", confidence=0.95, sign_matches=True)])
+    assert fallbacks.disagreement(a["facts"], top, confidence=0.95) is None
+    # Hepco: "Scour control changed" at the change visit vs fill -> still rule (b)
+    h = runs[HEPCO]
+    assert fallbacks.note_at_change(h["facts"])["note"] == "Scour control changed"
+    assert h["final"]["disagreement"]["rule"] == "note_sign"
 
 
 def test_rule_b_synthetic_scour_note_and_scour_final_is_none(runs):
