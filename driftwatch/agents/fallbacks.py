@@ -48,7 +48,7 @@ LABEL = {c.key: c.label for c in catalog.CAUSES} | {"inconclusive": "Inconclusiv
 NEXT_STEP = {
     "scour": "Survey the control and measure flow, then apply a positive shift until a new "
     "rating is built.",
-    "fill": "Survey the control and apply a negative shift until two more measurements agree.",
+    "fill": "Survey the control and apply a negative shift.",
     "debris": "Clear the control on the next visit and measure flow again.",
     "vegetation": "Check the control for growth on the next visit; expect it to fade after "
     "the growing season.",
@@ -249,8 +249,8 @@ NOTE_DISCOUNT = (
 
 # what to check on the next visit, by (what the note says, what the numbers say)
 RECOMMENDED_CHECK = {
-    ("scour", "fill"): "Survey the control for deposited gravel and check the gauge datum "
-    "against the reference mark.",
+    ("scour", "fill"): "Survey the control for gravel and check the datum against the reference "
+    "mark.",
     ("scour", "datum_change"): "Run levels from the reference marks to the gauge to confirm the "
     "datum, and survey the control for scour.",
     ("fill", "scour"): "Survey the control for scour and confirm the gauge datum against the "
@@ -276,12 +276,44 @@ def skeptic_confidence(facts: dict[str, Any], ranking: Ranking) -> float:
     return round(max(c, 0.0), 2)
 
 
+def note_at_change(facts: dict[str, Any]) -> dict[str, str] | None:
+    """The field note recorded at the change visit (top_shift date), if it maps to a cause."""
+    shift = facts.get("triage", {}).get("top_shift")
+    if not shift:
+        return None
+    day = shift["time"][:10]
+    for v in facts.get("field_notes", {}).get("visits", []):
+        c = catalog.cause_for_note(v["note"])
+        if c and v["time"][:10] == day:
+            return {"note": v["note"], "date": day, "cause": c.key}
+    return None
+
+
+def opposite_signs(a: str, b: str) -> bool:
+    """True when both causes have a definite expected residual sign and the signs differ."""
+    if a in ("inconclusive", "insufficient_data") or b in ("inconclusive", "insufficient_data"):
+        return False
+    sa, sb = catalog.get_cause(a).expected_sign, catalog.get_cause(b).expected_sign
+    return {sa, sb} == {"positive", "negative"}
+
+
 def disagreement(facts: dict[str, Any], ranking: Ranking, confidence: float) -> Disagreement | None:
-    """Disagreement for the final verdict, or None when the rules don't call for one."""
+    """Disagreement for the final verdict, or None when the rules don't call for one.
+
+    Rule (a): a 'control changed' note names another cause and the Skeptic is under 0.6 sure.
+    Rule (b): the note at the change visit maps to a cause whose expected residual sign is
+    opposite to the final cause's, whatever the Skeptic's confidence."""
     top = ranking.top
+    b = note_at_change(facts)
+    if b and opposite_signs(b["cause"], top.cause):
+        return _disagreement(facts, top, confidence, b, "note_sign")
     note = contradicting_note(facts, top.cause)
     if note is None or confidence >= DISAGREE_BELOW:
         return None
+    return _disagreement(facts, top, confidence, note, "low_confidence")
+
+
+def _disagreement(facts, top, confidence, note, rule) -> Disagreement:
     t = facts["triage"]
     ch = facts.get("channel_geometry") or {}
     implied = catalog.get_cause(note["cause"])
@@ -297,7 +329,12 @@ def disagreement(facts: dict[str, Any], ranking: Ranking, confidence: float) -> 
         f"{t['off_by_pct']:.0f} % {t['direction_phrase']}{nums}, which fits "
         f"{LABEL[top.cause].lower()} better."
     )
+    if rule == "note_sign":  # the note-vs-data sentence narration.py computes
+        from driftwatch.agents import narration
+
+        why = narration.note_vs_data(implied.expected_sign, t["direction_phrase"])
     return Disagreement(
+        rule=rule,
         best_guess=BestGuess(cause=top.cause, confidence=confidence),
         field_note=FieldNoteRef(note=note["note"], date=note["date"]),
         why_they_disagree=why,
@@ -363,7 +400,10 @@ def narrate(
         label, conf = LABEL[final["cause"]].lower(), final["confidence"]
         word = confidence_word(conf)
         check = NEXT_STEP[final["cause"]]
-    s = narration.sentences(nf, label, status, check, conf)
+    d = (final or {}).get("disagreement") or {}
+    s = narration.sentences(
+        nf, label, status, check, conf, d.get("rule"), (d.get("best_guess") or {}).get("cause")
+    )
     if status == "corroborated":
         extra = ""
         if final.get("first_cause") and final["first_cause"] != final["cause"]:

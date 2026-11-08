@@ -295,7 +295,8 @@ def narration_ok(
 def settle_disagreement(
     v: SkepticVerdict, facts: dict[str, Any], ranking: Ranking, final_pass: bool, meta: dict
 ) -> SkepticVerdict:
-    """On the skeptic's final pass: under 0.6 sure + a contradicting control note -> 'disagree'
+    """On the skeptic's final pass: rule (a) under 0.6 sure + a contradicting control note, or
+    rule (b) the change-visit note's cause has the opposite sign to the final cause -> 'disagree'
     with a Disagreement. The note and date are filled from the field notes (verbatim), never
     taken from the model. Not on a final pass, or no grounds -> no Disagreement."""
     conf = (
@@ -311,7 +312,12 @@ def settle_disagreement(
     if v.disagreement:  # keep the model's words, but the facts come from the data
         d = rules.model_copy(
             update={
-                "why_they_disagree": v.disagreement.why_they_disagree or rules.why_they_disagree,
+                # rule (b)'s why is the computed note-vs-data sentence; keep it
+                "why_they_disagree": (
+                    rules.why_they_disagree
+                    if rules.rule == "note_sign"
+                    else v.disagreement.why_they_disagree or rules.why_they_disagree
+                ),
                 "recommended_check": v.disagreement.recommended_check or rules.recommended_check,
             }
         )
@@ -465,6 +471,8 @@ def build_graph(rec: TraceRecorder):
                 status,
                 check[len("Double-check: ") :] if check else None,
                 _cause_conf(final),
+                ((final or {}).get("disagreement") or {}).get("rule"),
+                (((final or {}).get("disagreement") or {}).get("best_guess") or {}).get("cause"),
             )
             user = llm.prompt(
                 "narrator_input",

@@ -13,7 +13,7 @@ SOURCE ?= snapshot
 SITE ?= 03459500
 LLM ?=
 
-.PHONY: install snapshot nldi basemap report run serve test evals demo
+.PHONY: install snapshot nldi basemap report run serve test evals demo context
 
 $(PY):
 	$(PYTHON) -m venv .venv
@@ -44,6 +44,11 @@ run:
 # Console at http://localhost:8000/ . LLM for POST /run comes from .env / the shell.
 serve:
 	$(PY) -m uvicorn driftwatch.api.app:app --host 127.0.0.1 --port 8000
+
+# Web leads for one gauge (Gemini + Google Search), cached in data/context/<site>.json.
+# Agent runs only read the cache. make context SITE=03455000
+context:
+	$(PY) -m driftwatch.agents.context --site $(SITE)
 
 test:
 	$(PY) -m pytest -q

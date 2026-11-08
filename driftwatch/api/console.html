@@ -430,6 +430,9 @@ const causeLink = (c, cls = "") => EDU_IDS.includes(c)
   : `<span class="${cls}">${esc(cause(c))}</span>`;
 const num = (x, d = 1) => (x == null ? "[none]" : Number(x) === 0 ? "0" : Number(x).toFixed(d));
 const pct = (x) => (x == null ? "[none]" : `${x > 0 ? "+" : x < 0 ? "−" : ""}${Math.abs(Math.round(x))} %`);
+// a % change as direction words: "up 8 %", "down 22 %", "no change" (verb form: "rose 8 %")
+const moved = (x, up = "up", down = "down") => (x == null ? "[none]"
+  : Math.round(Math.abs(x)) === 0 ? "no change" : `${x > 0 ? up : down} ${Math.round(Math.abs(x))} %`);
 const conf = (c) => (c == null ? "[none]" : `${Math.round(c * 100)} %`);
 // C11.5: round percents in model-written text to whole numbers ("33.1 %" -> "33 %", "-22.1%" -> "-22 %")
 const roundPct = (s) => String(s ?? "").replace(/([+\-−]?)(\d+)\.\d+\s?%/g,
@@ -446,7 +449,6 @@ const PLAIN_SWAPS = [
   [/\bresidual\b/gi, "reading"],
   [/\bthe rating\b(?! curve)/gi, "the curve"],
   [/\b(below|above) rating\b/gi, "$1 the curve"],
-  [/\bvelocity\b/gi, "water speed"],
   [/\bpost-shift\b/gi, "after the change"],
   [/\breference window\b/gi, "baseline period"],
   [/\bshift\b/gi, "change"],
@@ -665,7 +667,7 @@ function summarize(e) {
   if (e.node === "evidence_collector" && e.status === "progress") {
     const r = p.result || {};
     if (p.tool === "channel_geometry") return r.sufficient
-      ? `channel at ${num(r.at_stage_ft, 2)} ft: area ${pct(r.area_change_pct)}, speed ${pct(r.velocity_change_pct)}`
+      ? `channel at ${num(r.at_stage_ft, 2)} ft: area ${moved(r.area_change_pct)}, velocity ${moved(r.velocity_change_pct)}`
       : "channel shape: not enough measurements";
     if (p.tool === "field_notes") return `field notes: ${(r.distinct_notes || []).join(", ") || "none"}`;
     if (p.tool === "flood_context") return r.peak
@@ -749,24 +751,25 @@ function readoutsHTML(d) {
   const parts = [];
   // size_ft is the USGS-style stage shift: curve level for the measured flow minus the measured level,
   // so negative = the same flow now sits higher on the gauge
-  parts.push(box("Change in water level", `${Math.abs(top.size_ft).toFixed(2)} ft ${top.size_ft < 0 ? "higher" : "lower"}`, true));
+  parts.push(box("Change in water level for a given flow rate, vs the curve", `${Math.abs(top.size_ft).toFixed(2)} ft ${top.size_ft < 0 ? "higher" : "lower"}`, true));
   // flow change at one water level: the curve's flow there times the step in %
   const pts = d.points.filter((p) => p.period === "post_shift" && p.stage_ft > rel.e).map((p) => p.stage_ft).sort((a, b) => a - b);
   const h = ch?.at_stage_ft ?? (pts.length ? pts[Math.floor(pts.length / 2)] : null);
   if (h != null && h > rel.e) {
     const dq = rel.a * Math.pow(h - rel.e, rel.b) * top.size_pct / 100;
-    parts.push(box(`Change in flow at ${num(h, 1)} ft`,
-      `${dq < 0 ? "−" : "+"}${Math.abs(Math.round(dq)).toLocaleString()} cfs <small>(${pct(top.size_pct)})</small>`));
+    parts.push(box(`Change in flow rate at ${num(h, 1)} ft, vs the curve`,
+      `${Math.abs(Math.round(dq)).toLocaleString()} cfs ${dq < 0 ? "less" : "more"} <small>(${moved(top.size_pct)})</small>`));
   }
   if (ch && ch.area_change_pct != null) {
-    parts.push(box("Change in cross-sectional area", pct(ch.area_change_pct)));
-    parts.push(box("Change in water speed", pct(ch.velocity_change_pct)));
+    parts.push(box(`Change in cross-sectional area at ${num(ch.at_stage_ft, 1)} ft, before vs after`, moved(ch.area_change_pct)));
+    parts.push(box(`Change in water velocity at ${num(ch.at_stage_ft, 1)} ft, before vs after`, moved(ch.velocity_change_pct)));
   }
   let check = "";
   if (ch && ch.area_change_pct != null && ch.velocity_change_pct != null) {
     const a = 1 + ch.area_change_pct / 100, v = 1 + ch.velocity_change_pct / 100;
-    check = `<p class="qcheck"><strong>Flow = area × speed.</strong> At the same water level the area is ×${a.toFixed(2)} and the
-      speed ×${v.toFixed(2)}, so the flow is ×${(a * v).toFixed(2)} (${pct((a * v - 1) * 100)}).</p>`;
+    check = `<p class="qcheck"><strong>Flow rate = area × velocity.</strong> At ${num(ch.at_stage_ft, 1)} ft, after the change compared with before, the area
+      ${moved(ch.area_change_pct, "rose", "fell")} and the velocity ${moved(ch.velocity_change_pct, "rose", "fell")}, so the flow rate
+      ${moved((a * v - 1) * 100, "rose about", "fell about")}.</p>`;
   }
   return `<p class="when"><span class="lbl">Date of change${fn("changedate", "auto")}</span> <span class="mono">${fmtDate(top.time)}</span></p>
     <div class="readouts">${parts.join("")}</div>${check}`;
@@ -946,7 +949,7 @@ function lostListHTML(trust, d) {
 // Each drawing compares the SAME flow before (dashed outline) and now (solid outline).
 // Dark blue = cross-sectional area the water fills now that it did not before.
 // Red arrows: one for the water surface and one for the bed, drawn only for what moved.
-// Flow = area x speed, so a bigger area at the same flow means slower water.
+// Flow rate = area x velocity, so a bigger area at an equal flow rate means lower velocity.
 const XS_SCENE = {
   //                bed bottom before/now, water surface before/now (svg y: smaller = higher)
   plain:         { b0: 205, b1: 205, w0: 110, w1: 110 },
@@ -1033,15 +1036,15 @@ function renderHero(f, d) {
   const name = cause(c);
   const when = top ? ` in ${fmtMonth(top.time)}` : "";
   const ft = top?.size_ft != null
-    ? ` · SAME FLOW SITS ${Math.abs(top.size_ft).toFixed(2)} FT ${top.size_ft < 0 ? "HIGHER" : "LOWER"}` : "";
+    ? ` · FOR A GIVEN FLOW RATE, WATER SITS ${Math.abs(top.size_ft).toFixed(2)} FT ${top.size_ft < 0 ? "HIGHER" : "LOWER"}` : "";
   let tag, cap;
   if (kind !== "plain") {
     tag = settled ? `${name.toUpperCase()}${ft}` : `LEADING GUESS: ${name.toUpperCase()}`;
     cap = (settled
       ? `DriftWatch's agents found ${name}${when}, backed by a field note.`
       : `${name[0].toUpperCase() + name.slice(1)} is the leading guess, not confirmed; the agents are still checking.`) +
-      " Dashed: before. Solid: now, carrying the same flow. Dark blue: cross-sectional area the water fills now." +
-      " Flow = area × speed, so more area for the same flow means slower water. Schematic, not to scale.";
+      " Dashed: before. Solid: now, carrying an equal flow rate. Dark blue: cross-sectional area the water fills now." +
+      " Flow rate = area × velocity, so more area at an equal flow rate means lower velocity. Schematic, not to scale.";
   } else if (top) {
     tag = "";
     cap = `The channel changed${when}; there's no settled cause to draw yet. Schematic, not to scale.`;
