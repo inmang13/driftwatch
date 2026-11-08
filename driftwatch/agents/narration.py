@@ -200,9 +200,33 @@ def narration_facts(facts: dict[str, Any], context: list[dict] | None = None) ->
             "implies": sign,
             "agrees_with_data": sign == data_sign,
         }
-    if context:
-        f["lead"] = context[0]
+    f["lead"] = pick_lead(context, f["helene"])
     return f
+
+
+LEAD_ORDER = ("construction", "dam", "usgs_report", "storm", "other")
+
+
+def pick_lead(items: list[dict] | None, helene: bool) -> dict | None:
+    """One cached web item for the 'Possible lead' sentence: construction, then dam, then USGS
+    report, storm, other. A claim that names Helene is skipped unless the change date is in the
+    Helene window (rule 4), and so is one whose sentence would trip the voice guard."""
+    ok = []
+    for it in items or []:
+        if not it.get("url") or not it.get("claim") or not it.get("source_title"):
+            continue
+        if not helene and "helene" in (it["claim"] + it["source_title"]).lower():
+            continue
+        if banned(lead_sentence(it)):
+            continue
+        ok.append(it)
+    rank = {k: i for i, k in enumerate(LEAD_ORDER)}
+    ok.sort(key=lambda it: rank.get(it.get("kind"), len(rank)))
+    return ok[0] if ok else None
+
+
+def lead_sentence(lead: dict) -> str:
+    return f"Possible lead: {lead['claim'].rstrip('.')} ({lead['source_title']})."
 
 
 def _river_name(site_name: str) -> str:
@@ -286,8 +310,7 @@ def sentences(
         s["event"] = f"No gauging falls{between}, so no measured high flow explains it."
     s["lead"] = None
     if f["lead"]:
-        claim = f["lead"]["claim"].rstrip(".")
-        s["lead"] = f"Possible lead: {claim} ({f['lead']['source_title']})."
+        s["lead"] = lead_sentence(f["lead"])
     if status == "open":
         s["conclusion"] = "No field note confirms what changed, so the cause remains open."
     elif status == "disagreement":
@@ -376,8 +399,29 @@ def strip_labelled(text: str, f: dict[str, Any] | None) -> str:
         out = out.replace(f["note"]["meaning"], " ")
         out = out.replace(f'"{f["note"]["note"]}"', " ")
         out = out.replace(f["note"]["note"], " ")
-    out = re.sub(r"Possible lead:[^.]*\([^)]*\)\.", " ", out)
+    if f and f.get("lead"):
+        out = out.replace(lead_sentence(f["lead"]), " ")
     return out
+
+
+def _structure(text: str, f: dict[str, Any]) -> str | None:
+    """Rules (1), (3), (4) for a gauge with a final call: the opening Q = V x A sentence, the
+    check sentence's verdict words, and the event wording."""
+    first = re.split(r"(?<=\.)\s+", text.strip(), maxsplit=1)[0]
+    if "Q = V × A" not in first:
+        return "the first sentence must state Q = V × A"
+    if f.get("check_pct") is not None and f.get("step_pct") is not None:
+        want = "which agrees with" if f["check_agrees"] else "which does not back up"
+        if want not in text:
+            return f"the check sentence must say '{want}'"
+    if f.get("change_date") and not f.get("helene"):
+        if f.get("flood"):
+            q = f"{_fmt_cfs(f['flood']['discharge_cfs'])} cfs"
+            if q not in text:
+                return f"the event sentence must give the largest measured flow ({q})"
+        elif "no measured high flow explains it" not in text.lower():
+            return "the event sentence must say 'no measured high flow explains it'"
+    return None
 
 
 def check_text(text: str, f: dict[str, Any] | None, status: str | None = None) -> str | None:
@@ -391,8 +435,12 @@ def check_text(text: str, f: dict[str, Any] | None, status: str | None = None) -
         return f"must end with '{f['rating_sentence']}'"
     if bad := banned(text):
         return bad
+    if f is not None and not f.get("helene") and "helene" in text.lower():
+        return "Helene may be named only when the change date is within 30 days after it"
     if status == "open" and (m := MECHANISM_WORDS.search(strip_labelled(text, f))):
         return f"an open cause must not name a mechanism ('{m.group(0)}')"
+    if f is not None and status not in (None, "none") and (bad := _structure(text, f)):
+        return bad
     needs_note = f is not None and f.get("note") and status not in (None, "none")
     if needs_note and f["note"]["meaning"] not in text:
         return "the field note's fixed meaning must appear verbatim"

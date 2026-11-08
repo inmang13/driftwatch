@@ -635,3 +635,56 @@ def test_no_context_file_means_no_lead(runs):
     for s in STALE3:
         assert runs[s]["facts"]["event_context"] is None
         assert "Possible lead" not in runs[s]["narration"]
+
+
+def test_pick_lead_prefers_construction_and_skips_helene_outside_the_window():
+    def item(kind, claim, title="Some page"):
+        return {"kind": kind, "claim": claim, "url": "https://x.org", "source_title": title}
+
+    items = [
+        item("storm", "Hurricane Helene flooded the Pigeon River."),
+        item("storm", "A storm flooded Haywood County."),
+        item("construction", "Crews built a causeway in the Pigeon River."),
+        item("construction", "Crews are — maybe — building."),  # would trip the guard
+    ]
+    assert narration.pick_lead(items, helene=False)["claim"].startswith("Crews built")
+    assert (
+        narration.pick_lead(items[:2], helene=False)["claim"] == "A storm flooded Haywood County."
+    )
+    assert narration.pick_lead(items[:1], helene=False) is None
+    assert narration.pick_lead(items[:1], helene=True) is not None
+    assert narration.pick_lead(None, helene=False) is None
+
+
+def test_guard_rejects_helene_outside_the_window(runs):
+    r = runs[HEPCO]
+    nf = _nf(r)
+    text = r["narration"].replace(
+        "No gauging falls", "Hurricane Helene struck earlier. No gauging falls"
+    )
+    assert "Helene may be named only" in narration.check_text(text, nf, "disagreement")
+
+
+def test_context_text_hygiene():
+    from driftwatch.agents import context
+
+    assert context.clean_text("Bridge 142 — I-40 (2024–2025) | NCDOT?") == (
+        "Bridge 142, I-40 2024-2025 NCDOT"
+    )
+    assert context.clean_title("I-40 Pigeon River Gorge reopens - Smoky Mountain News") == (
+        "I-40 Pigeon River Gorge reopens"
+    )
+    assert context.clean_title("Pigeon River | American Whitewater") == "Pigeon River"
+
+
+def test_guard_requires_q_sentence_check_verdict_and_event_wording(runs):
+    h, n = runs[HEPCO], runs[NEWPORT]
+    nfh, nfn = _nf(h), _nf(n)
+    no_q = h["narration"].replace(" (Q = V × A)", "")
+    assert "Q = V × A" in narration.check_text(no_q, nfh, "disagreement")
+    flipped = h["narration"].replace("which agrees with", "which matches")
+    assert "which agrees with" in narration.check_text(flipped, nfh, "disagreement")
+    vague = h["narration"].replace("so no measured high flow explains it", "so nothing shows")
+    assert "no measured high flow" in narration.check_text(vague, nfh, "disagreement")
+    no_peak = n["narration"].replace("91,700 cfs", "a big flow")
+    assert "largest measured flow" in narration.check_text(no_peak, nfn, "corroborated")

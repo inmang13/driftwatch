@@ -26,7 +26,7 @@ sys.path.insert(0, str(REPO))  # this checkout, not whatever the editable instal
 import numpy as np
 import yaml
 
-from driftwatch.agents import fallbacks
+from driftwatch.agents import fallbacks, narration
 from driftwatch.agents import trace as tr
 from driftwatch.agents.graph import run_agents
 from driftwatch.modules.rating_curve import pairing, rating, segmentation
@@ -151,7 +151,11 @@ def check_agents(out: dict, exp: dict, c: Check) -> None:
         st = fin.get("cause_status")
         c.that(st == exp["cause_status"], f"cause_status {st}")
     if exp.get("no_mechanism_words"):
-        m = fallbacks.MECHANISM_WORDS.search(text)
+        # the field note and its fixed meaning (and a cached lead) are labelled as someone
+        # else's words; DriftWatch's own sentences must carry no mechanism word
+        ev = (out.get("facts") or {}).get("event_context") or {}
+        nf = narration.narration_facts(out["facts"], ev.get("items")) if out.get("facts") else None
+        m = fallbacks.MECHANISM_WORDS.search(narration.strip_labelled(text, nf))
         c.that(m is None, "no mechanism words" if m is None else f"names '{m.group(0)}'")
 
 
