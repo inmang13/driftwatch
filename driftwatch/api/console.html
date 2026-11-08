@@ -830,7 +830,7 @@ function renderCard(f, label) {
   } else if (f.cause_status === "open") causeHTML = `<dl class="rows">
       <dt>Lead (unconfirmed)</dt><dd>${causeLink(f.cause, "status open")} fits best so far
         (confidence ${conf(f.confidence)}), but no field note since the baseline period${fn("baseline")} backs it.
-        Treat it as a lead, not a finding; the agents are still checking.</dd>
+        Treat it as a lead, not a finding.</dd>
       <dt>Skeptic</dt><dd>${esc(plain(f.skeptic_argument) || "[none]")}</dd></dl>`;
   else causeHTML = `<dl class="rows">
       <dt>Cause</dt><dd>${causeLink(f.cause, "status corroborated")} · confidence
@@ -1042,7 +1042,7 @@ function renderHero(f, d) {
     tag = settled ? `${name.toUpperCase()}${ft}` : `LEADING GUESS: ${name.toUpperCase()}`;
     cap = (settled
       ? `DriftWatch's agents found ${name}${when}, backed by a field note.`
-      : `${name[0].toUpperCase() + name.slice(1)} is the leading guess, not confirmed; the agents are still checking.`) +
+      : `${name[0].toUpperCase() + name.slice(1)} is the leading guess, not confirmed.`) +
       " Dashed: before. Solid: now, carrying an equal flow rate. Dark blue: cross-sectional area the water fills now." +
       " Flow rate = area × velocity, so more area at an equal flow rate means lower velocity. Schematic, not to scale.";
   } else if (top) {
